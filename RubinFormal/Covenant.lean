@@ -159,28 +159,36 @@ def evalCovenant
         Except.error TxErr.TX_ERR_SIG_INVALID
 
   | CovenantType.CORE_HTLC_V2 h =>
-      if h.claim_key_id = h.refund_key_id then
+      -- Spec §4.1 item 6 / §3.1 line 241: script_sig MUST be empty for HTLC_V2 spends.
+      if script_sig_len != 0 then
+        Except.error TxErr.TX_ERR_PARSE
+      else if h.claim_key_id = h.refund_key_id then
         Except.error TxErr.TX_ERR_PARSE
       else
         let matching :=
           anchors.filter (fun a => a.tag = AnchorTag.htlcPreimage)
         if matching.length ≥ 2 then
           Except.error TxErr.TX_ERR_PARSE
-        else if matching.length = 1 then
-          -- claim path
-          let preimage32 := (matching.get ⟨0, by simp [List.length_eq_one]⟩).preimage32
-          if SHA3_256 preimage32 = h.hash ∧ w.key_id = h.claim_key_id then
-            Except.ok ()
-          else
-            Except.error TxErr.TX_ERR_SIG_INVALID
         else
-          -- refund path
-          if w.key_id != h.refund_key_id then
-            Except.error TxErr.TX_ERR_SIG_INVALID
-          else if timelockOk ctx h.lock_mode h.lock_value then
-            Except.ok ()
-          else
-            Except.error TxErr.TX_ERR_TIMELOCK_NOT_MET
+          -- Use head? to avoid List.get proof obligations in external proofs.
+          -- When matching = [env]: head? = some env  (claim path)
+          -- When matching = []:    head? = none       (refund path)
+          match matching.head? with
+          | some env =>
+              -- Claim path: exactly one matching HTLC_V2 envelope.
+              let preimage32 := env.preimage32
+              if SHA3_256 preimage32 = h.hash ∧ w.key_id = h.claim_key_id then
+                Except.ok ()
+              else
+                Except.error TxErr.TX_ERR_SIG_INVALID
+          | none =>
+              -- Refund path: no matching envelopes.
+              if w.key_id != h.refund_key_id then
+                Except.error TxErr.TX_ERR_SIG_INVALID
+              else if timelockOk ctx h.lock_mode h.lock_value then
+                Except.ok ()
+              else
+                Except.error TxErr.TX_ERR_TIMELOCK_NOT_MET
 
   | CovenantType.CORE_ANCHOR =>
       -- Non-spendable; if it appears as an input, consensus returns missing UTXO earlier.

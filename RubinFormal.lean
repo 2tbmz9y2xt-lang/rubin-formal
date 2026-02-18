@@ -20,4 +20,8 @@ import RubinFormal.ReplaySequence
 import RubinFormal.DeploymentGate
 import RubinFormal.Sighash
 import RubinFormal.CVLinkage
+import RubinFormal.AnchorEnvelopeParse
+import RubinFormal.InputAuthorization
+import RubinFormal.HTLCV2GatingTheorems
+import RubinFormal.CVHTLCV2
 -- VERSION_BITS theorems live in VersionBits; keep it imported.
