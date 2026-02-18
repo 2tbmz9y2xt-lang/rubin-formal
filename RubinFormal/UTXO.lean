@@ -9,6 +9,7 @@ abbrev Txid := Nat
 -- v1.1 protocol limits (consensus constants in the spec).
 def MAX_TX_INPUTS : Nat := 1024
 def MAX_TX_OUTPUTS : Nat := 1024
+def MAX_WITNESS_ITEMS : Nat := 1024
 
 structure OutPoint where
   txid : Txid
@@ -44,6 +45,7 @@ structure Tx where
   txid : Txid
   inputs : List OutPoint
   outputs : List TxOutput
+  witness_count : Nat
   isCoinbase : Bool := false
   deriving DecidableEq, Repr
 
@@ -51,6 +53,7 @@ inductive TxErr where
   | TX_ERR_MISSING_UTXO
   | TX_ERR_PARSE
   | TX_ERR_VALUE_CONSERVATION
+  | TX_ERR_WITNESS_OVERFLOW
   deriving DecidableEq, Repr
 
 def hasDuplicateOutpoints (xs : List OutPoint) : Bool :=
@@ -96,11 +99,20 @@ def validateTx (u : UTXOSet) (t : Tx) : Except TxErr Unit :=
     Except.error TxErr.TX_ERR_PARSE
   else if t.outputs.length > MAX_TX_OUTPUTS then
     Except.error TxErr.TX_ERR_PARSE
+  else if t.witness_count > MAX_WITNESS_ITEMS then
+    Except.error TxErr.TX_ERR_WITNESS_OVERFLOW
+  else if t.isCoinbase then
+    -- Spec: coinbase witness_count MUST be 0.
+    if t.witness_count = 0 then
+      Except.ok ()
+    else
+      Except.error TxErr.TX_ERR_PARSE
+  else if t.witness_count != t.inputs.length then
+    -- Spec: witness_count MUST equal input_count.
+    Except.error TxErr.TX_ERR_PARSE
   else if (t.isCoinbase = false) && hasDuplicateOutpoints t.inputs then
     -- Spec: duplicate input outpoints MUST reject as TX_ERR_PARSE.
     Except.error TxErr.TX_ERR_PARSE
-  else if t.isCoinbase then
-    Except.ok ()
   else
     -- Value conservation per spec §4.5 with checked arithmetic.
     match lookupInputValues u t.inputs with
