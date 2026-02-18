@@ -122,10 +122,6 @@ def evalCovenant
         Except.error TxErr.TX_ERR_TIMELOCK_NOT_MET
 
   | CovenantType.CORE_HTLC_V1 h =>
-      -- Spec parse constraints (lock_mode domain + key-id overlap) are consensus-parse errors.
-      if h.claim_key_id = h.refund_key_id then
-        Except.error TxErr.TX_ERR_PARSE
-      else
         if script_sig_len = 32 then
           -- claim path
           match script_sig_preimage32 with
@@ -147,9 +143,7 @@ def evalCovenant
           Except.error TxErr.TX_ERR_PARSE
 
   | CovenantType.CORE_VAULT_V1 v =>
-      if v.owner_key_id = v.recovery_key_id then
-        Except.error TxErr.TX_ERR_PARSE
-      else if w.key_id = v.owner_key_id then
+      if w.key_id = v.owner_key_id then
         if v.spend_delay = 0 then
           Except.ok ()
         else if ctx.height ≥ creation_height + v.spend_delay then
@@ -203,4 +197,3 @@ theorem evalCovenant_deterministic
   rfl
 
 end RubinFormal
-
