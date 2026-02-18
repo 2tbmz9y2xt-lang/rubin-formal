@@ -6,6 +6,10 @@ namespace RubinFormal
 abbrev Height := Nat
 abbrev Txid := Nat
 
+-- v1.1 protocol limits (consensus constants in the spec).
+def MAX_TX_INPUTS : Nat := 1024
+def MAX_TX_OUTPUTS : Nat := 1024
+
 structure OutPoint where
   txid : Txid
   vout : Nat
@@ -46,7 +50,26 @@ structure Tx where
 inductive TxErr where
   | TX_ERR_MISSING_UTXO
   | TX_ERR_PARSE
+  | TX_ERR_VALUE_CONSERVATION
   deriving DecidableEq, Repr
+
+def hasDuplicateOutpoints (xs : List OutPoint) : Bool :=
+  let rec go (seen : Std.RBSet OutPoint compare) : List OutPoint → Bool
+    | [] => false
+    | x :: rest =>
+        if seen.contains x then
+          true
+        else
+          go (seen.insert x) rest
+  go (Std.RBSet.empty) xs
+
+def valuesOfOutputs (outs : List TxOutput) : List U64 :=
+  outs.map (fun o => o.value)
+
+def lookupInputValues (u : UTXOSet) (ins : List OutPoint) : Option (List U64) :=
+  ins.mapM (fun op => do
+    let e ← u.find? op
+    some e.out.value)
 
 def removeInputs (u : UTXOSet) : List OutPoint → Option UTXOSet
   | [] => some u
@@ -67,9 +90,35 @@ def addOutputs (u : UTXOSet) (txid : Txid) (outs : List TxOutput) (h : Height) :
         acc)
     u
 
-def SpendTx (u : UTXOSet) (t : Tx) (h : Height) : Except TxErr UTXOSet :=
+def validateTx (u : UTXOSet) (t : Tx) : Except TxErr Unit :=
+  -- Basic structural limits first (cheap rejects).
+  if t.inputs.length > MAX_TX_INPUTS then
+    Except.error TxErr.TX_ERR_PARSE
+  else if t.outputs.length > MAX_TX_OUTPUTS then
+    Except.error TxErr.TX_ERR_PARSE
+  else if (t.isCoinbase = false) && hasDuplicateOutpoints t.inputs then
+    -- Spec: duplicate input outpoints MUST reject as TX_ERR_PARSE.
+    Except.error TxErr.TX_ERR_PARSE
+  else if t.isCoinbase then
+    Except.ok ()
+  else
+    -- Value conservation per spec §4.5 with checked arithmetic.
+    match lookupInputValues u t.inputs with
+    | none => Except.error TxErr.TX_ERR_MISSING_UTXO
+    | some ins =>
+        match U64.sum? ins, U64.sum? (valuesOfOutputs t.outputs) with
+        | none, _ => Except.error TxErr.TX_ERR_PARSE
+        | _, none => Except.error TxErr.TX_ERR_PARSE
+        | some sumIn, some sumOut =>
+            if sumOut.val > sumIn.val then
+              Except.error TxErr.TX_ERR_VALUE_CONSERVATION
+            else
+              Except.ok ()
+
+def SpendTx (u : UTXOSet) (t : Tx) (h : Height) : Except TxErr UTXOSet := do
+  validateTx u t
   if t.isCoinbase then
-    -- coinbase has no inputs in this model; only creates spendable outputs
+    -- Coinbase creates outputs; inputs are ignored in this simplified model.
     Except.ok (addOutputs u t.txid t.outputs h)
   else
     match removeInputs u t.inputs with
@@ -77,4 +126,3 @@ def SpendTx (u : UTXOSet) (t : Tx) (h : Height) : Except TxErr UTXOSet :=
     | some u' => Except.ok (addOutputs u' t.txid t.outputs h)
 
 end RubinFormal
-
