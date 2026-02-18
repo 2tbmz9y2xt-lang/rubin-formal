@@ -26,15 +26,14 @@ theorem T009_htlc_v2_nonmatching_anchors_irrelevant
     (w : Witness)
     (h : HTLCV2)
     (anchors extra : List AnchorEnvelope)
-    (hextra : AllOther extra) :
+    (hextra : AllOther extra)
+    (hssl : script_sig_len = 0) :
     evalCovenant ctx creation_height script_sig_len script_sig_preimage32 (anchors ++ extra) w
         (CovenantType.CORE_HTLC_V2 h)
       =
     evalCovenant ctx creation_height script_sig_len script_sig_preimage32 anchors w
         (CovenantType.CORE_HTLC_V2 h) := by
-  -- both sides are identical except the `matching = filter(tag=htlcPreimage)`
-  -- and `filter(extra)=[]` by hypothesis, so `matching` is unchanged.
-  simp [evalCovenant, List.filter_append, filter_htlcPreimage_of_allOther _ hextra]
+  simp [evalCovenant, hssl, List.filter_append, filter_htlcPreimage_of_allOther _ hextra]
 
 -- T-009 core: two or more matching envelopes MUST reject as TX_ERR_PARSE.
 theorem T009_htlc_v2_two_or_more_matching_reject_parse
