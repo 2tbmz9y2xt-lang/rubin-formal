@@ -3,6 +3,7 @@ import RubinFormal.Wire
 import RubinFormal.TxWire
 import RubinFormal.Hash
 import RubinFormal.BlockWire
+import RubinFormal.Genesis
 import RubinFormal.CompactSize
 import RubinFormal.U64
 import RubinFormal.UTXO
