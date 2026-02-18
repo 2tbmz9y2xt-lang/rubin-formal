@@ -13,3 +13,4 @@ import RubinFormal.Policy
 import RubinFormal.AnchorPolicy
 import RubinFormal.Covenant
 import RubinFormal.CovenantExamples
+import RubinFormal.CovenantTheorems
