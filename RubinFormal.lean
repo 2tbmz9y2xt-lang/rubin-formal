@@ -19,3 +19,5 @@ import RubinFormal.ConsensusValidation
 import RubinFormal.ReplaySequence
 import RubinFormal.DeploymentGate
 import RubinFormal.Sighash
+import RubinFormal.CVLinkage
+-- VERSION_BITS theorems live in VersionBits; keep it imported.
