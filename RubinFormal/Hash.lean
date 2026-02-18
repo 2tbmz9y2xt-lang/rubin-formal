@@ -11,5 +11,8 @@ abbrev Bytes := List Byte
 axiom SHA3_256 : Bytes → Bytes
 axiom SHA3_256_len32 : ∀ bs : Bytes, (SHA3_256 bs).length = 32
 
-end RubinFormal
+-- Strong form used for key_id uniqueness statements in the spec:
+-- collision resistance / injectivity (modeled as an axiom).
+axiom SHA3_256_injective : ∀ x y : Bytes, SHA3_256 x = SHA3_256 y → x = y
 
+end RubinFormal

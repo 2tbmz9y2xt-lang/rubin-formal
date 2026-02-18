@@ -21,7 +21,7 @@ def witnessByteLen (t : Tx) : Option Nat := do
 def relayAccepts (t : Tx) : Bool :=
   match witnessByteLen t with
   | none => false
-  | some n => n ≤ MAX_WITNESS_BYTES_PER_TX
+  | some n => decide (n ≤ MAX_WITNESS_BYTES_PER_TX)
 
 -- Separation lemma (non-normative but useful): consensus TxNoWitnessBytes does not depend on relay caps.
 theorem TxNoWitnessBytes_independent_of_policy (t : Tx) :
@@ -29,4 +29,3 @@ theorem TxNoWitnessBytes_independent_of_policy (t : Tx) :
   rfl
 
 end RubinFormal
-
