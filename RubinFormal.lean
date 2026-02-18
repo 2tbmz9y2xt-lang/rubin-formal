@@ -16,3 +16,6 @@ import RubinFormal.CovenantExamples
 import RubinFormal.CovenantTheorems
 import RubinFormal.CovenantParse
 import RubinFormal.ConsensusValidation
+import RubinFormal.ReplaySequence
+import RubinFormal.DeploymentGate
+import RubinFormal.Sighash
