@@ -1,4 +1,5 @@
 import RubinFormal.Core
+import RubinFormal.Chain
 import RubinFormal.Wire
 import RubinFormal.TxWire
 import RubinFormal.Hash

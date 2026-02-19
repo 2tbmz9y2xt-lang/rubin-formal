@@ -96,5 +96,81 @@ def validateAnchorBlockBytes (txs : List Tx) : Except BlockErr Unit :=
   else
     pure ()
 
-end RubinFormal
+-- ----------------------------
+-- Phase 1 invariants (theorems)
+-- ----------------------------
 
+theorem validateAnchorOutput_ok_of_not_anchor (o : TxOutput) (h : isAnchorOutput o = false) :
+    validateAnchorOutput o = Except.ok () := by
+  unfold validateAnchorOutput
+  simp [h]
+
+theorem validateAnchorOutput_ok_implies_guards_false (o : TxOutput) (h : isAnchorOutput o = true)
+    (hok : validateAnchorOutput o = Except.ok ()) :
+    (o.value != 0) = false ∧
+      (o.covenant_data.length = 0) = false ∧
+      (o.covenant_data.length > MAX_ANCHOR_PAYLOAD_SIZE) = false := by
+  unfold validateAnchorOutput at hok
+  -- Reduce the outer if via h, then peel nested guards one by one.
+  simp [h] at hok
+  by_cases hv : (o.value != 0)
+  · -- If the first guard is true we would return error, contradicting hok.
+    simp [hv] at hok
+  · have hvf : (o.value != 0) = false := by simp [hv]
+    -- Continue to second guard.
+    have hok2 : (if o.covenant_data.length = 0 then Except.error TxErr.TX_ERR_COVENANT_TYPE_INVALID
+      else if o.covenant_data.length > MAX_ANCHOR_PAYLOAD_SIZE then Except.error TxErr.TX_ERR_COVENANT_TYPE_INVALID
+      else Except.ok ()) = Except.ok () := by
+        simpa [hv, hvf] using hok
+    by_cases hz : (o.covenant_data.length = 0)
+    · simp [hz] at hok2
+    · have hzf : (o.covenant_data.length = 0) = false := by simp [hz]
+      -- Third guard.
+      have hok3 : (if o.covenant_data.length > MAX_ANCHOR_PAYLOAD_SIZE then Except.error TxErr.TX_ERR_COVENANT_TYPE_INVALID
+        else Except.ok ()) = Except.ok () := by
+          simpa [hz, hzf] using hok2
+      by_cases hgt : (o.covenant_data.length > MAX_ANCHOR_PAYLOAD_SIZE)
+      · simp [hgt] at hok3
+      · have hgtf : (o.covenant_data.length > MAX_ANCHOR_PAYLOAD_SIZE) = false := by simp [hgt]
+        exact ⟨hvf, hzf, hgtf⟩
+
+theorem validateAnchorBlockBytes_ok_implies_le (txs : List Tx)
+    (hok : validateAnchorBlockBytes txs = Except.ok ()) :
+    (txs.foldl (fun acc t => acc + anchorBytesInTx t) 0) ≤ MAX_ANCHOR_BYTES_PER_BLOCK := by
+  unfold validateAnchorBlockBytes at hok
+  by_cases hgt : (txs.foldl (fun acc t => acc + anchorBytesInTx t) 0) > MAX_ANCHOR_BYTES_PER_BLOCK
+  · simp [hgt] at hok
+  · exact Nat.le_of_not_gt hgt
+
+theorem validateWitnessSection_ok_implies_lengths (isCoinbase : Bool) (t : Tx)
+    (hok : validateWitnessSection isCoinbase t = Except.ok ()) :
+    t.witnesses.length ≤ MAX_WITNESS_ITEMS ∧
+      (isCoinbase = true → t.witnesses.length = 0) ∧
+      (isCoinbase = false → t.witnesses.length = t.inputs.length) := by
+  -- This is "weight-adjacent": it covers witness_count bounds and basic shape.
+  unfold validateWitnessSection at hok
+  by_cases hcap : t.witnesses.length > MAX_WITNESS_ITEMS
+  · simp [hcap] at hok
+  · have hle : t.witnesses.length ≤ MAX_WITNESS_ITEMS := Nat.le_of_not_gt hcap
+    by_cases hcb : isCoinbase
+    · have : (if t.witnesses.length = 0 then (pure ()) else throw TxErr.TX_ERR_PARSE) = Except.ok () := by
+        simpa [hcap, hcb] using hok
+      have hw0 : t.witnesses.length = 0 := by
+        by_cases hw : t.witnesses.length = 0
+        · exact hw
+        · simp [hw] at this
+      refine And.intro hle ?_
+      refine And.intro (by intro _; simpa [hcb] using hw0) ?_
+      intro hfalse
+      cases hfalse
+    · have : (if t.witnesses.length = t.inputs.length then (pure ()) else throw TxErr.TX_ERR_PARSE) = Except.ok () := by
+        simpa [hcap, hcb] using hok
+      have hweq : t.witnesses.length = t.inputs.length := by
+        by_cases hw : t.witnesses.length = t.inputs.length
+        · exact hw
+        · simp [hw] at this
+      refine And.intro hle ?_
+      refine And.intro (by intro htrue; cases (by simpa using htrue)) ?_
+      intro _; exact hweq
+
+end RubinFormal
