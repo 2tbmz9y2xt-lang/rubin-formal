@@ -15,17 +15,17 @@ and proves the expected outcome through `evalCovenant` or
 | ID             | Path            | Trigger                          | Expected              | Status   |
 |----------------|-----------------|----------------------------------|-----------------------|----------|
 | CV-HTLCV2-01   | validateInputAuth | inactive deployment             | TX_ERR_DEPLOYMENT_INACTIVE | ✅ proved |
-| CV-HTLCV2-02   | evalCovenant    | script_sig_len ≠ 0              | TX_ERR_PARSE          | ⏳ Q-069  |
+| CV-HTLCV2-02   | evalCovenant    | script_sig_len ≠ 0              | TX_ERR_PARSE          | ✅ proved |
 | CV-HTLCV2-03   | evalCovenant    | 2 matching envelopes            | TX_ERR_PARSE          | ✅ proved |
-| CV-HTLCV2-04   | evalCovenant    | claim path, hash mismatch       | TX_ERR_SIG_INVALID    | ⏳ aux lemma |
-| CV-HTLCV2-05   | evalCovenant    | claim path, key mismatch        | TX_ERR_SIG_INVALID    | ⏳ aux lemma |
+| CV-HTLCV2-04   | evalCovenant    | claim path, hash mismatch       | TX_ERR_SIG_INVALID    | ✅ proved |
+| CV-HTLCV2-05   | evalCovenant    | claim path, key mismatch        | TX_ERR_SIG_INVALID    | ✅ proved |
 | CV-HTLCV2-06   | evalCovenant    | refund path, key mismatch       | TX_ERR_SIG_INVALID    | ✅ proved |
 | CV-HTLCV2-07   | evalCovenant    | refund path, timelock not met   | TX_ERR_TIMELOCK_NOT_MET | ✅ proved |
 | CV-HTLCV2-08   | evalCovenant    | claim_key_id = refund_key_id    | TX_ERR_PARSE          | ✅ proved |
 
-CV-02 is blocked on Q-069 (`script_sig_len` check not yet in `evalCovenant`).
-CV-04/05 are blocked on an auxiliary lemma for the `List.get` proof obligation
-arising from the single-matching-envelope branch of `evalCovenant`.
+All 8 cases are proved. CV-02 uses the `script_sig_len != 0` check already present
+in `Covenant.evalCovenant`. CV-04/05 use `List.head?` (not `List.get`) which
+discharges cleanly via `simp only [..., List.head?]`.
 -/
 
 -- Shared test helpers --------------------------------------------------------
@@ -83,14 +83,10 @@ theorem CV_HTLCV2_01_inactive_spend_rejected (sigOk : SigOk)
 -- ---------------------------------------------------------------------------
 
 /-- When a `CORE_HTLC_V2` input carries a non-empty `script_sig`, it MUST be
-    rejected as `TX_ERR_PARSE` (spec §4.1 item 6, §3.1 line 241).
+    rejected as `TX_ERR_PARSE` (spec §4.1 item 6, §3.1).
 
-    **Blocked by Q-069**: the `script_sig_len != 0` check is not yet present in
-    `evalCovenant`.  After adding the check as the first branch in the
-    `CORE_HTLC_V2` match arm of `Covenant.lean`, replace `sorry` with:
-
-      simp [validateInputAuthorization, gateSuiteId, activeCtx,
-            gateCovenant, CORE_HTLC_V2_TAG, evalCovenant, hne] -/
+    The `script_sig_len != 0` check is the first branch in the `CORE_HTLC_V2`
+    match arm of `Covenant.evalCovenant` and fires before any envelope scan. -/
 theorem CV_HTLCV2_02_script_sig_len_nonzero_reject (sigOk : SigOk)
     (txOuts : List TxWire.TxOutput) :
     let h := mkH (zk 0xaa) (zk 0x11) (zk 0x22)

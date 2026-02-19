@@ -23,5 +23,6 @@ import RubinFormal.CVLinkage
 import RubinFormal.AnchorEnvelopeParse
 import RubinFormal.InputAuthorization
 import RubinFormal.HTLCV2GatingTheorems
+import RubinFormal.HTLCV2ValueTheorems
 import RubinFormal.CVHTLCV2
 -- VERSION_BITS theorems live in VersionBits; keep it imported.

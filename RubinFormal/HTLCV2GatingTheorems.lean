@@ -160,6 +160,58 @@ theorem eval_failure_precedes_sig_verify
   simp [validateInputAuthorization, hsuite, hgate, heval]
 
 -- ---------------------------------------------------------------------------
+-- End-to-end No-Effect-Until-Active and unified precedence wrapper
+-- ---------------------------------------------------------------------------
+
+/-- End-to-end No-Effect-Until-Active: for any covenant type other than
+    `CORE_HTLC_V2`, the full `validateInputAuthorization` result is identical
+    regardless of how `htlc_anchor_v1_active` differs between `d0` and `d1`.
+
+    Extends `no_effect_until_active_non_htlcv2` from the gate level to the full
+    authorization pipeline.  The suite gate hypotheses (`hsuite0`/`hsuite1`) must
+    be supplied by the caller; a caller with `w.suite_id = 0x01` can discharge
+    them with `by simp [gateSuiteId]`. -/
+theorem NoEffectUntilActive
+    (d0 d1 : DeployCtx) (ctx : BlockCtx)
+    (ch ssl : Nat) (sp : Option Bytes32)
+    (txOuts : List TxWire.TxOutput) (w : Witness)
+    (ctTag : UInt16) (c : CovenantType) (sigOk : SigOk)
+    (hne     : ctTag ≠ CORE_HTLC_V2_TAG)
+    (hsuite0 : gateSuiteId d0 w.suite_id = Except.ok ())
+    (hsuite1 : gateSuiteId d1 w.suite_id = Except.ok ()) :
+    validateInputAuthorization d0 ctx ch ssl sp txOuts w ctTag c sigOk
+      =
+    validateInputAuthorization d1 ctx ch ssl sp txOuts w ctTag c sigOk := by
+  have hg : gateCovenant d0 ctTag = gateCovenant d1 ctTag :=
+    no_effect_until_active_non_htlcv2 d0 d1 ctTag hne
+  simp [validateInputAuthorization, hsuite0, hsuite1, hg]
+
+/-- Unified covenant-failure-precedes-sig-failure: if any step in the gate/eval
+    pipeline fails with error `e`, then `validateInputAuthorization` returns
+    `Except.error e` regardless of `sigOk`.
+
+    This is a wrapper that selects the appropriate existing precedence lemma based
+    on which step failed.  Supply exactly one of `hsuiteErr`, `hgateErr`, or
+    `hevalErr`; the others should be the corresponding `ok ()` hypotheses. -/
+theorem covenant_failure_precedes_sig_failure
+    (d      : DeployCtx) (ctx : BlockCtx)
+    (ch ssl : Nat) (sp : Option Bytes32)
+    (txOuts : List TxWire.TxOutput) (w : Witness)
+    (ctTag  : UInt16) (c : CovenantType)
+    (e : TxErr) (sigOk : SigOk)
+    (hfail :
+      gateSuiteId d w.suite_id = Except.error e ∨
+      (gateSuiteId d w.suite_id = Except.ok () ∧ gateCovenant d ctTag = Except.error e) ∨
+      (gateSuiteId d w.suite_id = Except.ok () ∧ gateCovenant d ctTag = Except.ok () ∧
+        evalCovenant ctx ch ssl sp (collectAnchorEnvelopes txOuts) w c = Except.error e)) :
+    validateInputAuthorization d ctx ch ssl sp txOuts w ctTag c sigOk
+      = Except.error e := by
+  rcases hfail with hsuit | ⟨hso, hgate⟩ | ⟨hso, hgo, heval⟩
+  · exact suite_gate_failure_precedes_sig_verify d ctx ch ssl sp txOuts w ctTag c e sigOk hsuit
+  · exact gate_failure_precedes_sig_verify d ctx ch ssl sp txOuts w ctTag c e sigOk hso hgate
+  · exact eval_failure_precedes_sig_verify d ctx ch ssl sp txOuts w ctTag c e sigOk hso hgo heval
+
+-- ---------------------------------------------------------------------------
 -- Re-exports from CovenantTheorems
 -- ---------------------------------------------------------------------------
 
