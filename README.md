@@ -12,4 +12,4 @@ Notes:
 - This is intentionally a minimal, dependency-free Lean 4 project (Std-only).
 - The theorems here are "model-level" proofs: they establish determinism / monotonicity
   properties for a well-defined abstract model that matches the spec structure.
-- This repo is referenced by `rubin-protocol/formal/RUBIN_FORMAL_APPENDIX_v1.1.md` (pinned commit).
+- Proof scope/strength and coverage are defined in `PROOF_COVERAGE.md` and `RISK_MODEL.md`.
