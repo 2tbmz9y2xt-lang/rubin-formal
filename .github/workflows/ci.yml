@@ -20,7 +20,7 @@ jobs:
           build: true
       - name: publish legacy status context "build"
         if: ${{ always() }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           JOB_STATUS: ${{ job.status }}
         with:
