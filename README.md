@@ -1,7 +1,6 @@
 # rubin-formal (Lean 4) - RUBIN L1 v1.1
 
 Status: DEVELOPMENT (non-normative). This repository hosts Lean 4 proofs for RUBIN L1.
-
 Goals (pre-freeze minimum):
 - Provide machine-checked Lean 4 proofs for:
   - T-004 ApplyBlock determinism
