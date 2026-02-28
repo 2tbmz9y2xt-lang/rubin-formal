@@ -1,10 +1,13 @@
 import Lake
 open Lake DSL
 
-package rubinFormal where
-  -- Keep the project Std-only (no Mathlib) to reduce friction in early development.
-  -- When the external repo is created, we can add Mathlib and pin it via lake-manifest.json.
+package «rubin-formal» where
 
+require std from git
+  "https://github.com/leanprover/std4" @ "v4.6.0"
+
+@[default_target]
 lean_lib RubinFormal where
-  roots := #[`RubinFormal]
 
+lean_exe rubin_conformance where
+  root := `RubinFormal.Conformance.Main
