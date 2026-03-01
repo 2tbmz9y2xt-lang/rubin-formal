@@ -86,7 +86,17 @@
       "section_heading": "## 16. Transaction Structural Rules (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_validation_order_vectors_pass"
+        "RubinFormal.Conformance.cv_validation_order_vectors_pass",
+        "RubinFormal.core_ext_cursor_no_ambiguity_proved"
+      ],
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+    },
+    {
+      "section_key": "core_ext_softfork_tightening",
+      "section_heading": "#### 23.2.2 `CORE_EXT` Deployment Profiles (Normative)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.core_ext_tightening_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
