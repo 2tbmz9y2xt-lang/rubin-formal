@@ -1,6 +1,7 @@
 import RubinFormal.CriticalInvariants
 import RubinFormal.ByteWire
 import RubinFormal.ArithmeticSafety
+import RubinFormal.CoreExtInvariants
 
 namespace RubinFormal
 
@@ -30,6 +31,18 @@ def valueConservationStatement : Prop :=
   (∀ sumIn sumOut fee : Nat, valueConserved sumIn sumOut → valueConserved (sumIn + fee) sumOut) ∧
   (∀ sumIn sumOut fee : Nat, inU128 sumIn → valueConserved sumIn sumOut → valueConserved (satAddU128 sumIn fee) sumOut)
 def daSetIntegrityStatement : Prop := ¬ daChunkSetValid []
+def coreExtTighteningStatement : Prop :=
+  ∀ allowedSuiteIds : List Nat,
+    ∀ w : WitnessItemMini, coreExtActiveAllowed allowedSuiteIds w → coreExtLegacyAllowed w
+def coreExtCursorNoAmbiguityStatement : Prop :=
+  ∀ inputCount witnessCount : Nat,
+    witnessCount = inputCount →
+      (∀ i j : Nat,
+        i < inputCount →
+        j < inputCount →
+        coreExtAssignedWitnessIndex i = coreExtAssignedWitnessIndex j →
+          i = j) ∧
+      (∀ i : Nat, i < inputCount → coreExtAssignedWitnessIndex i < witnessCount)
 
 theorem transaction_wire_proved : transactionWireStatement := by
   refine ⟨?_, ?_, ?_⟩
@@ -89,5 +102,13 @@ theorem value_conservation_proved : valueConservationStatement := by
 
 theorem da_set_integrity_proved : daSetIntegrityStatement := by
   simpa [daSetIntegrityStatement] using da_chunk_set_requires_nonempty
+
+theorem core_ext_tightening_proved : coreExtTighteningStatement := by
+  intro allowedSuiteIds w h
+  exact core_ext_softfork_tightening allowedSuiteIds w h
+
+theorem core_ext_cursor_no_ambiguity_proved : coreExtCursorNoAmbiguityStatement := by
+  intro inputCount witnessCount h
+  exact core_ext_no_cursor_ambiguity inputCount witnessCount h
 
 end RubinFormal
