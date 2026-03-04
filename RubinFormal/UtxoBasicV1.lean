@@ -25,9 +25,6 @@ def COV_TYPE_HTLC : Nat := 0x0100
 def COV_TYPE_MULTISIG : Nat := 0x0104
 
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
-def SUITE_ID_SLH_DSA_SHAKE_256F : Nat := 0x02
-
-def SLH_DSA_ACTIVATION_HEIGHT : Nat := 1000000
 
 def clampU64Max : Nat := (Nat.pow 2 64) - 1
 
@@ -319,9 +316,7 @@ def applyNonCoinbaseTxBasicState
       if e.covenantData.size != MAX_P2PK_COVENANT_DATA then
         throw "TX_ERR_COVENANT_TYPE_INVALID"
       let suite := (e.covenantData.get! 0).toNat
-      if !(suite == SUITE_ID_ML_DSA_87 || suite == SUITE_ID_SLH_DSA_SHAKE_256F) then
-        throw "TX_ERR_COVENANT_TYPE_INVALID"
-      if suite == SUITE_ID_SLH_DSA_SHAKE_256F && height < SLH_DSA_ACTIVATION_HEIGHT then
+      if suite != SUITE_ID_ML_DSA_87 then
         throw "TX_ERR_COVENANT_TYPE_INVALID"
 
     let lockId := outputDescriptorLockId e

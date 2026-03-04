@@ -1,5 +1,4 @@
 import RubinFormal.BlockBasicCheckV1
-import RubinFormal.UtxoBasicV1
 import RubinFormal.Conformance.CVReplayVectors
 import RubinFormal.Hex
 
@@ -47,7 +46,7 @@ def checkReplayVector (v : CVReplayVector) : Bool :=
     | some bHex, some phHex, some tgtHex =>
         match RubinFormal.decodeHex? bHex, RubinFormal.decodeHex? phHex, RubinFormal.decodeHex? tgtHex with
         | some b, some ph, some tgt =>
-            match BlockBasicCheckV1.validateBlockBasicCheck b (some ph) (some tgt) RubinFormal.UtxoBasicV1.SLH_DSA_ACTIVATION_HEIGHT v.prevTimestamps with
+            match BlockBasicCheckV1.validateBlockBasicCheck b (some ph) (some tgt) 0 v.prevTimestamps with
             | .ok _ => v.expectOk
             | .error e => (!v.expectOk) && (some e == v.expectErr)
         | _, _, _ => false

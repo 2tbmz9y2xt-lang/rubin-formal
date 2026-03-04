@@ -133,7 +133,7 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
     let coreEnd := c9.off
-    let (cW, wErr, wStart, wEnd, _ml, _slh) ←
+    let (cW, wErr, wStart, wEnd, _ml) ←
       match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
