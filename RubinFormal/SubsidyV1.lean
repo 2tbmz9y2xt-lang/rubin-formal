@@ -11,6 +11,11 @@ open RubinFormal.BlockBasicV1
 open RubinFormal.UtxoBasicV1
 
 -- Consensus constants (mirror clients/go/consensus/constants.go).
+-- NOTE (§19.1, PR #420): Go uses *big.Int, Rust uses u128 for subsidy
+-- accumulation arithmetic. Lean Nat is unbounded and strictly subsumes
+-- both u64 and u128. The formal bound proof that subsidy values fit in
+-- machine types is in ArithmeticSafety.lean (blockSubsidy_bounded,
+-- subsidy_accumulation_in_u128).
 def MINEABLE_CAP : Nat := 4900000000000000
 def EMISSION_SPEED_FACTOR : Nat := 20
 def TAIL_EMISSION_PER_BLOCK : Nat := 19025875
