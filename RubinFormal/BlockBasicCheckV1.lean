@@ -84,7 +84,14 @@ def validateBlockBasicCheck
   -- signature suite activation gate (no-op after SLH-DSA removal).
   enforceSigSuiteActivation pb.txs blockHeight
 
-  -- validate the same basic invariants as BlockBasicV1.validateBlockBasic, but keep pb for extra checks.
+  -- §25 step order (post-PR#418): pow → target → linkage → merkle → witness_commitment → timestamp
+  BlockBasicV1.powCheck pb.header
+
+  match expectedTarget with
+  | none => pure ()
+  | some exp =>
+      if pb.header.target != exp then throw "BLOCK_ERR_TARGET_INVALID"
+
   match expectedPrevHash with
   | none => pure ()
   | some exp =>
@@ -92,13 +99,6 @@ def validateBlockBasicCheck
 
   let mr ← BlockBasicV1.merkleRootTxids pb.txids
   if mr != pb.header.merkleRoot then throw "BLOCK_ERR_MERKLE_INVALID"
-
-  BlockBasicV1.powCheck pb.header
-
-  match expectedTarget with
-  | none => pure ()
-  | some exp =>
-      if pb.header.target != exp then throw "BLOCK_ERR_TARGET_INVALID"
 
   let wmr ← BlockBasicV1.witnessMerkleRootWtxids pb.wtxids
   let expectCommit := BlockBasicV1.witnessCommitmentHash wmr

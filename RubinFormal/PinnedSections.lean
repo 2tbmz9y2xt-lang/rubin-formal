@@ -43,6 +43,12 @@ def coreExtCursorNoAmbiguityStatement : Prop :=
         coreExtAssignedWitnessIndex i = coreExtAssignedWitnessIndex j →
           i = j) ∧
       (∀ i : Nat, i < inputCount → coreExtAssignedWitnessIndex i < witnessCount)
+-- §19.1: subsidy arithmetic fits in machine integer types (PR #420).
+def subsidyU128SafetyStatement : Prop :=
+  (∀ h ag : Nat, SubsidyV1.blockSubsidy h ag ≤ SubsidyV1.MINEABLE_CAP) ∧
+  (∀ h ag : Nat, SubsidyV1.blockSubsidy h ag ≤ maxU64) ∧
+  (∀ h ag fees : Nat, ag ≤ SubsidyV1.MINEABLE_CAP → fees ≤ maxU64 →
+    ag + SubsidyV1.blockSubsidy h ag + fees ≤ maxU128)
 
 theorem transaction_wire_proved : transactionWireStatement := by
   refine ⟨?_, ?_, ?_⟩
@@ -110,5 +116,12 @@ theorem core_ext_tightening_proved : coreExtTighteningStatement := by
 theorem core_ext_cursor_no_ambiguity_proved : coreExtCursorNoAmbiguityStatement := by
   intro inputCount witnessCount h
   exact core_ext_no_cursor_ambiguity inputCount witnessCount h
+
+theorem subsidy_u128_safety_proved : subsidyU128SafetyStatement := by
+  refine ⟨?_, ?_, ?_⟩
+  · exact blockSubsidy_bounded
+  · exact blockSubsidy_in_u64
+  · intro h ag fees hAg hFees
+    exact subsidy_accumulation_in_u128 h ag fees hAg hFees
 
 end RubinFormal

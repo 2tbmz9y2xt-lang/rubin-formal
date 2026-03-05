@@ -266,6 +266,14 @@ def validateBlockBasic
     (expectedPrevHash : Option Bytes)
     (expectedTarget : Option Bytes) : Except String Unit := do
   let pb ← parseBlock blockHex
+  -- §25 step order (post-PR#418): pow → target → linkage → merkle → witness_commitment
+  -- pow check (range + strict-less)
+  powCheck pb.header
+  -- target check
+  match expectedTarget with
+  | none => pure ()
+  | some exp =>
+      if pb.header.target != exp then throw "BLOCK_ERR_TARGET_INVALID"
   -- linkage
   match expectedPrevHash with
   | none => pure ()
@@ -275,13 +283,6 @@ def validateBlockBasic
   let mr ← merkleRootTxids pb.txids
   if mr != pb.header.merkleRoot then
     throw "BLOCK_ERR_MERKLE_INVALID"
-  -- pow check (range + strict-less)
-  powCheck pb.header
-  -- target check
-  match expectedTarget with
-  | none => pure ()
-  | some exp =>
-      if pb.header.target != exp then throw "BLOCK_ERR_TARGET_INVALID"
   -- witness commitment check
   let wmr ← witnessMerkleRootWtxids pb.wtxids
   let expectCommit := witnessCommitmentHash wmr
