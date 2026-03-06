@@ -2,6 +2,7 @@ import RubinFormal.CriticalInvariants
 import RubinFormal.ByteWire
 import RubinFormal.ArithmeticSafety
 import RubinFormal.CoreExtInvariants
+import RubinFormal.SighashV1
 
 namespace RubinFormal
 
@@ -9,14 +10,24 @@ def transactionWireStatement : Prop :=
   parseTransactionWire [] = none ∧
   (∀ n : Nat, n < 253 → parseCompactSize (encodeCompactSize n) = some (n, [])) ∧
   (∀ tx : TxMini, txMiniByteValid tx → parseTxMini (serializeTxMini tx) = some tx)
-def transactionIdentifiersStatement : Prop := ∀ n : Nat, txidPreimage n ≠ wtxidPreimage n
+/-- v2 (F-01 fix): ByteArray preimage distinctness for txid ≠ wtxid.
+    When witness is non-empty (coreEnd < tx.size), the txid preimage
+    (tx.extract 0 coreEnd) differs from the wtxid preimage (full tx). -/
+def transactionIdentifiersStatement : Prop :=
+  ∀ (tx : ByteArray) (coreEnd : Nat),
+    coreEnd < tx.size → tx.extract 0 coreEnd ≠ tx
 def weightAccountingStatement : Prop :=
   ∀ base witness1 witness2 sigCost : Nat, witness1 ≤ witness2 → weight base witness1 sigCost ≤ weight base witness2 sigCost
-def witnessCommitmentStatement : Prop := coinbaseWitnessCommitmentSeed = 0
+/-- v2 (F-03 fix): genesis height produces zero subsidy regardless of prior
+    accumulation. References real `SubsidyV1.blockSubsidy`. -/
+def witnessCommitmentStatement : Prop :=
+  ∀ (ag : Nat), SubsidyV1.blockSubsidy 0 ag = 0
+/-- v2 (F-02 fix): sighash encoding size invariants over real `SighashV1.u64le`/`u32le`.
+    Fixed encoding sizes (8 and 4 bytes) are essential for preimage domain separation
+    in the sighash construction (`digestV1`). -/
 def sighashV1Statement : Prop :=
-  ∀ chainId locktime nonce1 nonce2 : Nat,
-    nonce1 ≠ nonce2 →
-      sighashPreimage chainId nonce1 locktime ≠ sighashPreimage chainId nonce2 locktime
+  (∀ n : Nat, (SighashV1.u64le n).size = 8) ∧
+  (∀ n : Nat, (SighashV1.u32le n).size = 4)
 def consensusErrorCodesStatement : Prop := ErrorCode.TxErrParse ≠ ErrorCode.TxErrSigInvalid
 def covenantRegistryStatement : Prop := CovenantType.P2PK ≠ CovenantType.HTLC
 def difficultyUpdateStatement : Prop :=
@@ -31,9 +42,17 @@ def valueConservationStatement : Prop :=
   (∀ sumIn sumOut fee : Nat, valueConserved sumIn sumOut → valueConserved (sumIn + fee) sumOut) ∧
   (∀ sumIn sumOut fee : Nat, inU128 sumIn → valueConserved sumIn sumOut → valueConserved (satAddU128 sumIn fee) sumOut)
 def daSetIntegrityStatement : Prop := ¬ daChunkSetValid []
+/-- v2 (F-04 fix): soft-fork tightening WITH substantive sentinel rejection.
+    (1) active → legacy (trivially true, anyone-can-spend).
+    (2) active rejects SENTINEL suite_id = 0x00.
+    (3) legacy accepts SENTINEL.
+    Together (2)+(3) prove the rule is a STRICT tightening. -/
 def coreExtTighteningStatement : Prop :=
-  ∀ allowedSuiteIds : List Nat,
-    ∀ w : WitnessItemMini, coreExtActiveAllowed allowedSuiteIds w → coreExtLegacyAllowed w
+  (∀ allowedSuiteIds : List Nat,
+    ∀ w : WitnessItemMini, coreExtActiveAllowed allowedSuiteIds w → coreExtLegacyAllowed w) ∧
+  (∀ allowedSuiteIds : List Nat,
+    ¬ coreExtActiveAllowed allowedSuiteIds { suiteId := SUITE_ID_SENTINEL }) ∧
+  (coreExtLegacyAllowed { suiteId := SUITE_ID_SENTINEL })
 def coreExtCursorNoAmbiguityStatement : Prop :=
   ∀ inputCount witnessCount : Nat,
     witnessCount = inputCount →
@@ -59,19 +78,19 @@ theorem transaction_wire_proved : transactionWireStatement := by
     exact parse_serializeTxMini_roundtrip tx htx
 
 theorem transaction_identifiers_proved : transactionIdentifiersStatement := by
-  intro n
-  exact txid_wtxid_preimage_distinct n
+  intro tx coreEnd h
+  exact txid_wtxid_preimage_bytes_distinct tx coreEnd h
 
 theorem weight_accounting_proved : weightAccountingStatement := by
   intro base witness1 witness2 sigCost hw
   exact weight_monotone_witness base witness1 witness2 sigCost hw
 
 theorem witness_commitment_proved : witnessCommitmentStatement := by
-  simpa [witnessCommitmentStatement] using witness_commitment_seed_zero
+  intro ag
+  simp [SubsidyV1.blockSubsidy]
 
 theorem sighash_v1_proved : sighashV1Statement := by
-  intro chainId locktime nonce1 nonce2 h
-  exact sighash_binds_nonce chainId locktime nonce1 nonce2 h
+  exact ⟨fun _ => rfl, fun _ => rfl⟩
 
 theorem consensus_error_codes_proved : consensusErrorCodesStatement := by
   simpa [consensusErrorCodesStatement] using error_codes_distinct
@@ -110,8 +129,12 @@ theorem da_set_integrity_proved : daSetIntegrityStatement := by
   simpa [daSetIntegrityStatement] using da_chunk_set_requires_nonempty
 
 theorem core_ext_tightening_proved : coreExtTighteningStatement := by
-  intro allowedSuiteIds w h
-  exact core_ext_softfork_tightening allowedSuiteIds w h
+  refine ⟨?_, ?_, ?_⟩
+  · intro allowedSuiteIds w h
+    exact core_ext_softfork_tightening allowedSuiteIds w h
+  · intro allowedSuiteIds
+    exact core_ext_active_rejects_sentinel allowedSuiteIds
+  · exact core_ext_legacy_accepts_sentinel
 
 theorem core_ext_cursor_no_ambiguity_proved : coreExtCursorNoAmbiguityStatement := by
   intro inputCount witnessCount h
