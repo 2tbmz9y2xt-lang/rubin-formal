@@ -13,7 +13,8 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
-        "RubinFormal.Conformance.cv_compact_vectors_pass"
+        "RubinFormal.Conformance.cv_compact_vectors_pass",
+        "RubinFormal.sem001_mldsa_exact_lengths_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
@@ -59,7 +60,8 @@
       "section_heading": "## 13. Consensus Error Codes (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_validation_order_vectors_pass"
+        "RubinFormal.Conformance.cv_validation_order_vectors_pass",
+        "RubinFormal.det001_validation_order_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
@@ -114,7 +116,8 @@
       "section_heading": "## 18. UTXO State Model (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_utxo_basic_vectors_pass"
+        "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
+        "RubinFormal.det001_validation_order_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },

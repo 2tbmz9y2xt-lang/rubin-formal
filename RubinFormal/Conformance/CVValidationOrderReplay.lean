@@ -2,17 +2,18 @@ import RubinFormal.Conformance.CVValidationOrderVectors
 
 namespace RubinFormal.Conformance
 
+def evalOrderFrom (rest : List ValidationCheck) (evaluated : List String) : (Option String) × (List String) :=
+  match rest with
+  | [] => (none, evaluated)
+  | c :: cs =>
+    let evaluated' := evaluated ++ [c.name]
+    if c.fails then
+      (some c.err, evaluated')
+    else
+      evalOrderFrom cs evaluated'
+
 def evalOrder (checks : List ValidationCheck) : (Option String) × (List String) :=
-  let rec go (rest : List ValidationCheck) (evaluated : List String) : (Option String) × (List String) :=
-    match rest with
-    | [] => (none, evaluated)
-    | c :: cs =>
-      let evaluated' := evaluated ++ [c.name]
-      if c.fails then
-        (some c.err, evaluated')
-      else
-        go cs evaluated'
-  go checks []
+  evalOrderFrom checks []
 
 def checkValidationOrderVector (v : CVValidationOrderVector) : Bool :=
   let (firstErr, evaluated) := evalOrder v.checks

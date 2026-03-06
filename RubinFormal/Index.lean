@@ -12,4 +12,5 @@ import RubinFormal.BlockBasicCheckV1
 import RubinFormal.SubsidyV1
 import RubinFormal.CovenantGenesisV1
 import RubinFormal.UtxoApplyGenesisV1
+import RubinFormal.FormalGap03
 import RubinFormal.Refinement.Index
