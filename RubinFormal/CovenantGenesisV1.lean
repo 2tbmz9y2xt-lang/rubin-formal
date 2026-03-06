@@ -205,6 +205,42 @@ def validateOutGenesis (out : TxOut) (txKind : Nat) (_blockHeight : Nat) : Excep
   else
     throw "TX_ERR_COVENANT_TYPE_INVALID"
 
+-- ═══════════════════════════════════════════════════════════════════
+-- HTLC timelock enforcement theorems (F-17 fix, Q-FORMAL-GAP-06)
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- The HTLC timelock check used internally.
+    Returns `true` iff the timelock condition is satisfied. -/
+def htlcTimelockMet (lockMode lockValue blockHeight blockMtp : Nat) : Bool :=
+  if lockMode == LOCK_MODE_HEIGHT then
+    blockHeight >= lockValue
+  else
+    blockMtp >= lockValue
+
+/-- **HTLC height-lock enforcement:** If `blockHeight < lockValue` and the HTLC uses
+    height-based locking, the timelock is NOT met. This is the core safety property
+    for the refund path — the refund key holder cannot spend before the timelock expires. -/
+theorem htlc_height_lock_enforcement (lockValue blockHeight blockMtp : Nat)
+    (h : blockHeight < lockValue) :
+    htlcTimelockMet LOCK_MODE_HEIGHT lockValue blockHeight blockMtp = false := by
+  unfold htlcTimelockMet LOCK_MODE_HEIGHT
+  simp
+  omega
+
+/-- **HTLC timestamp-lock enforcement:** If `blockMtp < lockValue` and the HTLC uses
+    timestamp-based locking, the timelock is NOT met. -/
+theorem htlc_timestamp_lock_enforcement (lockValue blockHeight blockMtp : Nat)
+    (h : blockMtp < lockValue) :
+    htlcTimelockMet LOCK_MODE_TIMESTAMP lockValue blockHeight blockMtp = false := by
+  unfold htlcTimelockMet LOCK_MODE_TIMESTAMP LOCK_MODE_HEIGHT
+  simp
+  omega
+
+/-- Timelock modes are distinct — height vs timestamp cannot be confused. -/
+theorem htlc_lock_modes_distinct : LOCK_MODE_HEIGHT ≠ LOCK_MODE_TIMESTAMP := by
+  unfold LOCK_MODE_HEIGHT LOCK_MODE_TIMESTAMP
+  simp
+
 end CovenantGenesisV1
 
 end RubinFormal

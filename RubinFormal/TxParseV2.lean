@@ -105,22 +105,24 @@ def parseWitnessItem (c : Cursor) : Option (Cursor × Option TxErr) := do
   else
     pure (c5, some .sigAlgInvalid)
 
-def parseWitnessSection (c : Cursor) : Option (Cursor × TxErr × Nat × Nat) := do
+/-- v2 (F-06 fix): Return `Option TxErr` instead of abusing `TxErr.parse` as success sentinel.
+    `none` = no signature errors; `some e` = an error was found during witness parsing. -/
+def parseWitnessSection (c : Cursor) : Option (Cursor × Option TxErr × Nat × Nat) := do
   let startOff := c.off
   let (wCount, c1, minimal) ← c.getCompactSize?
   let _ ← requireMinimal minimal
   if wCount > MAX_WITNESS_ITEMS then
-    pure (c1, .witnessOverflow, startOff, c1.off)
+    pure (c1, some .witnessOverflow, startOff, c1.off)
   else
     let rec loop (cur : Cursor) (remaining : Nat) (anySigAlgInvalid : Bool) (anySigNoncanonical : Bool)
-        : Option (Cursor × TxErr × Nat × Nat) := do
+        : Option (Cursor × Option TxErr × Nat × Nat) := do
       match remaining with
       | 0 =>
           let endOff := cur.off
-          let err :=
-            if anySigAlgInvalid then .sigAlgInvalid
-            else if anySigNoncanonical then .sigNoncanonical
-            else .parse
+          let err : Option TxErr :=
+            if anySigAlgInvalid then some .sigAlgInvalid
+            else if anySigNoncanonical then some .sigNoncanonical
+            else none
           pure (cur, err, startOff, endOff)
       | Nat.succ rem =>
           let (cur', e) ← parseWitnessItem cur
@@ -177,20 +179,17 @@ def parseTx (tx : Bytes) : ParseResult :=
                     | some cDa =>
                       let coreEnd := cDa.off
 
-                    -- witness
+                    -- witness (F-06: wErr is now Option TxErr; none = success)
                     match parseWitnessSection cDa with
                     | none => fail .parse
                     | some (cW, wErr, wStart, wEnd) =>
                       let witBytes := wEnd - wStart
                       if witBytes > MAX_WITNESS_BYTES_PER_TX then
                         fail .witnessOverflow
-                      else if wErr == .witnessOverflow then
-                        fail .witnessOverflow
-                      else if wErr == .sigAlgInvalid then
-                        fail .sigAlgInvalid
-                      else if wErr == .sigNoncanonical then
-                        fail .sigNoncanonical
                       else
+                      match wErr with
+                      | some e => fail e
+                      | none =>
                         -- da_payload_len + payload
                         match cW.getCompactSize? with
                         | none => fail .parse
