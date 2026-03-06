@@ -3,6 +3,7 @@ import RubinFormal.ByteWire
 import RubinFormal.ArithmeticSafety
 import RubinFormal.CoreExtInvariants
 import RubinFormal.SighashV1
+import RubinFormal.CovenantGenesisV1
 
 namespace RubinFormal
 
@@ -33,8 +34,15 @@ def covenantRegistryStatement : Prop := CovenantType.P2PK ≠ CovenantType.HTLC
 def difficultyUpdateStatement : Prop :=
   (∀ prevTs newTs maxStep : Nat, clampTimestampStep prevTs newTs maxStep ≤ prevTs + maxStep) ∧
   (∀ a b : Nat, 0 < b → floorDiv a b * b ≤ a)
+/-- v2 (F-13 fix): strengthened from zero-slot only to general case + advance property.
+    (1) General validity: any cursor + slots ≤ witnessCount is valid.
+    (2) Advance: consuming one slot preserves validity (operational loop invariant). -/
 def transactionStructuralRulesStatement : Prop :=
-  ∀ cursor witnessCount : Nat, cursor ≤ witnessCount → witnessCursorValid cursor 0 witnessCount
+  (∀ cursor slots witnessCount : Nat,
+    cursor + slots ≤ witnessCount → witnessCursorValid cursor slots witnessCount) ∧
+  (∀ cursor slots witnessCount : Nat,
+    witnessCursorValid cursor (slots + 1) witnessCount →
+      witnessCursorValid (cursor + 1) slots witnessCount)
 def replayDomainChecksStatement : Prop :=
   ∀ n : Nat, ∀ xs : List Nat, n ∈ xs → ¬ nonceReplayFree (n :: xs)
 def utxoStateModelStatement : Prop := ∀ v : Nat, ¬ canSpend { spendable := false, value := v }
@@ -68,6 +76,31 @@ def subsidyU128SafetyStatement : Prop :=
   (∀ h ag : Nat, SubsidyV1.blockSubsidy h ag ≤ maxU64) ∧
   (∀ h ag fees : Nat, ag ≤ SubsidyV1.MINEABLE_CAP → fees ≤ maxU64 →
     ag + SubsidyV1.blockSubsidy h ag + fees ≤ maxU128)
+/-- F-05 fix: ByteWireV2 cursor advancement + TxErr distinctness.
+    (1) getU8? advances offset by 1.
+    (2) getBytes? advances offset by n.
+    (3) All TxErr constructors are pairwise distinct. -/
+def byteWireV2CursorStatement : Prop :=
+  (∀ c : Wire.Cursor, ∀ b : UInt8, ∀ c' : Wire.Cursor,
+    c.getU8? = some (b, c') → c'.off = c.off + 1) ∧
+  (∀ c : Wire.Cursor, ∀ n : Nat, ∀ bs : Bytes, ∀ c' : Wire.Cursor,
+    c.getBytes? n = some (bs, c') → c'.off = c.off + n) ∧
+  (Wire.TxErr.parse ≠ Wire.TxErr.witnessOverflow ∧
+   Wire.TxErr.parse ≠ Wire.TxErr.sigAlgInvalid ∧
+   Wire.TxErr.parse ≠ Wire.TxErr.sigNoncanonical ∧
+   Wire.TxErr.witnessOverflow ≠ Wire.TxErr.sigAlgInvalid ∧
+   Wire.TxErr.witnessOverflow ≠ Wire.TxErr.sigNoncanonical ∧
+   Wire.TxErr.sigAlgInvalid ≠ Wire.TxErr.sigNoncanonical)
+/-- F-17 fix: HTLC timelock enforcement — refund path blocked before expiry.
+    (1) Height-lock: blockHeight < lockValue → timelock NOT met.
+    (2) Timestamp-lock: blockMtp < lockValue → timelock NOT met.
+    (3) Lock modes are distinct (height ≠ timestamp). -/
+def htlcTimelockStatement : Prop :=
+  (∀ lockValue blockHeight blockMtp : Nat, blockHeight < lockValue →
+    CovenantGenesisV1.htlcTimelockMet CovenantGenesisV1.LOCK_MODE_HEIGHT lockValue blockHeight blockMtp = false) ∧
+  (∀ lockValue blockHeight blockMtp : Nat, blockMtp < lockValue →
+    CovenantGenesisV1.htlcTimelockMet CovenantGenesisV1.LOCK_MODE_TIMESTAMP lockValue blockHeight blockMtp = false) ∧
+  (CovenantGenesisV1.LOCK_MODE_HEIGHT ≠ CovenantGenesisV1.LOCK_MODE_TIMESTAMP)
 
 theorem transaction_wire_proved : transactionWireStatement := by
   refine ⟨?_, ?_, ?_⟩
@@ -106,8 +139,11 @@ theorem difficulty_update_proved : difficultyUpdateStatement := by
     exact floorDiv_mul_le a b hb
 
 theorem transaction_structural_rules_proved : transactionStructuralRulesStatement := by
-  intro cursor witnessCount h
-  exact witness_cursor_zero_slot cursor witnessCount h
+  refine ⟨?_, ?_⟩
+  · intro cursor slots witnessCount h
+    exact witness_cursor_valid_general cursor slots witnessCount h
+  · intro cursor slots witnessCount h
+    exact witness_cursor_advance cursor slots witnessCount h
 
 theorem replay_domain_checks_proved : replayDomainChecksStatement := by
   intro n xs h
@@ -146,5 +182,17 @@ theorem subsidy_u128_safety_proved : subsidyU128SafetyStatement := by
   · exact blockSubsidy_in_u64
   · intro h ag fees hAg hFees
     exact subsidy_accumulation_in_u128 h ag fees hAg hFees
+
+theorem byte_wire_v2_cursor_proved : byteWireV2CursorStatement := by
+  refine ⟨?_, ?_, ?_⟩
+  · exact Wire.Cursor.getU8_advances
+  · exact Wire.Cursor.getBytes_advances
+  · exact Wire.txerr_all_distinct
+
+theorem htlc_timelock_proved : htlcTimelockStatement := by
+  refine ⟨?_, ?_, ?_⟩
+  · exact CovenantGenesisV1.htlc_height_lock_enforcement
+  · exact CovenantGenesisV1.htlc_timestamp_lock_enforcement
+  · exact CovenantGenesisV1.htlc_lock_modes_distinct
 
 end RubinFormal
