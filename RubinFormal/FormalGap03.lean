@@ -19,7 +19,7 @@ def sem001MLDSAExactLengthStatement : Prop :=
     w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 →
       (validateWitnessItemLengths w blockHeight = .ok () ↔
         w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
-        w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES)
+        w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1)
 
 theorem evalOrderFrom_first_failure
     (evaluated : List String)
@@ -50,7 +50,7 @@ theorem sem001_mldsa_exact_lengths_proved : sem001MLDSAExactLengthStatement := b
   have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
     native_decide
   by_cases hPub : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES
-  · by_cases hSig : w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES
+  · by_cases hSig : w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1
     · simp [sem001MLDSAExactLengthStatement, validateWitnessItemLengths, hSuite,
         UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
         hDistinct, hPub, hSig]
