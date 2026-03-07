@@ -56,7 +56,7 @@ def validateWitnessItemLengths (w : WitnessItem) (_blockHeight : Nat) : Except S
       throw "TX_ERR_PARSE"
     pure ()
   else if w.suiteId == SUITE_ID_ML_DSA_87 then
-    if w.pubkey.size != ML_DSA_87_PUBKEY_BYTES || w.signature.size != ML_DSA_87_SIG_BYTES then
+    if w.pubkey.size != ML_DSA_87_PUBKEY_BYTES || w.signature.size != ML_DSA_87_SIG_BYTES + 1 then
       throw "TX_ERR_SIG_NONCANONICAL"
     pure ()
   else
