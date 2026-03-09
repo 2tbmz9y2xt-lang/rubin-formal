@@ -61,6 +61,9 @@ def coreExtTighteningStatement : Prop :=
   (∀ allowedSuiteIds : List Nat,
     ¬ coreExtActiveAllowed allowedSuiteIds { suiteId := SUITE_ID_SENTINEL }) ∧
   (coreExtLegacyAllowed { suiteId := SUITE_ID_SENTINEL })
+def coreExtPreActivationStrictSupersetStatement : Prop :=
+  ∀ allowedSuiteIds : List Nat,
+    ∃ w : WitnessItemMini, coreExtLegacyAllowed w ∧ ¬ coreExtActiveAllowed allowedSuiteIds w
 def coreExtCursorNoAmbiguityStatement : Prop :=
   ∀ inputCount witnessCount : Nat,
     witnessCount = inputCount →
@@ -171,6 +174,12 @@ theorem core_ext_tightening_proved : coreExtTighteningStatement := by
   · intro allowedSuiteIds
     exact core_ext_active_rejects_sentinel allowedSuiteIds
   · exact core_ext_legacy_accepts_sentinel
+
+theorem core_ext_preactivation_strict_superset_proved : coreExtPreActivationStrictSupersetStatement := by
+  intro allowedSuiteIds
+  refine ⟨{ suiteId := SUITE_ID_SENTINEL }, ?_, ?_⟩
+  · exact core_ext_legacy_accepts_sentinel
+  · exact core_ext_active_rejects_sentinel allowedSuiteIds
 
 theorem core_ext_cursor_no_ambiguity_proved : coreExtCursorNoAmbiguityStatement := by
   intro inputCount witnessCount h
