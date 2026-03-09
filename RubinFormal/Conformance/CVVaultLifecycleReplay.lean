@@ -5,49 +5,123 @@ namespace RubinFormal.Conformance
 
 open RubinFormal
 
-/-- Prefix-free fallback for existing vectors that still encode the lifecycle in
-    transaction structure instead of the ID. -/
-private def vaultLifecyclePhaseFromStructure (v : VaultVector) : Option VaultState :=
-  let spendsVault :=
-    v.utxos.any (fun u => u.covenantType == CovenantGenesisV1.COV_TYPE_VAULT)
-  let createsVault :=
-    match RubinFormal.decodeHex? v.txHex with
-    | some txBytes =>
-        match UtxoBasicV1.parseTx txBytes with
-        | .ok tx => tx.outputs.any (fun o => o.covenantType == CovenantGenesisV1.COV_TYPE_VAULT)
-        | .error _ => false
-    | none => false
-  if createsVault && !spendsVault then some .created
-  else if spendsVault then some .triggered
-  else none
+private structure VaultLifecycleWitness where
+  tx : UtxoBasicV1.Tx
+  spentVaults : List CovenantGenesisV1.VaultCovenant
+  createdVaults : List CovenantGenesisV1.VaultCovenant
+  htlcOutputs : List CovenantGenesisV1.HtlcCovenant
 
-/-- Classify a CV-VAULT conformance vector by vault lifecycle phase.
-    CREATE vectors → `.created` (vault output produced).
-    SPEND vectors  → `.triggered` (vault input being consumed).
-    Non-prefixed vectors must still classify from concrete tx/UTXO structure;
-    otherwise the combined gate fails closed. -/
+private def collectSpentVaults? (utxos : List VaultEntry) :
+    Option (List CovenantGenesisV1.VaultCovenant) :=
+  utxos.foldl
+    (fun acc u =>
+      acc.bind fun spent =>
+        if u.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
+          match RubinFormal.decodeHex? u.covenantDataHex with
+          | some covData =>
+              match CovenantGenesisV1.parseVaultCovenantData covData with
+              | .ok vault => some (spent.concat vault)
+              | .error _ => none
+          | none => none
+        else
+          some spent)
+    (some [])
+
+private def collectCreatedLifecycleOutputs? (outs : List UtxoBasicV1.TxOut) :
+    Option (List CovenantGenesisV1.VaultCovenant × List CovenantGenesisV1.HtlcCovenant) :=
+  outs.foldl
+    (fun acc o =>
+      acc.bind fun (vaults, htlcs) =>
+        if o.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
+          match CovenantGenesisV1.parseVaultCovenantData o.covenantData with
+          | .ok vault => some (vaults.concat vault, htlcs)
+          | .error _ => none
+        else if o.covenantType == CovenantGenesisV1.COV_TYPE_HTLC then
+          match CovenantGenesisV1.parseHtlcCovenantData o.covenantData with
+          | .ok htlc => some (vaults, htlcs.concat htlc)
+          | .error _ => none
+        else
+          some (vaults, htlcs))
+    (some ([], []))
+
+/-- Decode the concrete tx/UTXO lifecycle witness carried by a `CV-VAULT` vector.
+    If any lifecycle-relevant covenant bytes fail to parse, the bridge fails closed. -/
+private def vaultLifecycleWitness? (v : VaultVector) : Option VaultLifecycleWitness := do
+  let txBytes <- RubinFormal.decodeHex? v.txHex
+  let tx <- match UtxoBasicV1.parseTx txBytes with | .ok tx => some tx | .error _ => none
+  let spentVaults <- collectSpentVaults? v.utxos
+  let (createdVaults, htlcOutputs) <- collectCreatedLifecycleOutputs? tx.outputs
+  pure { tx := tx, spentVaults := spentVaults, createdVaults := createdVaults, htlcOutputs := htlcOutputs }
+
+/-- Classify a `CV-VAULT` vector by the lifecycle witness actually carried in its
+    tx/UTXO bytes, not by any naming convention in `id`. -/
 def vaultLifecyclePhase (v : VaultVector) : Option VaultState :=
-  if "VAULT-CREATE".isPrefixOf v.id then some .created
-  else if "VAULT-SPEND".isPrefixOf v.id then some .triggered
-  else vaultLifecyclePhaseFromStructure v
+  match vaultLifecycleWitness? v with
+  | some witness =>
+      if witness.spentVaults.isEmpty && !witness.createdVaults.isEmpty then
+        some .created
+      else if !witness.spentVaults.isEmpty then
+        some .triggered
+      else
+        none
+  | none => none
+
+private def txBlockMtp (v : VaultVector) : Nat :=
+  match v.blockMtp with
+  | some mtp => mtp
+  | none => v.blockTimestamp
+
+private def outputsWhitelisted
+    (vault : CovenantGenesisV1.VaultCovenant)
+    (tx : UtxoBasicV1.Tx) : Bool :=
+  tx.outputs.all (fun o =>
+    vault.whitelist.contains (RubinFormal.OutputDescriptor.hash o.covenantType o.covenantData))
+
+private def createWitnessCarriesState (witness : VaultLifecycleWitness) : Bool :=
+  witness.spentVaults.isEmpty && !witness.createdVaults.isEmpty
+
+private def spendWitnessCarriesLifecycle
+    (v : VaultVector)
+    (witness : VaultLifecycleWitness) : Bool :=
+  let blockedByMultiplicity := 1 < witness.spentVaults.length
+  let blockedByRecursion := !witness.createdVaults.isEmpty
+  let blockedByWhitelist :=
+    match witness.spentVaults with
+    | spentVault :: [] => !outputsWhitelisted spentVault witness.tx
+    | _ => false
+  let triggerWitness :=
+    match witness.spentVaults with
+    | spentVault :: [] =>
+        witness.createdVaults.isEmpty &&
+        outputsWhitelisted spentVault witness.tx &&
+        vaultTransition .created .trigger == some .triggered
+    | _ => false
+  let sweepWitness :=
+    match witness.htlcOutputs with
+    | htlc :: _ =>
+        match vaultTransition .triggered (.sweep htlc.lockMode htlc.lockValue v.height (txBlockMtp v)) with
+        | some .swept => true
+        | _ => false
+    | [] => false
+  (!witness.spentVaults.isEmpty) &&
+    (triggerWitness || sweepWitness || blockedByWhitelist || blockedByRecursion || blockedByMultiplicity)
 
 /-- Combined gate: each CV-VAULT conformance vector must pass both
     (1) transaction-level replay and
-    (2) state-machine reachability for its lifecycle phase.
+    (2) a lifecycle bridge reconstructed from concrete tx/UTXO bytes.
 
-    CREATE + expectOk: SM `.created` admits `trigger` (vault is live).
-    SPEND:             SM `.triggered` admits `wait` (state is reachable). -/
+    `.created` is witnessed by a parseable `CORE_VAULT` output.
+    `.triggered` is witnessed by either:
+    - a concrete `trigger` transition from a spent vault input,
+    - a concrete `sweep` transition from an HTLC output, or
+    - a concrete blocking witness (multi-vault spend, vault recursion, whitelist miss). -/
 def vaultVectorWithLifecycle (v : VaultVector) : Bool :=
   let txPass := vaultVectorPass v
   let smOk :=
-    match vaultLifecyclePhase v with
-    | some .created =>
-        if v.expectOk then
-          (vaultTransition .created .trigger).isSome
-        else true
-    | some .triggered =>
-        (vaultTransition .triggered .wait).isSome
-    | _ => false
+    match vaultLifecycleWitness? v, vaultLifecyclePhase v with
+    | some witness, some .created => createWitnessCarriesState witness
+    | some witness, some .triggered => spendWitnessCarriesLifecycle v witness
+    | _, _ => false
   txPass && smOk
 
 def cvVaultWithLifecyclePass : Bool :=
