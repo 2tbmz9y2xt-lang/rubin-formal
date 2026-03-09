@@ -28,7 +28,9 @@
 
 ## Профили готовности (CI gate)
 
-Реализовано в `tools/check_formal_risk_gate.py`.
+В integrated workspace gate-логика реализована sibling-tooling в
+`../rubin-protocol/tools/check_formal_risk_gate.py` и
+`../rubin-protocol/tools/check_formal_coverage.py`.
 
 ### `phase0` (по умолчанию)
 
@@ -58,6 +60,5 @@
 
 ## Risk scoring (информативно)
 
-`tools/formal_risk_score.py` вычисляет простой монотонный score и tier (LOW/MEDIUM/HIGH) для прозрачного статуса.
+В integrated workspace `../rubin-protocol/tools/formal_risk_score.py` вычисляет простой монотонный score и tier (LOW/MEDIUM/HIGH) для прозрачного статуса.
 Это **не** консенсус‑гейт; используется для отчётов и dashboard.
-
