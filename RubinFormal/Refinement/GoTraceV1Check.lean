@@ -55,7 +55,8 @@ private def checkParse (o : ParseOut) : Bool :=
           else
             match r.err with
             | none => false
-            | some e => r.ok == false && e.toString == o.err
+            -- F-AUDIT-02: assert consumed==0 on error paths (Go returns 0 for consumed on parse failure)
+            | some e => r.ok == false && e.toString == o.err && o.consumed == 0
 
 private def checkSighash (o : SighashOut) : Bool :=
   match findById? o.id RubinFormal.Conformance.cvSighashVectors (fun v => v.id) with
@@ -152,6 +153,8 @@ private def blockSummary? (blockBytes : Bytes) : Except String (Bytes × Nat × 
   let bh := PowV1.blockHash (BlockBasicV1.headerBytes pb.header)
   let mut sumW : Nat := 0
   let mut sumDa : Nat := 0
+  -- F-AUDIT-10: coinbase (index 0) IS included in weight/DA sum — matches Go
+  -- accumulateBlockResourceStats() which iterates all pb.Txs including coinbase.
   for tx in pb.txs do
     match TxWeightV2.txWeightAndStats tx with
     | .ok st =>
