@@ -291,6 +291,29 @@ def validateBlockBasic
     throw "BLOCK_ERR_WITNESS_COMMITMENT"
   pure ()
 
+-- F-AUDIT-04: Duplicate txid uniqueness.
+-- Go enforces nonce uniqueness in validateBlockTxSemantics (block_basic_txs.go:35-39)
+-- via TX_ERR_NONCE_REPLAY. Txid = SHA3(core bytes) which includes the nonce, so
+-- under collision resistance, unique nonces ⟹ unique txids.
+-- The basic block validator here does not repeat that check (it runs in a separate
+-- pass in Go); this section documents the invariant for auditors.
+
+/-- Check that a list of byte-arrays has no duplicates (quadratic, OK for proof). -/
+def noDuplicateByteArrays : List Bytes → Bool
+  | [] => true
+  | x :: rest => !rest.contains x && noDuplicateByteArrays rest
+
+/-- noDuplicateByteArrays on empty list is trivially true. -/
+theorem noDuplicateByteArrays_nil : noDuplicateByteArrays [] = true := rfl
+
+/-- noDuplicateByteArrays implies the head is not in the tail. -/
+theorem noDuplicateByteArrays_head_not_in_tail
+    (x : Bytes) (rest : List Bytes)
+    (h : noDuplicateByteArrays (x :: rest) = true) :
+    rest.contains x = false := by
+  simp [noDuplicateByteArrays] at h
+  exact h.1
+
 end BlockBasicV1
 
 end RubinFormal

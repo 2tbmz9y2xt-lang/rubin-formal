@@ -178,8 +178,21 @@ def digestV1 (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat
     u32le core.locktime
   pure (SHA3.sha3_256 preimage)
 
-theorem digestV1_deterministic (tx : Bytes) (chainId : Bytes) (idx : Nat) (value : Nat) :
-    digestV1 tx chainId idx value = digestV1 tx chainId idx value := rfl
+-- F-AUDIT-09: Sighash determinism.
+-- digestV1 is a pure function in Lean: same tx bytes, chainId, inputIndex, inputValue
+-- always produce the same digest. This is guaranteed by Lean's functional semantics.
+
+/-- digestV1 is deterministic: identical inputs yield identical outputs. -/
+theorem digestV1_deterministic
+    (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat) :
+    digestV1 tx chainId inputIndex inputValue = digestV1 tx chainId inputIndex inputValue := rfl
+
+/-- Two calls to digestV1 with provably equal arguments yield equal results. -/
+theorem digestV1_ext
+    (tx₁ tx₂ : Bytes) (cid₁ cid₂ : Bytes) (idx₁ idx₂ val₁ val₂ : Nat)
+    (htx : tx₁ = tx₂) (hcid : cid₁ = cid₂) (hidx : idx₁ = idx₂) (hval : val₁ = val₂) :
+    digestV1 tx₁ cid₁ idx₁ val₁ = digestV1 tx₂ cid₂ idx₂ val₂ := by
+  subst htx; subst hcid; subst hidx; subst hval; rfl
 
 end SighashV1
 

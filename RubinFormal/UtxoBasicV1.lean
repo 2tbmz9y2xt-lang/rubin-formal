@@ -326,6 +326,11 @@ structure PreparedNonCoinbaseTxCore where
   inputState : InputScanState
   fee : Nat
 
+-- F-AUDIT-06: Duplicate input rejection.
+-- scanSingleInputStep guards against double-spend by checking consumedOutpoints.
+-- Formal proof: ConnectBlockStrong.scanInputs_no_intra_tx_double_spend
+-- proves that any successful scanInputs run has pairwise-distinct consumed outpoints.
+-- See also: prepareNonCoinbaseTxBasic_no_intra_double_spend.
 def scanSingleInputStep
     (input : TxIn)
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
