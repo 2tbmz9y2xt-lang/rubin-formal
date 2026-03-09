@@ -20,13 +20,21 @@ inductive VaultAction where
   | wait
   deriving DecidableEq, Repr
 
+/-- Sweep parameters must satisfy the same wire-level bounds as the HTLC parser:
+    only modes `0`/`1` are valid and `lockValue` must be positive. -/
+def validSweepParams (lockMode lockValue : Nat) : Bool :=
+  (lockMode <= CovenantGenesisV1.LOCK_MODE_TIMESTAMP) && (0 < lockValue)
+
 def vaultTransition : VaultState -> VaultAction -> Option VaultState
   | .created, .trigger => some .triggered
   | .created, .cancel => some .cancelled
   | .created, .wait => some .created
   | .triggered, .sweep lockMode lockValue blockHeight blockMtp =>
-      if CovenantGenesisV1.htlcTimelockMet lockMode lockValue blockHeight blockMtp then
-        some .swept
+      if validSweepParams lockMode lockValue then
+        if CovenantGenesisV1.htlcTimelockMet lockMode lockValue blockHeight blockMtp then
+          some .swept
+        else
+          none
       else
         none
   | .triggered, .wait => some .triggered
@@ -36,9 +44,11 @@ def vaultTransition : VaultState -> VaultAction -> Option VaultState
 
 theorem triggered_implies_sweepable
     (lockMode lockValue blockHeight blockMtp : Nat)
+    (hMode : lockMode <= CovenantGenesisV1.LOCK_MODE_TIMESTAMP)
+    (hValue : 0 < lockValue)
     (h : CovenantGenesisV1.htlcTimelockMet lockMode lockValue blockHeight blockMtp = true) :
     vaultTransition .triggered (.sweep lockMode lockValue blockHeight blockMtp) = some .swept := by
-  simp [vaultTransition, h]
+  simp [vaultTransition, validSweepParams, hMode, hValue, h]
 
 theorem cancelled_implies_not_sweepable
     (lockMode lockValue blockHeight blockMtp : Nat) :
@@ -61,11 +71,11 @@ theorem timelock_enforced
     (lockMode lockValue blockHeight blockMtp : Nat)
     (h : CovenantGenesisV1.htlcTimelockMet lockMode lockValue blockHeight blockMtp = false) :
     vaultTransition .triggered (.sweep lockMode lockValue blockHeight blockMtp) = none := by
-  simp [vaultTransition, h]
+  simp [vaultTransition, validSweepParams, h]
 
-/-- Bridge theorem to keep the lifecycle model aligned with the existing vault
-    policy replay model used in conformance proofs. -/
-theorem triggered_sweep_consistent_with_vault_policy
+/-- Convenience bundle: the state-machine sweep check and the vault-policy replay
+    theorem are both available under their respective independent hypotheses. -/
+theorem vault_sweep_and_policy_independent_checks
     (v : Conformance.CVVaultPolicyVector)
     (lockMode lockValue blockHeight blockMtp : Nat)
     (hOrder : v.validationOrder = none)
@@ -81,11 +91,13 @@ theorem triggered_sweep_consistent_with_vault_policy
     (hSig : v.sigThresholdOk = true)
     (hWhitelist : Conformance.strictlySortedUnique v.whitelist = true)
     (hValue : v.sumOut >= v.sumInVault)
+    (hMode : lockMode <= CovenantGenesisV1.LOCK_MODE_TIMESTAMP)
+    (hPositive : 0 < lockValue)
     (hTimelock : CovenantGenesisV1.htlcTimelockMet lockMode lockValue blockHeight blockMtp = true) :
     vaultTransition .triggered (.sweep lockMode lockValue blockHeight blockMtp) = some .swept ∧
       Conformance.vaultPolicyEval v = (true, none) := by
   constructor
-  · exact triggered_implies_sweepable lockMode lockValue blockHeight blockMtp hTimelock
+  · exact triggered_implies_sweepable lockMode lockValue blockHeight blockMtp hMode hPositive hTimelock
   · exact Conformance.vault_policy_default_order_safe_proved
       v hOrder hMulti hOwner hSponsor hSlots hSentinel hSig hWhitelist hValue
 
