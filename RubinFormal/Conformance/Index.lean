@@ -22,6 +22,7 @@ import RubinFormal.Conformance.CVCovenantGenesisVectors
 import RubinFormal.Conformance.CVCovenantGenesisReplay
 import RubinFormal.Conformance.CVVaultVectors
 import RubinFormal.Conformance.CVVaultReplay
+import RubinFormal.Conformance.CVVaultLifecycleReplay
 import RubinFormal.Conformance.CVHtlcVectors
 import RubinFormal.Conformance.CVHtlcReplay
 import RubinFormal.Conformance.CVVaultPolicyVectors
