@@ -18,7 +18,11 @@
         "RubinFormal.Wire.compactSize_roundtrip",
         "RubinFormal.Wire.compactSize_overflow_safety"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.Wire.compactSize_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
+        "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean"
+      }
     },
     {
       "section_key": "transaction_identifiers",
@@ -94,7 +98,10 @@
         "RubinFormal.core_ext_cursor_no_ambiguity_proved",
         "RubinFormal.sem002_mldsa_binding_proved"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.sem002_mldsa_binding_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
+      }
     },
     {
       "section_key": "core_ext_softfork_tightening",
@@ -124,7 +131,10 @@
         "RubinFormal.det001_validation_order_proved",
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.Conformance.vault_policy_default_order_safe_proved": "rubin-formal/RubinFormal/Conformance/CVVaultPolicyReplay.lean"
+      }
     },
     {
       "section_key": "block_validation_order",
