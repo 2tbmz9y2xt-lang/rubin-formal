@@ -333,7 +333,7 @@ def scanSingleInputStep
     (acc : InputScanState) : Except String InputScanState := do
   let op := txInOutpoint input
   if acc.consumedOutpoints.contains op then
-    throw "TX_ERR_PARSE"
+    throw "TX_ERR_DUPLICATE_INPUT"
   let e ←
     match utxoMap.find? op with
     | none => throw "TX_ERR_MISSING_UTXO"

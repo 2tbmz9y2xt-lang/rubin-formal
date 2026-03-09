@@ -214,7 +214,7 @@ theorem scanSingleInputStep_not_contains
   | false => rfl
   | true =>
     exfalso
-    have herr : scanSingleInputStep input utxoMap height acc = Except.error "TX_ERR_PARSE" := by
+    have herr : scanSingleInputStep input utxoMap height acc = Except.error "TX_ERR_DUPLICATE_INPUT" := by
       unfold scanSingleInputStep
       simp only [hDup, ite_true, Bind.bind, Except.bind]
     rw [herr] at hStep
