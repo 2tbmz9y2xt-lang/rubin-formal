@@ -21,6 +21,20 @@ def sem001MLDSAExactLengthStatement : Prop :=
         w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
         w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1)
 
+def p2pkPubkeyKeyIdBound (entry : UtxoEntry) (w : WitnessItem) : Prop :=
+  (SHA3.sha3_256 w.pubkey != entry.covenantData.extract 1 33) = false
+
+def sem002MLDSABindingStatement : Prop :=
+  ∀ (entry : UtxoEntry) (w : WitnessItem) (blockHeight : Nat),
+    validateWitnessItemLengths w blockHeight = .ok () →
+    validateP2PKSpendPreSig entry w blockHeight = .ok () →
+      w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
+      w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
+      w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 ∧
+      entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
+      (entry.covenantData.get! 0).toNat = w.suiteId ∧
+      p2pkPubkeyKeyIdBound entry w
+
 theorem evalOrderFrom_first_failure
     (evaluated : List String)
     (before suffix : List ValidationCheck)
@@ -62,5 +76,75 @@ theorem sem001_mldsa_exact_lengths_proved : sem001MLDSAExactLengthStatement := b
   · simp [sem001MLDSAExactLengthStatement, validateWitnessItemLengths, hSuite,
       UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
       hDistinct, hPub]
+
+set_option maxHeartbeats 1000000 in
+theorem validateP2PKSpendPreSig_binds_pubkey
+    (entry : UtxoEntry)
+    (w : WitnessItem)
+    (blockHeight : Nat)
+    (hOk : validateP2PKSpendPreSig entry w blockHeight = .ok ()) :
+    w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
+      entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
+      (entry.covenantData.get! 0).toNat = w.suiteId ∧
+      p2pkPubkeyKeyIdBound entry w := by
+  by_cases hSuite : (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true
+  · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_ALG_INVALID" := by
+      simp [validateP2PKSpendPreSig, hSuite, Except.bind]
+      rfl
+    rw [hErr] at hOk
+    cases hOk
+  · have hSuiteFalse : (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false := by
+      have hSuiteEq : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := by
+        by_contra hNeEq
+        exact hSuite (by simp [hNeEq])
+      simp [hSuiteEq]
+    have hSuiteEq : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := by
+      by_contra hNeEq
+      exact hSuite (by simp [hNeEq])
+    by_cases hSize : (entry.covenantData.size != CovenantGenesisV1.MAX_P2PK_COVENANT_DATA) = true
+    · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+        simp [validateP2PKSpendPreSig, hSuiteFalse, hSize, Except.bind]
+        rfl
+      rw [hErr] at hOk
+      cases hOk
+    · have hSizeFalse : (entry.covenantData.size != CovenantGenesisV1.MAX_P2PK_COVENANT_DATA) = false := by
+        have hSizeEq : entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA := by
+          by_contra hNeEq
+          exact hSize (by simp [hNeEq])
+        simp [hSizeEq]
+      have hSizeEq : entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA := by
+        by_contra hNeEq
+        exact hSize (by simp [hNeEq])
+      by_cases hTag : ((entry.covenantData.get! 0).toNat != w.suiteId) = true
+      · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+          simp [validateP2PKSpendPreSig, hSuiteFalse, hSizeFalse, hTag, Except.bind]
+          rfl
+        rw [hErr] at hOk
+        cases hOk
+      · have hTagFalse : ((entry.covenantData.get! 0).toNat != w.suiteId) = false := by
+          have hTagEq : (entry.covenantData.get! 0).toNat = w.suiteId := by
+            by_contra hNeEq
+            exact hTag (by simp [hNeEq])
+          simp [hTagEq]
+        have hTagEq : (entry.covenantData.get! 0).toNat = w.suiteId := by
+          by_contra hNeEq
+          exact hTag (by simp [hNeEq])
+        cases hHash : (SHA3.sha3_256 w.pubkey != entry.covenantData.extract 1 33) with
+        | true =>
+            have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_INVALID" := by
+              simp [validateP2PKSpendPreSig, hSuiteFalse, hSizeFalse, hTagFalse, hHash, Except.bind]
+              rfl
+            rw [hErr] at hOk
+            cases hOk
+        | false =>
+            exact ⟨hSuiteEq, hSizeEq, hTagEq, hHash⟩
+
+theorem sem002_mldsa_binding_proved : sem002MLDSABindingStatement := by
+  intro entry w blockHeight hLens hPreSig
+  have hBinding := validateP2PKSpendPreSig_binds_pubkey entry w blockHeight hPreSig
+  rcases hBinding with ⟨hSuite, hCovSize, hSuiteTag, hKeyHash⟩
+  have hLengths := (sem001_mldsa_exact_lengths_proved w blockHeight hSuite).mp hLens
+  rcases hLengths with ⟨hPub, hSig⟩
+  exact ⟨hSuite, hPub, hSig, hCovSize, hSuiteTag, hKeyHash⟩
 
 end RubinFormal

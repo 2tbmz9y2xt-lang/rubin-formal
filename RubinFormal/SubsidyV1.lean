@@ -66,6 +66,40 @@ def validateCoinbaseValueBound
       throw "BLOCK_ERR_SUBSIDY_EXCEEDED"
     pure ()
 
+def connectBlockTxs
+    (txs : List Bytes)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (blockTimestamp : Nat)
+    (chainId : Bytes) : Except String (Nat × Std.RBMap Outpoint UtxoEntry cmpOutpoint) :=
+  match txs with
+  | [] => .ok (0, utxoMap)
+  | txBytes :: rest =>
+      match applyNonCoinbaseTxBasicState txBytes utxoMap height blockTimestamp chainId with
+      | .error e => .error e
+      | .ok (fee, next) =>
+          match connectBlockTxs rest next height blockTimestamp chainId with
+          | .error e => .error e
+          | .ok (feesTail, finalMap) => .ok (fee + feesTail, finalMap)
+
+theorem connectBlockTxs_nil
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat)
+    (chainId : Bytes) :
+    connectBlockTxs [] utxoMap height blockTimestamp chainId = .ok (0, utxoMap) := by
+  rfl
+
+theorem connectBlockTxs_cons
+    (tx : Bytes)
+    (txs : List Bytes)
+    (utxoMap next finalMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp fee feesTail : Nat)
+    (chainId : Bytes)
+    (hStep : applyNonCoinbaseTxBasicState tx utxoMap height blockTimestamp chainId = .ok (fee, next))
+    (hTail : connectBlockTxs txs next height blockTimestamp chainId = .ok (feesTail, finalMap)) :
+    connectBlockTxs (tx :: txs) utxoMap height blockTimestamp chainId = .ok (fee + feesTail, finalMap) := by
+  simp [connectBlockTxs, hStep, hTail]
+
 def connectBlockBasic
     (blockBytes : Bytes)
     (expectedPrevHash : Option Bytes)
@@ -73,20 +107,43 @@ def connectBlockBasic
     (height : Nat)
     (alreadyGenerated : Nat)
     (utxos : List (Outpoint × UtxoEntry))
-    (chainId : Bytes) : Except String Unit := do
-  BlockBasicV1.validateBlockBasic blockBytes expectedPrevHash expectedTarget
-  let pb ← BlockBasicV1.parseBlock blockBytes
-  validateCoinbaseLocktime pb.coinbaseTx height
+    (chainId : Bytes) : Except String Unit :=
+  match BlockBasicV1.validateBlockBasic blockBytes expectedPrevHash expectedTarget with
+  | .error e => .error e
+  | .ok () =>
+      match BlockBasicV1.parseBlock blockBytes with
+      | .error e => .error e
+      | .ok pb =>
+          match validateCoinbaseLocktime pb.coinbaseTx height with
+          | .error e => .error e
+          | .ok () =>
+              match connectBlockTxs pb.txs.tail (buildUtxoMap utxos) height pb.header.timestamp chainId with
+              | .error e => .error e
+              | .ok (sumFees, _finalMap) =>
+                  match validateCoinbaseValueBound pb.coinbaseTx height alreadyGenerated sumFees with
+                  | .error e => .error e
+                  | .ok () => .ok ()
 
-  let mut utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint := buildUtxoMap utxos
-  let mut sumFees : Nat := 0
-  for txBytes in pb.txs.drop 1 do
-    let (fee, next) ← applyNonCoinbaseTxBasicState txBytes utxoMap height pb.header.timestamp chainId
-    sumFees := sumFees + fee
-    utxoMap := next
+def connectBlockEndToEndStatement : Prop :=
+  ∀ (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes)
+    (height alreadyGenerated : Nat)
+    (utxos : List (Outpoint × UtxoEntry))
+    (chainId : Bytes)
+    (pb : BlockBasicV1.ParsedBlock)
+    (sumFees : Nat)
+    (finalMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint),
+      BlockBasicV1.validateBlockBasic blockBytes expectedPrevHash expectedTarget = .ok () →
+      BlockBasicV1.parseBlock blockBytes = .ok pb →
+      validateCoinbaseLocktime pb.coinbaseTx height = .ok () →
+      connectBlockTxs pb.txs.tail (buildUtxoMap utxos) height pb.header.timestamp chainId = .ok (sumFees, finalMap) →
+      validateCoinbaseValueBound pb.coinbaseTx height alreadyGenerated sumFees = .ok () →
+      connectBlockBasic blockBytes expectedPrevHash expectedTarget height alreadyGenerated utxos chainId = .ok ()
 
-  validateCoinbaseValueBound pb.coinbaseTx height alreadyGenerated sumFees
-  pure ()
+theorem connectBlock_end_to_end_proved : connectBlockEndToEndStatement := by
+  intro blockBytes expectedPrevHash expectedTarget height alreadyGenerated utxos chainId pb sumFees finalMap
+    hBasic hParse hLock hLoop hBound
+  simpa [connectBlockBasic, hBasic, hParse, hLock, hLoop, hBound]
 
 def blockBasicCheckWithFees
     (blockBytes : Bytes)
