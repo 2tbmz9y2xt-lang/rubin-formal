@@ -12,6 +12,19 @@ def inputs_available
     (height : Nat) : Prop :=
   ∃ inputState, scanInputs tx.inputs utxoMap height = .ok inputState
 
+/-- Check that each element in a list is distinct from all predecessors.
+    Mirrors the `consumedOutpoints.contains` check in `scanSingleInputStep`. -/
+def prefixNoDupAux [BEq α] (seen : List α) : List α → Bool
+  | [] => true
+  | x :: rest => !seen.contains x && prefixNoDupAux (seen ++ [x]) rest
+
+def prefixNoDup [BEq α] (xs : List α) : Bool :=
+  prefixNoDupAux [] xs
+
+/-- A transaction has no intra-tx double spend iff all input outpoints are distinct. -/
+def no_intra_tx_double_spend (tx : Tx) : Prop :=
+  prefixNoDup (tx.inputs.map txInOutpoint) = true
+
 def utxo_conserved_tx
     (tx : Tx)
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
@@ -45,6 +58,7 @@ def no_double_spend
       ∃ prepared,
         prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId = .ok prepared ∧
         inputs_available prepared.tx utxoMap height ∧
+        no_intra_tx_double_spend prepared.tx ∧
         no_double_spend rest prepared.nextUtxoMap height blockTimestamp chainId
 
 theorem applyNonCoinbaseTxBasicState_success_prepared
@@ -187,6 +201,109 @@ theorem prepareNonCoinbaseTxBasic_inputs_available
   cases hInputEq
   exact ⟨core.inputState, hScan⟩
 
+/-! ## Intra-transaction anti-double-spend -/
+
+theorem scanSingleInputStep_not_contains
+    (input : TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (acc result : InputScanState)
+    (hStep : scanSingleInputStep input utxoMap height acc = .ok result) :
+    acc.consumedOutpoints.contains (txInOutpoint input) = false := by
+  cases hDup : acc.consumedOutpoints.contains (txInOutpoint input) with
+  | false => rfl
+  | true =>
+    exfalso
+    have herr : scanSingleInputStep input utxoMap height acc = Except.error "TX_ERR_PARSE" := by
+      unfold scanSingleInputStep
+      simp only [hDup, ite_true, Bind.bind, Except.bind]
+    rw [herr] at hStep
+    exact absurd hStep (by intro h; cases h)
+
+set_option maxRecDepth 4096 in
+theorem scanSingleInputStep_consumed_ext
+    (input : TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (acc result : InputScanState)
+    (hStep : scanSingleInputStep input utxoMap height acc = .ok result) :
+    result.consumedOutpoints = acc.consumedOutpoints ++ [txInOutpoint input] := by
+  have hNoDup := scanSingleInputStep_not_contains input utxoMap height acc result hStep
+  unfold scanSingleInputStep at hStep
+  simp only [hNoDup, ite_false, ite_true, Bind.bind, Except.bind,
+             Pure.pure, Except.pure] at hStep
+  -- hStep is now a nested if/match tree where every .ok leaf has
+  -- consumedOutpoints := List.concat acc.consumedOutpoints (txInOutpoint input).
+  -- Strategy: repeatedly split all if/match in hStep, close error-leaves.
+  -- After all splits, remaining goals have either:
+  --   hStep : Except.ok {...} = Except.ok result (→ subst + simp)
+  --   or no hStep (already subst'd by cases → direct simp)
+  split at hStep <;> try cases hStep  -- find?
+  split at hStep <;> try cases hStep  -- anchor
+  all_goals try (split at hStep <;> try cases hStep)  -- coinbase
+  all_goals try (split at hStep <;> try cases hStep)  -- maturity
+  all_goals try (split at hStep <;> try cases hStep)  -- p2pk
+  all_goals try (split at hStep <;> try cases hStep)  -- p2pk size
+  all_goals try (split at hStep <;> try cases hStep)  -- p2pk suite
+  all_goals try (split at hStep <;> try cases hStep)  -- vault
+  all_goals try (split at hStep <;> try cases hStep)  -- parseVault result
+  all_goals try (split at hStep <;> try cases hStep)  -- multi-input
+  all_goals (first
+    | (simp only [Except.ok.injEq] at hStep; subst hStep; simp [List.concat_eq_append])
+    | simp [List.concat_eq_append])
+
+theorem scanInputsGo_prefixNoDup
+    (inputs : List TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (acc result : InputScanState)
+    (hScan : scanInputsGo inputs utxoMap height acc = .ok result) :
+    prefixNoDupAux acc.consumedOutpoints (inputs.map txInOutpoint) = true := by
+  induction inputs generalizing acc with
+  | nil =>
+      simp [List.map, prefixNoDupAux]
+  | cons i rest ih =>
+      unfold scanInputsGo at hScan
+      rcases except_bind_eq_ok hScan with ⟨nextAcc, hStep, hRest⟩
+      have hNotDup := scanSingleInputStep_not_contains i utxoMap height acc nextAcc hStep
+      have hExt := scanSingleInputStep_consumed_ext i utxoMap height acc nextAcc hStep
+      have hIH := ih nextAcc hRest
+      simp only [List.map, prefixNoDupAux, hNotDup, Bool.not_false, Bool.true_and]
+      rw [← hExt]
+      exact hIH
+
+theorem scanInputs_no_intra_tx_double_spend
+    (tx : Tx)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (inputState : InputScanState)
+    (hScan : scanInputs tx.inputs utxoMap height = .ok inputState) :
+    no_intra_tx_double_spend tx := by
+  unfold no_intra_tx_double_spend prefixNoDup
+  unfold scanInputs at hScan
+  exact scanInputsGo_prefixNoDup tx.inputs utxoMap height InputScanState.empty inputState hScan
+
+theorem prepareNonCoinbaseTxBasic_no_intra_double_spend
+    (txBytes : Bytes)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat)
+    (chainId : Bytes)
+    (prepared : PreparedNonCoinbaseTx)
+    (hPrep : prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId = .ok prepared) :
+    no_intra_tx_double_spend prepared.tx := by
+  rcases prepareNonCoinbaseTxBasic_success_core
+      txBytes utxoMap height blockTimestamp chainId prepared hPrep with
+    ⟨core, hCore, hPreparedEq⟩
+  cases hPreparedEq
+  rcases prepareNonCoinbaseTxCore_success_components
+      txBytes utxoMap height blockTimestamp chainId core hCore with
+    ⟨tx, inputState, hTxEq, hInputEq, hParse, hScan, hFeeCore⟩
+  cases hTxEq
+  cases hInputEq
+  exact scanInputs_no_intra_tx_double_spend core.tx utxoMap height core.inputState hScan
+
+/-! ## Main theorems -/
+
 theorem utxo_conservation_theorem
     (txs : List Bytes)
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
@@ -258,8 +375,10 @@ theorem no_double_spend_theorem
                         ⟨prepared, hPrep, hFeeEq, hNextEq⟩
                       cases hFeeEq
                       cases hNextEq
-                      refine ⟨prepared, hPrep, ?_, ?_⟩
+                      refine ⟨prepared, hPrep, ?_, ?_, ?_⟩
                       · exact prepareNonCoinbaseTxBasic_inputs_available
+                          tx utxoMap height blockTimestamp chainId prepared hPrep
+                      · exact prepareNonCoinbaseTxBasic_no_intra_double_spend
                           tx utxoMap height blockTimestamp chainId prepared hPrep
                       · exact ih prepared.nextUtxoMap feesTail finalTail hTail
 
