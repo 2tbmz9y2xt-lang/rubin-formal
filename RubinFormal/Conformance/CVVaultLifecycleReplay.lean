@@ -5,13 +5,31 @@ namespace RubinFormal.Conformance
 
 open RubinFormal
 
+/-- Prefix-free fallback for existing vectors that still encode the lifecycle in
+    transaction structure instead of the ID. -/
+private def vaultLifecyclePhaseFromStructure (v : VaultVector) : Option VaultState :=
+  let spendsVault :=
+    v.utxos.any (fun u => u.covenantType == CovenantGenesisV1.COV_TYPE_VAULT)
+  let createsVault :=
+    match RubinFormal.decodeHex? v.txHex with
+    | some txBytes =>
+        match UtxoBasicV1.parseTx txBytes with
+        | .ok tx => tx.outputs.any (fun o => o.covenantType == CovenantGenesisV1.COV_TYPE_VAULT)
+        | .error _ => false
+    | none => false
+  if createsVault && !spendsVault then some .created
+  else if spendsVault then some .triggered
+  else none
+
 /-- Classify a CV-VAULT conformance vector by vault lifecycle phase.
     CREATE vectors → `.created` (vault output produced).
-    SPEND vectors  → `.triggered` (vault input being consumed). -/
+    SPEND vectors  → `.triggered` (vault input being consumed).
+    Non-prefixed vectors must still classify from concrete tx/UTXO structure;
+    otherwise the combined gate fails closed. -/
 def vaultLifecyclePhase (v : VaultVector) : Option VaultState :=
   if "VAULT-CREATE".isPrefixOf v.id then some .created
   else if "VAULT-SPEND".isPrefixOf v.id then some .triggered
-  else none
+  else vaultLifecyclePhaseFromStructure v
 
 /-- Combined gate: each CV-VAULT conformance vector must pass both
     (1) transaction-level replay and
@@ -29,7 +47,7 @@ def vaultVectorWithLifecycle (v : VaultVector) : Bool :=
         else true
     | some .triggered =>
         (vaultTransition .triggered .wait).isSome
-    | _ => true
+    | _ => false
   txPass && smOk
 
 def cvVaultWithLifecyclePass : Bool :=
