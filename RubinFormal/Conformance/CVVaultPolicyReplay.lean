@@ -10,6 +10,26 @@ def strictlySortedUnique (xs : List String) : Bool :=
         if x < y then go (y :: rest) else false
   go xs
 
+/-- `CVVaultPolicyReplay` intentionally models only the spend-side safe subset
+    checked by the `CV-VAULT-POLICY` vectors. It does not encode the full
+    transaction-level behavior of `applyNonCoinbaseTxBasicNoCrypto`.
+
+    Uncovered tx-level predicates:
+    * creation-side owner auth with owner input type in `{CORE_P2PK, CORE_MULTISIG}`
+    * output whitelist closure against concrete output descriptors
+    * vault recursion ban on spend
+    * `parseVaultCovenantData` parse/canonical invariants
+    * `TX_ERR_VAULT_OWNER_DESTINATION_FORBIDDEN` -/
+def vaultPolicyCoverageGaps : List String := [
+  "creation_owner_auth_p2pk_or_multisig",
+  "output_whitelist_closure",
+  "vault_recursion_ban",
+  "parse_vault_canonical_invariants",
+  "owner_destination_forbidden"
+]
+
+/-- Spend-side safe-subset evaluator for `CV-VAULT-POLICY`.
+    This is not a full L1↔L2 equivalence model; see `vaultPolicyCoverageGaps`. -/
 def vaultPolicyEval (v : CVVaultPolicyVector) : (Bool × Option String) :=
   let sentinelOk :=
     v.sentinelSuiteId == 0 &&
@@ -61,6 +81,8 @@ def cvVaultPolicyVectorsPass : Bool :=
 theorem cv_vault_policy_vectors_pass : cvVaultPolicyVectorsPass = true := by
   native_decide
 
+/-- Partial theorem for the modeled spend-side subset only.
+    The missing tx-level predicates are listed in `vaultPolicyCoverageGaps`. -/
 def vaultPolicyDefaultOrderSafeStatement : Prop :=
   ∀ v : CVVaultPolicyVector,
     v.validationOrder = none →
@@ -77,10 +99,13 @@ def vaultPolicyDefaultOrderSafeStatement : Prop :=
     v.sumOut >= v.sumInVault →
     vaultPolicyEval v = (true, none)
 
-theorem vault_policy_default_order_safe_proved : vaultPolicyDefaultOrderSafeStatement := by
+theorem vault_policy_modeled_spend_subset_proved : vaultPolicyDefaultOrderSafeStatement := by
   intro v hOrder hMulti hOwner hSponsor hSlots hSentinel hSig hWhitelist hValue
   simp [vaultPolicyDefaultOrderSafeStatement, vaultPolicyEval, hOrder, hMulti, hOwner, hSponsor, hSlots,
     hSentinel, hSig, hWhitelist, hValue]
   native_decide
+
+theorem vault_policy_default_order_safe_proved : vaultPolicyDefaultOrderSafeStatement := by
+  exact vault_policy_modeled_spend_subset_proved
 
 end RubinFormal.Conformance
