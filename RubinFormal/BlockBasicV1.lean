@@ -164,6 +164,13 @@ def powCheck (h : BlockHeader) : Except String Unit := do
     let wtxid := SHA3.sha3_256 full
     pure (inCount, txid, wtxid, full, { c with off := endOff })
 
+def anyDuplicateTxids (xs : List Bytes) : Bool :=
+  let rec go (rest seen : List Bytes) : Bool :=
+    match rest with
+    | [] => false
+    | x :: rs => if seen.contains x then true else go rs (seen ++ [x])
+  go xs []
+
 def parseBlock (blockBytes : Bytes) : Except String ParsedBlock := do
   let c0 : Cursor := { bs := blockBytes, off := 0 }
   let (hdr, c1) ← parseHeader c0
@@ -193,6 +200,8 @@ def parseBlock (blockBytes : Bytes) : Except String ParsedBlock := do
     throw "BLOCK_ERR_PARSE"
   if anyZeroInputs then
     throw "TX_ERR_PARSE"
+  if anyDuplicateTxids txids then
+    throw "BLOCK_ERR_DUPLICATE_TX"
   pure { header := hdr, txs := txs, txids := txids, wtxids := wtxids, coinbaseTx := coinbaseTx }
 
 def merkleRootTxids (txids : List Bytes) : Except String Bytes := do
