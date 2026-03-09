@@ -1,4 +1,5 @@
 import RubinFormal.Types
+import Std.Tactic.Omega
 
 namespace RubinFormal
 
@@ -102,6 +103,175 @@ def Cursor.getCompactSize? (c : Cursor) : Option (Nat × Cursor × Bool) := do
     let n := n64.toNat
     let minimal := n > 0xffffffff
     pure (n, c2, minimal)
+
+/-- Canonical CompactSize prefixes accepted by the v2 cursor decoder. -/
+inductive CompactSizeCanonical : Bytes -> Nat -> Prop where
+  | oneByte (b : UInt8) (h : b.toNat < 0xfd) (hBound : b.toNat ≤ UInt64.size - 1) :
+      CompactSizeCanonical (RubinFormal.bytes #[b]) b.toNat
+  | threeByte (b0 b1 : UInt8) (h : 0xfd ≤ u16le? b0 b1) (hBound : u16le? b0 b1 ≤ UInt64.size - 1) :
+      CompactSizeCanonical (RubinFormal.bytes #[0xfd, b0, b1]) (u16le? b0 b1)
+  | fiveByte (b0 b1 b2 b3 : UInt8)
+      (h : 0xffff < u32le? b0 b1 b2 b3)
+      (hBound : u32le? b0 b1 b2 b3 ≤ UInt64.size - 1) :
+      CompactSizeCanonical (RubinFormal.bytes #[0xfe, b0, b1, b2, b3]) (u32le? b0 b1 b2 b3)
+  | nineByte (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8)
+      (h : 0xffffffff < (u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat)
+      (hBound : (u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat ≤ UInt64.size - 1) :
+      CompactSizeCanonical
+        (RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7])
+        (u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat
+
+theorem compactSize_from_single_byte
+    {c c' : Cursor}
+    (b : UInt8)
+    (hU8 : c.getU8? = some (b, c'))
+    (hTag : b.toNat < 0xfd) :
+    c.getCompactSize? = some (b.toNat, c', true) := by
+  unfold Cursor.getCompactSize?
+  rw [hU8]
+  simp [hTag]
+
+theorem compactSize_from_three_byte_prefix
+    {c c1 c2 : Cursor}
+    (b0 b1 : UInt8)
+    (hU8 : c.getU8? = some (0xfd, c1))
+    (hBytes : c1.getBytes? 2 = some (RubinFormal.bytes #[b0, b1], c2))
+    (hMin : 0xfd ≤ u16le? b0 b1) :
+    c.getCompactSize? = some (u16le? b0 b1, c2, true) := by
+  unfold Cursor.getCompactSize?
+  rw [hU8]
+  simp [hBytes, u16le?, hMin, show UInt8.toNat (0xfd : UInt8) = 253 by decide]
+  constructor
+  · rfl
+  · simpa [u16le?] using hMin
+
+theorem compactSize_from_five_byte_prefix
+    {c c1 c2 : Cursor}
+    (b0 b1 b2 b3 : UInt8)
+    (hU8 : c.getU8? = some (0xfe, c1))
+    (hBytes : c1.getBytes? 4 = some (RubinFormal.bytes #[b0, b1, b2, b3], c2))
+    (hMin : 0xffff < u32le? b0 b1 b2 b3) :
+    c.getCompactSize? = some (u32le? b0 b1 b2 b3, c2, true) := by
+  unfold Cursor.getCompactSize?
+  rw [hU8]
+  simp [hBytes, u32le?, hMin, show UInt8.toNat (0xfe : UInt8) = 254 by decide]
+  constructor
+  · rfl
+  · simpa [u32le?] using hMin
+
+theorem compactSize_from_nine_byte_prefix
+    {c c1 c2 : Cursor}
+    (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8)
+    (hU8 : c.getU8? = some (0xff, c1))
+    (hBytes : c1.getBytes? 8 = some (RubinFormal.bytes #[b0, b1, b2, b3, b4, b5, b6, b7], c2))
+    (hMin : 0xffffffff < (u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat) :
+    c.getCompactSize? = some ((u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat, c2, true) := by
+  unfold Cursor.getCompactSize?
+  rw [hU8]
+  simp [hBytes, hMin, show UInt8.toNat (0xff : UInt8) = 255 by decide]
+  constructor
+  · rfl
+  · simpa using hMin
+
+theorem compactSize_nine_byte_getBytes
+    (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) :
+    ({ bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7], off := 1 } : Cursor).getBytes? 8 =
+      some
+        (RubinFormal.bytes #[b0, b1, b2, b3, b4, b5, b6, b7],
+          { bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7],
+            off := (RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7]).size }) := by
+  simp [Cursor.getBytes?, RubinFormal.bytes, ByteArray.extract, ByteArray.copySlice, ByteArray.size]
+  rfl
+
+theorem compactSize_one_byte_roundtrip
+    (b : UInt8)
+    (hTag : b.toNat < 0xfd) :
+    let bs := RubinFormal.bytes #[b]
+    ({ bs := bs, off := 0 } : Cursor).getCompactSize? =
+      some (b.toNat, { bs := bs, off := bs.size }, true) := by
+  let bs := RubinFormal.bytes #[b]
+  have hSize : bs.size = 1 := rfl
+  simpa [hSize] using
+    compactSize_from_single_byte b
+      (c := { bs := bs, off := 0 })
+      (c' := { bs := bs, off := 1 })
+      rfl hTag
+
+theorem compactSize_three_byte_roundtrip
+    (b0 b1 : UInt8)
+    (hMin : 0xfd ≤ u16le? b0 b1) :
+    let bs := RubinFormal.bytes #[0xfd, b0, b1]
+    ({ bs := bs, off := 0 } : Cursor).getCompactSize? =
+      some (u16le? b0 b1, { bs := bs, off := bs.size }, true) := by
+  let bs := RubinFormal.bytes #[0xfd, b0, b1]
+  have hSize : bs.size = 3 := rfl
+  simpa [hSize] using
+    compactSize_from_three_byte_prefix b0 b1
+      (c := { bs := bs, off := 0 })
+      (c1 := { bs := bs, off := 1 })
+      (c2 := { bs := bs, off := 3 })
+      rfl rfl hMin
+
+theorem compactSize_five_byte_roundtrip
+    (b0 b1 b2 b3 : UInt8)
+    (hMin : 0xffff < u32le? b0 b1 b2 b3) :
+    let bs := RubinFormal.bytes #[0xfe, b0, b1, b2, b3]
+    ({ bs := bs, off := 0 } : Cursor).getCompactSize? =
+      some (u32le? b0 b1 b2 b3, { bs := bs, off := bs.size }, true) := by
+  let bs := RubinFormal.bytes #[0xfe, b0, b1, b2, b3]
+  have hSize : bs.size = 5 := rfl
+  simpa [hSize] using
+    compactSize_from_five_byte_prefix b0 b1 b2 b3
+      (c := { bs := bs, off := 0 })
+      (c1 := { bs := bs, off := 1 })
+      (c2 := { bs := bs, off := 5 })
+      rfl rfl hMin
+
+theorem compactSize_nine_byte_roundtrip
+    (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8)
+    (hMin : 0xffffffff < (u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat) :
+    let bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7]
+    ({ bs := bs, off := 0 } : Cursor).getCompactSize? =
+      some ((u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat, { bs := bs, off := bs.size }, true) := by
+  change
+    ({ bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7], off := 0 } : Cursor).getCompactSize? =
+      some
+        ((u64le? b0 b1 b2 b3 b4 b5 b6 b7).toNat,
+          { bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7],
+            off := (RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7]).size },
+          true)
+  exact
+    compactSize_from_nine_byte_prefix b0 b1 b2 b3 b4 b5 b6 b7
+      (c := { bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7], off := 0 })
+      (c1 := { bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7], off := 1 })
+      (c2 := { bs := RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7],
+               off := (RubinFormal.bytes #[0xff, b0, b1, b2, b3, b4, b5, b6, b7]).size })
+      rfl
+      (compactSize_nine_byte_getBytes b0 b1 b2 b3 b4 b5 b6 b7)
+      hMin
+
+/-- Roundtrip over all canonical 1/3/5/9-byte CompactSize prefixes. -/
+theorem compactSize_roundtrip {bs : Bytes} {n : Nat} (h : CompactSizeCanonical bs n) :
+    ({ bs := bs, off := 0 } : Cursor).getCompactSize? =
+      some (n, { bs := bs, off := bs.size }, true) := by
+  cases h with
+  | oneByte b hTag _ =>
+      simpa using compactSize_one_byte_roundtrip b hTag
+  | threeByte b0 b1 hMin _ =>
+      simpa using compactSize_three_byte_roundtrip b0 b1 hMin
+  | fiveByte b0 b1 b2 b3 hMin _ =>
+      simpa using compactSize_five_byte_roundtrip b0 b1 b2 b3 hMin
+  | nineByte b0 b1 b2 b3 b4 b5 b6 b7 hMin _ =>
+      simpa using compactSize_nine_byte_roundtrip b0 b1 b2 b3 b4 b5 b6 b7 hMin
+
+/-- CompactSize canonical prefixes never decode above the UInt64 range. -/
+theorem compactSize_overflow_safety {bs : Bytes} {n : Nat} (h : CompactSizeCanonical bs n) :
+    n ≤ UInt64.size - 1 := by
+  cases h with
+  | oneByte _ _ hBound => exact hBound
+  | threeByte _ _ _ hBound => exact hBound
+  | fiveByte _ _ _ _ _ hBound => exact hBound
+  | nineByte _ _ _ _ _ _ _ _ _ hBound => exact hBound
 
 -- ═══════════════════════════════════════════════════════════════════
 -- ByteWireV2 structural theorems (F-05 fix, Q-FORMAL-GAP-04)
