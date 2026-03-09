@@ -146,6 +146,27 @@ def retargetV1 (targetOld : Bytes) (timestampFirst timestampLast : Nat) (pattern
   let targetNew := Nat.max lo (Nat.min candidate hi)
   pure (natToBytesBE32 targetNew)
 
+/-- Core arithmetic fact for `retargetV1`: the clamp keeps the target within `powLimit`. -/
+theorem retargetV1_result_bounded (targetOldNat tActual : Nat)
+    (hTargetOld : targetOldNat ≤ powLimit) :
+    let candidate := (targetOldNat * tActual) / tExpected
+    let lo := Nat.max 1 (targetOldNat / 4)
+    let hi := Nat.min (targetOldNat * 4) powLimit
+    let targetNew := Nat.max lo (Nat.min candidate hi)
+    targetNew ≤ powLimit := by
+  dsimp
+  have hOne : 1 ≤ powLimit := by
+    native_decide
+  have hQuarter : targetOldNat / 4 ≤ targetOldNat := by
+    exact Nat.div_le_self _ _
+  have hlo : Nat.max 1 (targetOldNat / 4) ≤ powLimit := by
+    rw [Nat.max_le]
+    exact ⟨hOne, Nat.le_trans hQuarter hTargetOld⟩
+  have hhi : Nat.min (targetOldNat * 4) powLimit ≤ powLimit := by
+    exact Nat.min_le_right _ _
+  rw [Nat.max_le]
+  exact ⟨hlo, Nat.le_trans (Nat.min_le_right _ _) hhi⟩
+
 def blockHash (headerBytes : Bytes) : Bytes :=
   SHA3.sha3_256 headerBytes
 
