@@ -133,7 +133,8 @@
         "RubinFormal.triggered_implies_sweepable",
         "RubinFormal.cancelled_implies_not_sweepable",
         "RubinFormal.no_dead_states",
-        "RubinFormal.timelock_enforced"
+        "RubinFormal.timelock_enforced",
+        "RubinFormal.triggered_sweep_consistent_with_vault_policy"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -141,7 +142,8 @@
         "RubinFormal.triggered_implies_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
         "RubinFormal.cancelled_implies_not_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
         "RubinFormal.no_dead_states": "rubin-formal/RubinFormal/VaultStateMachine.lean",
-        "RubinFormal.timelock_enforced": "rubin-formal/RubinFormal/VaultStateMachine.lean"
+        "RubinFormal.timelock_enforced": "rubin-formal/RubinFormal/VaultStateMachine.lean",
+        "RubinFormal.triggered_sweep_consistent_with_vault_policy": "rubin-formal/RubinFormal/VaultStateMachine.lean"
       }
     },
     {
@@ -151,12 +153,18 @@
       "theorems": [
         "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved",
         "RubinFormal.utxo_conservation_theorem",
-        "RubinFormal.no_double_spend_theorem"
+        "RubinFormal.no_double_spend_theorem",
+        "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved",
+        "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available",
+        "RubinFormal.scanInputs_no_intra_tx_double_spend"
       ],
       "file": "rubin-formal/RubinFormal/SubsidyV1.lean",
       "theorem_files": {
         "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
-        "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
+        "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.scanInputs_no_intra_tx_double_spend": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
       }
     },
     {
