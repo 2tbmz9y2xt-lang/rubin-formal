@@ -129,11 +129,19 @@
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
         "RubinFormal.det001_validation_order_proved",
-        "RubinFormal.Conformance.vault_policy_default_order_safe_proved"
+        "RubinFormal.Conformance.vault_policy_default_order_safe_proved",
+        "RubinFormal.triggered_implies_sweepable",
+        "RubinFormal.cancelled_implies_not_sweepable",
+        "RubinFormal.no_dead_states",
+        "RubinFormal.timelock_enforced"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.Conformance.vault_policy_default_order_safe_proved": "rubin-formal/RubinFormal/Conformance/CVVaultPolicyReplay.lean"
+        "RubinFormal.Conformance.vault_policy_default_order_safe_proved": "rubin-formal/RubinFormal/Conformance/CVVaultPolicyReplay.lean",
+        "RubinFormal.triggered_implies_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
+        "RubinFormal.cancelled_implies_not_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
+        "RubinFormal.no_dead_states": "rubin-formal/RubinFormal/VaultStateMachine.lean",
+        "RubinFormal.timelock_enforced": "rubin-formal/RubinFormal/VaultStateMachine.lean"
       }
     },
     {
@@ -141,9 +149,15 @@
       "section_heading": "## 25. Block Validation Order (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved"
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved",
+        "RubinFormal.utxo_conservation_theorem",
+        "RubinFormal.no_double_spend_theorem"
       ],
-      "file": "rubin-formal/RubinFormal/SubsidyV1.lean"
+      "file": "rubin-formal/RubinFormal/SubsidyV1.lean",
+      "theorem_files": {
+        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
+      }
     },
     {
       "section_key": "value_conservation",
@@ -151,9 +165,13 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
-        "RubinFormal.Conformance.cv_subsidy_vectors_pass"
+        "RubinFormal.Conformance.cv_subsidy_vectors_pass",
+        "RubinFormal.utxo_conservation_theorem"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
+      }
     },
     {
       "section_key": "da_set_integrity",

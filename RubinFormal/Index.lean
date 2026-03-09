@@ -7,9 +7,11 @@ import RubinFormal.SighashV1
 import RubinFormal.PowV1
 import RubinFormal.TxWeightV2
 import RubinFormal.UtxoBasicV1
+import RubinFormal.VaultStateMachine
 import RubinFormal.BlockBasicV1
 import RubinFormal.BlockBasicCheckV1
 import RubinFormal.SubsidyV1
+import RubinFormal.ConnectBlockStrong
 import RubinFormal.CovenantGenesisV1
 import RubinFormal.UtxoApplyGenesisV1
 import RubinFormal.FormalGap03
