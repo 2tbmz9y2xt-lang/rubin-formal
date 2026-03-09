@@ -14,7 +14,9 @@
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
         "RubinFormal.Conformance.cv_compact_vectors_pass",
-        "RubinFormal.sem001_mldsa_exact_lengths_proved"
+        "RubinFormal.sem001_mldsa_exact_lengths_proved",
+        "RubinFormal.Wire.compactSize_roundtrip",
+        "RubinFormal.Wire.compactSize_overflow_safety"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
@@ -89,7 +91,8 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
-        "RubinFormal.core_ext_cursor_no_ambiguity_proved"
+        "RubinFormal.core_ext_cursor_no_ambiguity_proved",
+        "RubinFormal.sem002_mldsa_binding_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
@@ -98,7 +101,8 @@
       "section_heading": "#### 23.2.2 `CORE_EXT` Deployment Profiles (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.core_ext_tightening_proved"
+        "RubinFormal.core_ext_tightening_proved",
+        "RubinFormal.core_ext_preactivation_strict_superset_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
@@ -117,9 +121,19 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
-        "RubinFormal.det001_validation_order_proved"
+        "RubinFormal.det001_validation_order_proved",
+        "RubinFormal.Conformance.vault_policy_default_order_safe_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+    },
+    {
+      "section_key": "block_validation_order",
+      "section_heading": "## 25. Block Validation Order (Normative)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved"
+      ],
+      "file": "rubin-formal/RubinFormal/SubsidyV1.lean"
     },
     {
       "section_key": "value_conservation",
