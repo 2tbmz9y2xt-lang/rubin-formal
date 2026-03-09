@@ -44,12 +44,24 @@ private def collectCreatedLifecycleOutputs? (outs : List UtxoBasicV1.TxOut) :
           some (vaults, htlcs))
     (some ([], []))
 
+/-- Filter UTXO entries to only those actually consumed by a transaction's inputs.
+    Compares (txidHex, vout) against each input's (prevTxid, prevVout). -/
+private def filterSpentUtxos (utxos : List VaultEntry) (inputs : List UtxoBasicV1.TxIn) :
+    List VaultEntry :=
+  utxos.filter (fun u =>
+    inputs.any (fun inp =>
+      match RubinFormal.decodeHex? u.txidHex with
+      | some txid => inp.prevTxid == txid && inp.prevVout == u.vout
+      | none => false))
+
 /-- Decode the concrete tx/UTXO lifecycle witness carried by a `CV-VAULT` vector.
+    Only UTXOs actually consumed by the transaction's inputs are treated as spent.
     If any lifecycle-relevant covenant bytes fail to parse, the bridge fails closed. -/
 private def vaultLifecycleWitness? (v : VaultVector) : Option VaultLifecycleWitness := do
   let txBytes <- RubinFormal.decodeHex? v.txHex
   let tx <- match UtxoBasicV1.parseTx txBytes with | .ok tx => some tx | .error _ => none
-  let spentVaults <- collectSpentVaults? v.utxos
+  let spentEntries := filterSpentUtxos v.utxos tx.inputs
+  let spentVaults <- collectSpentVaults? spentEntries
   let (createdVaults, htlcOutputs) <- collectCreatedLifecycleOutputs? tx.outputs
   pure { tx := tx, spentVaults := spentVaults, createdVaults := createdVaults, htlcOutputs := htlcOutputs }
 
@@ -97,12 +109,10 @@ private def spendWitnessCarriesLifecycle
         vaultTransition .created .trigger == some .triggered
     | _ => false
   let sweepWitness :=
-    match witness.htlcOutputs with
-    | htlc :: _ =>
-        match vaultTransition .triggered (.sweep htlc.lockMode htlc.lockValue v.height (txBlockMtp v)) with
-        | some .swept => true
-        | _ => false
-    | [] => false
+    witness.htlcOutputs.any (fun htlc =>
+      match vaultTransition .triggered (.sweep htlc.lockMode htlc.lockValue v.height (txBlockMtp v)) with
+      | some .swept => true
+      | _ => false)
   (!witness.spentVaults.isEmpty) &&
     (triggerWitness || sweepWitness || blockedByWhitelist || blockedByRecursion || blockedByMultiplicity)
 
