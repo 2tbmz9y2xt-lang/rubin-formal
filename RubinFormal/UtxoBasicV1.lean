@@ -261,6 +261,259 @@ def sumOutputs (outs : List TxOut) : Nat :=
 def buildUtxoMap (utxos : List (Outpoint × UtxoEntry)) : Std.RBMap Outpoint UtxoEntry cmpOutpoint :=
   utxos.foldl (fun m (p : Outpoint × UtxoEntry) => m.insert p.fst p.snd) (Std.RBMap.empty)
 
+def txInOutpoint (i : TxIn) : Outpoint :=
+  { txid := i.prevTxid, vout := i.prevVout }
+
+def txConsumedOutpoints (tx : Tx) : List Outpoint :=
+  tx.inputs.map txInOutpoint
+
+def inputValueSum
+    (inputs : List TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint) : Except String Nat := do
+  match inputs with
+  | [] => pure 0
+  | i :: rest =>
+      let op := txInOutpoint i
+      let e ←
+        match utxoMap.find? op with
+        | none => throw "TX_ERR_MISSING_UTXO"
+        | some x => pure x
+      let tail := inputValueSum rest utxoMap
+      pure (e.value + (← tail))
+
+def validateStructuralInputs (inputs : List TxIn) : Except String Unit := do
+  match inputs with
+  | [] => pure ()
+  | i :: rest =>
+      if i.scriptSig.size != 0 then throw "TX_ERR_PARSE"
+      if i.sequence > 0x7fffffff then throw "TX_ERR_SEQUENCE_INVALID"
+      if isCoinbasePrevout i then throw "TX_ERR_PARSE"
+      validateStructuralInputs rest
+
+structure InputScanState where
+  sumIn : Nat
+  sumInVault : Nat
+  vaultWhitelist : List Bytes
+  vaultOwnerLockId : Option Bytes
+  vaultInputs : Nat
+  inputLockIds : List Bytes
+  inputCovTypes : List Nat
+  requiredWitnessSlots : Nat
+  consumedOutpoints : List Outpoint
+deriving Repr
+
+def InputScanState.empty : InputScanState :=
+  {
+    sumIn := 0
+    sumInVault := 0
+    vaultWhitelist := []
+    vaultOwnerLockId := none
+    vaultInputs := 0
+    inputLockIds := []
+    inputCovTypes := []
+    requiredWitnessSlots := 0
+    consumedOutpoints := []
+  }
+
+structure PreparedNonCoinbaseTx where
+  tx : Tx
+  inputState : InputScanState
+  fee : Nat
+  nextUtxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint
+
+structure PreparedNonCoinbaseTxCore where
+  tx : Tx
+  inputState : InputScanState
+  fee : Nat
+
+def scanSingleInputStep
+    (input : TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (acc : InputScanState) : Except String InputScanState := do
+  let op := txInOutpoint input
+  if acc.consumedOutpoints.contains op then
+    throw "TX_ERR_PARSE"
+  let e ←
+    match utxoMap.find? op with
+    | none => throw "TX_ERR_MISSING_UTXO"
+    | some x => pure x
+
+  if e.covenantType == COV_TYPE_ANCHOR || e.covenantType == COV_TYPE_DA_COMMIT then
+    throw "TX_ERR_MISSING_UTXO"
+
+  if e.createdByCoinbase then
+    if height < e.creationHeight + COINBASE_MATURITY then
+      throw "TX_ERR_COINBASE_IMMATURE"
+
+  if e.covenantType == COV_TYPE_P2PK then
+    if e.covenantData.size != MAX_P2PK_COVENANT_DATA then
+      throw "TX_ERR_COVENANT_TYPE_INVALID"
+    let suite := (e.covenantData.get! 0).toNat
+    if suite != SUITE_ID_ML_DSA_87 then
+      throw "TX_ERR_COVENANT_TYPE_INVALID"
+
+  let lockId := outputDescriptorLockId e
+  let mut nextAcc :=
+    { acc with
+        sumIn := acc.sumIn + e.value
+        inputLockIds := acc.inputLockIds.concat lockId
+        inputCovTypes := acc.inputCovTypes.concat e.covenantType
+        consumedOutpoints := acc.consumedOutpoints.concat op
+    }
+
+  if e.covenantType == COV_TYPE_VAULT then
+    let v ← CovenantGenesisV1.parseVaultCovenantData e.covenantData
+    let nextVaultInputs := nextAcc.vaultInputs + 1
+    if nextVaultInputs > 1 then
+      throw "TX_ERR_VAULT_MULTI_INPUT_FORBIDDEN"
+    nextAcc :=
+      { nextAcc with
+          requiredWitnessSlots := nextAcc.requiredWitnessSlots + v.keyCount
+          sumInVault := e.value
+          vaultOwnerLockId := some v.ownerLockId
+          vaultWhitelist := v.whitelist
+          vaultInputs := nextVaultInputs
+      }
+  else
+    nextAcc :=
+      { nextAcc with requiredWitnessSlots := nextAcc.requiredWitnessSlots + 1 }
+
+  pure nextAcc
+
+def scanInputsGo
+    (inputs : List TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (acc : InputScanState) : Except String InputScanState := do
+  match inputs with
+  | [] => pure acc
+  | i :: rest =>
+      let nextAcc ← scanSingleInputStep i utxoMap height acc
+      scanInputsGo rest utxoMap height nextAcc
+
+def scanInputs
+    (inputs : List TxIn)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat) : Except String InputScanState :=
+  scanInputsGo inputs utxoMap height InputScanState.empty
+
+def eraseInputs
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (inputs : List TxIn) : Std.RBMap Outpoint UtxoEntry cmpOutpoint :=
+  inputs.foldl (fun next i => next.erase (txInOutpoint i)) utxoMap
+
+def insertOutputs
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (txid : Bytes)
+    (outputs : List TxOut)
+    (height : Nat) : Std.RBMap Outpoint UtxoEntry cmpOutpoint :=
+  let rec go
+      (outs : List TxOut)
+      (next : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+      (vout : Nat) : Std.RBMap Outpoint UtxoEntry cmpOutpoint :=
+    match outs with
+    | [] => next
+    | o :: rest =>
+        let op : Outpoint := { txid := txid, vout := vout }
+        let next' :=
+          next.insert op
+            {
+              value := o.value
+              covenantType := o.covenantType
+              covenantData := o.covenantData
+              creationHeight := height
+              createdByCoinbase := false
+            }
+        go rest next' (vout + 1)
+  go outputs utxoMap 0
+
+def validateBasicWitnessLayout
+    (tx : Tx)
+    (inputState : InputScanState) : Except String Unit := do
+  if tx.witness.length != inputState.requiredWitnessSlots then
+    throw "TX_ERR_PARSE"
+  pure ()
+
+def validateBasicTxEnvelope (tx : Tx) : Except String Unit := do
+  if tx.inputs.length == 0 then
+    throw "TX_ERR_PARSE"
+  if tx.txNonce == 0 then
+    throw "TX_ERR_TX_NONCE_INVALID"
+  pure ()
+
+def validateBasicVaultSpend
+    (tx : Tx)
+    (inputState : InputScanState) : Except String Unit := do
+  if inputState.vaultInputs == 1 then
+    let owner ←
+      match inputState.vaultOwnerLockId with
+      | none => throw "TX_ERR_VAULT_MALFORMED"
+      | some x => pure x
+
+    let mut haveOwner : Bool := false
+    for (lid, cov) in List.zip inputState.inputLockIds inputState.inputCovTypes do
+      if cov != COV_TYPE_VAULT && lid == owner then
+        haveOwner := true
+    if !haveOwner then
+      throw "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
+
+    for o in tx.outputs do
+      if o.covenantType == COV_TYPE_VAULT then
+        throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
+      let h := RubinFormal.OutputDescriptor.hash o.covenantType o.covenantData
+      if !(inputState.vaultWhitelist.contains h) then
+        throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
+
+    let sumOut := sumOutputs tx.outputs
+    if sumOut < inputState.sumInVault then
+      throw "TX_ERR_VALUE_CONSERVATION"
+  pure ()
+
+def computeBasicFee
+    (tx : Tx)
+    (inputState : InputScanState) : Except String Nat := do
+  let sumOutAll := sumOutputs tx.outputs
+  if sumOutAll > inputState.sumIn then
+    throw "TX_ERR_VALUE_CONSERVATION"
+  pure (inputState.sumIn - sumOutAll)
+
+def prepareNonCoinbaseTxCore
+    (txBytes : Bytes)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (blockTimestamp : Nat)
+    (chainId : Bytes) : Except String PreparedNonCoinbaseTxCore := do
+  let _ := blockTimestamp
+  let _ := chainId
+  let tx ← parseTx txBytes
+
+  validateBasicTxEnvelope tx
+  validateStructuralInputs tx.inputs
+  let inputState ← scanInputs tx.inputs utxoMap height
+
+  validateBasicWitnessLayout tx inputState
+  validateBasicVaultSpend tx inputState
+  let fee ← computeBasicFee tx inputState
+  pure { tx := tx, inputState := inputState, fee := fee }
+
+def prepareNonCoinbaseTxBasic
+    (txBytes : Bytes)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height : Nat)
+    (blockTimestamp : Nat)
+    (chainId : Bytes) : Except String PreparedNonCoinbaseTx := do
+  let core ← prepareNonCoinbaseTxCore txBytes utxoMap height blockTimestamp chainId
+
+  let txid :=
+    let r := RubinFormal.TxV2.parseTx txBytes
+    match r.txid with
+    | some t => t
+    | none => SHA3.sha3_256 ByteArray.empty
+
+  let next := insertOutputs (eraseInputs utxoMap core.tx.inputs) txid core.tx.outputs height
+  pure { tx := core.tx, inputState := core.inputState, fee := core.fee, nextUtxoMap := next }
+
 -- NOTE: This is intentionally simplified for formal replay:
 -- we enforce all pre-signature rules and binding rules, but we treat cryptographic signature
 -- verification as an out-of-scope predicate (handled by Go↔Rust + OpenSSL in conformance).
@@ -270,134 +523,8 @@ def applyNonCoinbaseTxBasicState
     (height : Nat)
     (blockTimestamp : Nat)
     (chainId : Bytes) : Except String (Nat × Std.RBMap Outpoint UtxoEntry cmpOutpoint) := do
-  let _ := blockTimestamp
-  let tx ← parseTx txBytes
-
-  if tx.inputs.length == 0 then throw "TX_ERR_PARSE"
-  if tx.txNonce == 0 then throw "TX_ERR_TX_NONCE_INVALID"
-
-  -- structural input checks (subset)
-  for i in tx.inputs do
-    if i.scriptSig.size != 0 then throw "TX_ERR_PARSE"
-    if i.sequence > 0x7fffffff then throw "TX_ERR_SEQUENCE_INVALID"
-    if isCoinbasePrevout i then throw "TX_ERR_PARSE"
-
-  -- gather sums and vault context
-  let mut sumIn : Nat := 0
-  let mut sumInVault : Nat := 0
-  let mut vaultWhitelist : List Bytes := []
-  let mut vaultOwnerLockId : Option Bytes := none
-  let mut vaultInputs : Nat := 0
-  let mut inputLockIds : List Bytes := []
-  let mut inputCovTypes : List Nat := []
-  let mut requiredWitnessSlots : Nat := 0
-
-  -- require unique outpoints
-  let mut seen : Std.RBSet Outpoint cmpOutpoint := Std.RBSet.empty
-
-  for i in tx.inputs do
-    let op : Outpoint := { txid := i.prevTxid, vout := i.prevVout }
-    if seen.contains op then throw "TX_ERR_PARSE"
-    seen := seen.insert op
-    let e? := utxoMap.find? op
-    let e ← match e? with
-      | none => throw "TX_ERR_MISSING_UTXO"
-      | some x => pure x
-
-    if e.covenantType == COV_TYPE_ANCHOR || e.covenantType == COV_TYPE_DA_COMMIT then
-      throw "TX_ERR_MISSING_UTXO"
-
-    if e.createdByCoinbase then
-      if height < e.creationHeight + COINBASE_MATURITY then
-        throw "TX_ERR_COINBASE_IMMATURE"
-
-    -- P2PK suite gating (needed for CV-SIG-* and UTXO-basic replay correctness).
-    if e.covenantType == COV_TYPE_P2PK then
-      if e.covenantData.size != MAX_P2PK_COVENANT_DATA then
-        throw "TX_ERR_COVENANT_TYPE_INVALID"
-      let suite := (e.covenantData.get! 0).toNat
-      if suite != SUITE_ID_ML_DSA_87 then
-        throw "TX_ERR_COVENANT_TYPE_INVALID"
-
-    let lockId := outputDescriptorLockId e
-    inputLockIds := inputLockIds.concat lockId
-    inputCovTypes := inputCovTypes.concat e.covenantType
-
-    sumIn := sumIn + e.value
-    -- witness cursor model (minimal): P2PK consumes 1 slot; VAULT consumes key_count slots.
-    if e.covenantType == COV_TYPE_VAULT then
-      let v ← CovenantGenesisV1.parseVaultCovenantData e.covenantData
-      requiredWitnessSlots := requiredWitnessSlots + v.keyCount
-    else
-      requiredWitnessSlots := requiredWitnessSlots + 1
-
-    if e.covenantType == COV_TYPE_VAULT then
-      vaultInputs := vaultInputs + 1
-      if vaultInputs > 1 then
-        throw "TX_ERR_VAULT_MULTI_INPUT_FORBIDDEN"
-      sumInVault := e.value
-      let v ← CovenantGenesisV1.parseVaultCovenantData e.covenantData
-      vaultOwnerLockId := some v.ownerLockId
-      vaultWhitelist := v.whitelist
-
-  if tx.witness.length != requiredWitnessSlots then
-    throw "TX_ERR_PARSE"
-
-  -- CORE_VAULT rules used by CV-UTXO-BASIC vectors
-  if vaultInputs == 1 then
-    let owner ←
-      match vaultOwnerLockId with
-      | none => throw "TX_ERR_VAULT_MALFORMED"
-      | some x => pure x
-
-    -- owner-authorization required: at least one non-vault input must have lock_id == owner lock
-    let mut haveOwner : Bool := false
-    for (lid, cov) in List.zip inputLockIds inputCovTypes do
-      if cov != COV_TYPE_VAULT && lid == owner then
-        haveOwner := true
-    if !haveOwner then
-      throw "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
-
-    -- whitelist membership: every output descriptor hash must be in whitelist
-    for o in tx.outputs do
-      -- vault recursion is forbidden: a vault-spend must not create CORE_VAULT outputs
-      if o.covenantType == COV_TYPE_VAULT then
-        throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
-      let h := RubinFormal.OutputDescriptor.hash o.covenantType o.covenantData
-      if !(vaultWhitelist.contains h) then
-        throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
-
-    -- value rule: vault value must not fund fee
-    let sumOut := sumOutputs tx.outputs
-    if sumOut < sumInVault then
-      throw "TX_ERR_VALUE_CONSERVATION"
-
-  -- value conservation
-  let sumOutAll := sumOutputs tx.outputs
-  if sumOutAll > sumIn then throw "TX_ERR_VALUE_CONSERVATION"
-  let fee := sumIn - sumOutAll
-
-  -- update UTXO count: remove spent, add outputs
-  let mut next : Std.RBMap Outpoint UtxoEntry cmpOutpoint := utxoMap
-  for i in tx.inputs do
-    let op : Outpoint := { txid := i.prevTxid, vout := i.prevVout }
-    next := next.erase op
-
-  -- txid is consensus identifier = SHA3-256(TxCoreBytes(T)); we reuse Sighash parser core slice as proxy:
-  -- in these vectors tx_kind=0x00 and DaCoreFieldsBytes is empty, so TxCoreBytes ends at locktime.
-  let txid :=
-    let r := RubinFormal.TxV2.parseTx txBytes
-    match r.txid with
-    | some t => t
-    | none => SHA3.sha3_256 ByteArray.empty
-
-  let mut vout : Nat := 0
-  for o in tx.outputs do
-    let op : Outpoint := { txid := txid, vout := vout }
-    next := next.insert op { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData, creationHeight := height, createdByCoinbase := false }
-    vout := vout + 1
-
-  pure (fee, next)
+  let prepared ← prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId
+  pure (prepared.fee, prepared.nextUtxoMap)
 
 def applyNonCoinbaseTxBasic
     (txBytes : Bytes)
