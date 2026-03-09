@@ -13,7 +13,7 @@ namespace BlockBasicCheckV1
 def MAX_FUTURE_DRIFT : Nat := 7200
 
 def enforceSigSuiteActivation (_txs : List Bytes) (_blockHeight : Nat) : Except String Unit :=
-  -- SLH-DSA removed from native consensus (Q-SLH-DEINTEG-02); activation gate is now a no-op.
+  -- Non-native native-suite gate removed; activation check is now a no-op.
   pure ()
 
 def insertNat (x : Nat) : List Nat → List Nat
@@ -81,7 +81,7 @@ def validateBlockBasicCheck
     (prevTimestamps : List Nat) : Except String Unit := do
   let pb ← BlockBasicV1.parseBlock blockBytes
 
-  -- signature suite activation gate (no-op after SLH-DSA removal).
+  -- signature suite activation gate (no-op after non-native native-suite removal).
   enforceSigSuiteActivation pb.txs blockHeight
 
   -- §25 step order (post-PR#418): pow → target → linkage → merkle → witness_commitment → timestamp
