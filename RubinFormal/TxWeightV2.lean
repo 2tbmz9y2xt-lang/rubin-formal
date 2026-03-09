@@ -13,6 +13,7 @@ namespace TxWeightV2
 def WITNESS_DISCOUNT_DIVISOR : Nat := 4
 
 def VERIFY_COST_ML_DSA_87 : Nat := 8
+def VERIFY_COST_UNKNOWN_SUITE : Nat := 64
 
 def MAX_WITNESS_ITEMS : Nat := 1024
 def MAX_WITNESS_BYTES_PER_TX : Nat := 100000
@@ -68,7 +69,12 @@ def parseOutputsForAnchor (c : Cursor) (n : Nat) : Option (Cursor × Nat) := do
     cur := cur4
   pure (cur, anchor)
 
-def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Option TxErr) := do
+-- Parse a single witness item for weight accounting.
+-- Returns (cursor, isML, isSigAlgInvalid, isSigNoncanonical).
+-- isML: true iff suite=ML_DSA_87 with canonical pubkey/sig lengths.
+-- isSigAlgInvalid: true for unknown suites (not sentinel, not ML_DSA_87).
+-- isSigNoncanonical: true for ML_DSA_87 with wrong pubkey/sig lengths.
+def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Bool × Bool) := do
   let (suite, c1) ← c.getU8?
   let suiteID := suite.toNat
   let (pubLen, c2, minimal1) ← c1.getCompactSize?
@@ -81,18 +87,18 @@ def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Option Tx
   if suiteID == SUITE_ID_SENTINEL then
     -- canonical sentinel encodings (see CANONICAL §5.4); only needed to preserve parse parity
     if pubLen == 0 && sigLen == 0 then
-      pure (c5, false, none)
+      pure (c5, false, false, false)
     else if pubLen == 32 then
       if sigLen == 1 then
         if sig.size == 1 && sig.get! 0 == 0x01 then
-          pure (c5, false, none)
+          pure (c5, false, false, false)
         else
           none
       else if sigLen >= 3 then
         if sig.size >= 3 && sig.get! 0 == 0x00 then
           let preLen := Wire.u16le? (sig.get! 1) (sig.get! 2)
           if preLen >= 1 && preLen <= TxV2.MAX_HTLC_PREIMAGE_BYTES && sigLen == 3 + preLen then
-            pure (c5, false, none)
+            pure (c5, false, false, false)
           else
             none
         else
@@ -102,42 +108,55 @@ def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Option Tx
     else
       none
   else if suiteID == SUITE_ID_ML_DSA_87 then
-    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen == ML_DSA_87_SIG_BYTES then
-      pure (c5, true, none)
+    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen == ML_DSA_87_SIG_BYTES + 1 then
+      pure (c5, true, false, false)
     else
-      pure (c5, false, some .sigNoncanonical)
+      -- Non-canonical ML-DSA-87 (wrong pubkey/sig lengths)
+      pure (c5, false, false, true)
   else
-    pure (c5, false, some .sigAlgInvalid)
+    -- Unknown suite ID
+    pure (c5, false, true, false)
 
-def parseWitnessSectionForWeight (c : Cursor) : Option (Cursor × TxErr × Nat × Nat × Nat) := do
+-- Witness section results.  Callers choose which fields to consume:
+--   weight function: uses mlCount + unknownSuiteCount, ignores error flags
+--   block/tx validation: uses error flags, ignores unknownSuiteCount
+structure WitnessSectionResult where
+  cursor         : Cursor
+  isOverflow     : Bool
+  startOff       : Nat
+  endOff         : Nat
+  mlCount        : Nat
+  unknownSuiteCount : Nat
+  anySigAlgInvalid  : Bool
+  anySigNoncanonical : Bool
+
+def parseWitnessSectionForWeight (c : Cursor) : Option WitnessSectionResult := do
   let startOff := c.off
   let (wCount, c1, minimal) ← c.getCompactSize?
   let _ ← requireMinimal minimal
   if wCount > MAX_WITNESS_ITEMS then
-    pure (c1, .witnessOverflow, startOff, c1.off, 0)
+    pure { cursor := c1, isOverflow := true, startOff := startOff, endOff := c1.off,
+           mlCount := 0, unknownSuiteCount := 0, anySigAlgInvalid := false, anySigNoncanonical := false }
   else
     let mut cur := c1
     let mut mlCount : Nat := 0
+    let mut unknownSuiteCount : Nat := 0
     let mut anySigAlgInvalid : Bool := false
     let mut anySigNoncanonical : Bool := false
 
     for _ in [0:wCount] do
-      let (cur', isML, e) ← parseWitnessItemForCounts cur
+      let (cur', isML, isSigAlg, isSigNoncan) ← parseWitnessItemForCounts cur
       cur := cur'
       if isML then mlCount := mlCount + 1
-      match e with
-      | none => ()
-      | some .sigAlgInvalid => anySigAlgInvalid := true
-      | some .sigNoncanonical => anySigNoncanonical := true
-      | some .witnessOverflow => ()
-      | some .parse => ()
+      if isSigAlg then
+        unknownSuiteCount := unknownSuiteCount + 1
+        anySigAlgInvalid := true
+      if isSigNoncan then anySigNoncanonical := true
 
     let endOff := cur.off
-    let err :=
-      if anySigAlgInvalid then .sigAlgInvalid
-      else if anySigNoncanonical then .sigNoncanonical
-      else .parse
-    pure (cur, err, startOff, endOff, mlCount)
+    pure { cursor := cur, isOverflow := false, startOff := startOff, endOff := endOff,
+           mlCount := mlCount, unknownSuiteCount := unknownSuiteCount,
+           anySigAlgInvalid := anySigAlgInvalid, anySigNoncanonical := anySigNoncanonical }
 
 def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
   let c0 : Cursor := { bs := tx, off := 0 }
@@ -184,19 +203,19 @@ def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
       | some x => pure x
     let baseSize := c9.off
 
-    let (cW, wErr, wStart, wEnd, mlCount) ←
+    let ws ←
       match parseWitnessSectionForWeight c9 with
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
-    let witnessSize := wEnd - wStart
+    let witnessSize := ws.endOff - ws.startOff
     if witnessSize > MAX_WITNESS_BYTES_PER_TX then
       throw "TX_ERR_WITNESS_OVERFLOW"
-    if wErr == .witnessOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-    if wErr == .sigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
-    if wErr == .sigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
+    -- Weight function does NOT throw sig errors (Go parity: CalcTxWeight §9).
+    -- Sig errors are caught by ParseTx/validation, not weight calculation.
 
     let (daLen, c10, minDa) ←
-      match cW.getCompactSize? with
+      match ws.cursor.getCompactSize? with
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
     if !minDa then throw "TX_ERR_PARSE"
@@ -215,7 +234,9 @@ def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
 
     let daSize := compactSizeLen daLen + daLen
     let daBytes := if txKind == 0x00 then 0 else daLen
-    let sigCost := mlCount * VERIFY_COST_ML_DSA_87
+    let mlCost := ws.mlCount * VERIFY_COST_ML_DSA_87
+    let unknownCost := ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE
+    let sigCost := mlCost + unknownCost
 
     let weight := (WITNESS_DISCOUNT_DIVISOR * baseSize) + witnessSize + daSize + sigCost
     pure { weight := weight, daBytes := daBytes, anchorBytes := anchorBytes }
