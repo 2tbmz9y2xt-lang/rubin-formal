@@ -178,6 +178,9 @@ def digestV1 (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat
     u32le core.locktime
   pure (SHA3.sha3_256 preimage)
 
+theorem digestV1_deterministic (tx : Bytes) (chainId : Bytes) (idx : Nat) (value : Nat) :
+    digestV1 tx chainId idx value = digestV1 tx chainId idx value := rfl
+
 end SighashV1
 
 end RubinFormal
