@@ -78,7 +78,7 @@ theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement 
         have hSigPos : 0 < w.signature.size := by omega
         simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
           UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-          hDistinct, hPub, hSig0, hSigB, hSigLe, hSigPos, Pure.pure]
+          hDistinct, hPub, hSig0, hSigB, hSigLe, hSigPos, Pure.pure]; rfl
   · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
       UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
       hDistinct, hPub]
