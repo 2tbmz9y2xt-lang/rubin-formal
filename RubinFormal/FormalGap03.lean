@@ -63,17 +63,22 @@ theorem det001_validation_order_proved : det001ValidationOrderStatement := by
 
 theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement := by
   intro w blockHeight hSuite
-  have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
-    native_decide
-    unfold validateWitnessItemLengths
-  simp [sem001MLDSABoundedLengthStatement, hSuite,
-    UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-    hDistinct]
+    have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by native_decide
   by_cases hPub : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES
-  <;> by_cases hSig0 : w.signature.size = 0
-  <;> by_cases hSigB : UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 < w.signature.size
-  <;> simp_all
-  <;> omega
+  · by_cases hSig0 : w.signature.size = 0
+    · simp [validateWitnessItemLengths, hSuite, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
+        UtxoApplyGenesisV1.SUITE_ID_SENTINEL, hDistinct, hPub, hSig0]
+      omega
+    · by_cases hSigB : UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 < w.signature.size
+      · simp [validateWitnessItemLengths, hSuite, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
+          UtxoApplyGenesisV1.SUITE_ID_SENTINEL, hDistinct, hPub, hSig0, hSigB]
+        omega
+      · simp [validateWitnessItemLengths, hSuite, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
+          UtxoApplyGenesisV1.SUITE_ID_SENTINEL, hDistinct, hPub, hSig0, hSigB]
+        omega
+  · simp [validateWitnessItemLengths, hSuite, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
+      UtxoApplyGenesisV1.SUITE_ID_SENTINEL, hDistinct, hPub]
+    omega
 set_option maxHeartbeats 1000000 in
 theorem validateP2PKSpendPreSig_binds_pubkey
     (entry : UtxoEntry)
