@@ -65,7 +65,8 @@ theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement 
   intro w blockHeight hSuite
   have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
     native_decide
-        simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
+  unfold validateWitnessItemLengths
+  simp [sem001MLDSABoundedLengthStatement, hSuite,
     UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
     hDistinct]
   constructor
