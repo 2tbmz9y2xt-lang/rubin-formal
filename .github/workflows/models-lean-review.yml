@@ -1,0 +1,91 @@
+name: "AI Lean Proof Review (GitHub Models)"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - '**/*.lean'
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+jobs:
+  ai-lean-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.lean' | head -c 80000)
+          if [ -z "$DIFF" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "diff<<DIFF_EOF" >> $GITHUB_OUTPUT
+          echo "$DIFF" >> $GITHUB_OUTPUT
+          echo "DIFF_EOF" >> $GITHUB_OUTPUT
+
+      - name: AI Lean Proof Analysis
+        if: steps.diff.outputs.skip != 'true'
+        id: review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY=$(jq -n \
+            --arg diff "${{ steps.diff.outputs.diff }}" \
+            '{
+              model: "openai/gpt-4.1",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are an expert Lean4 formal verification reviewer for the RUBIN blockchain protocol. The codebase contains formal proofs for: transaction parsing (TxParseV2), signature hashing (SighashV1), proof-of-work (PowV1), UTXO validation (UtxoBasicV1), block validation (BlockBasicV1), and vault state machines (VaultStateMachine). Focus on: 1) Soundness gaps - theorems that may not prove what they claim 2) Missing edge cases in decidability instances 3) Axiom usage that could weaken guarantees 4) sorry/admit placeholders that bypass proofs 5) Type coercion issues between Nat/Int/BitVec 6) Conformance gaps between Lean specs and Go reference implementation. Output structured markdown with severity levels."
+                },
+                {
+                  role: "user",
+                  content: ("Review these Lean4 proof changes for correctness and completeness:\n\n" + $diff)
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 4096
+            }')
+
+          RESPONSE=$(curl -sL \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
+            https://models.github.ai/inference/chat/completions \
+            -d "$BODY")
+
+          COMMENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: no response from model"')
+
+          echo "comment<<COMMENT_EOF" >> $GITHUB_OUTPUT
+          echo "$COMMENT" >> $GITHUB_OUTPUT
+          echo "COMMENT_EOF" >> $GITHUB_OUTPUT
+
+      - name: Post review comment
+        if: steps.diff.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## 📜 AI Lean Proof Review (GitHub Models — GPT-4.1)
+
+            ${{ steps.review.outputs.comment }}
+
+            ---
+            _Automated Lean4 proof analysis. Does not replace formal verification by Lean compiler._`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
