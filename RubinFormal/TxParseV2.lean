@@ -98,7 +98,7 @@ def parseWitnessItem (c : Cursor) : Option (Cursor × Option TxErr) := do
     else
       none
   else if suiteID == SUITE_ID_ML_DSA_87 then
-    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen == ML_DSA_87_SIG_BYTES + 1 then
+    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen > 0 && sigLen <= ML_DSA_87_SIG_BYTES + 1 then
       pure (c5, none)
     else
       pure (c5, some .sigNoncanonical)
