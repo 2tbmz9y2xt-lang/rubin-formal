@@ -65,13 +65,15 @@ theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement 
   intro w blockHeight hSuite
   have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
     native_decide
-  unfold validateWitnessItemLengths
+    unfold validateWitnessItemLengths
   simp [sem001MLDSABoundedLengthStatement, hSuite,
     UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
     hDistinct]
-  constructor
-  · intro h; push_neg at h; exact ⟨h.1, by omega, by omega⟩
-  · intro ⟨h1, h2, h3⟩; push_neg; exact ⟨h1, by omega, by omega⟩
+  by_cases hPub : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES
+  <;> by_cases hSig0 : w.signature.size = 0
+  <;> by_cases hSigB : UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 < w.signature.size
+  <;> simp_all
+  <;> omega
 set_option maxHeartbeats 1000000 in
 theorem validateP2PKSpendPreSig_binds_pubkey
     (entry : UtxoEntry)
