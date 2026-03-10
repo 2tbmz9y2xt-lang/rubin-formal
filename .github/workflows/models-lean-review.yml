@@ -12,50 +12,59 @@ permissions:
   models: read
 
 jobs:
-  ai-lean-review:
+  get-diff:
     runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.diff.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Get PR diff
         id: diff
         run: |
-          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.lean' | head -c 160000)
-          if [ -z "$DIFF" ]; then
+          git diff origin/${{ github.base_ref }}...HEAD -- '*.lean' | head -c 160000 > /tmp/pr-diff.txt
+          if [ ! -s /tmp/pr-diff.txt ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "No diff found" > /tmp/pr-diff.txt
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
           fi
-          echo "skip=false" >> $GITHUB_OUTPUT
-          echo "diff<<DIFF_EOF" >> $GITHUB_OUTPUT
-          echo "$DIFF" >> $GITHUB_OUTPUT
-          echo "DIFF_EOF" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr-diff
+          path: /tmp/pr-diff.txt
+          retention-days: 1
 
+  ai-lean-review:
+    needs: get-diff
+    if: needs.get-diff.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pr-diff
       - name: AI Lean Proof Analysis
-        if: steps.diff.outputs.skip != 'true'
         id: review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BODY=$(jq -n \
-            --arg diff "${{ steps.diff.outputs.diff }}" \
-            '{
-              model: "openai/gpt-5",
-              messages: [
-                {
-                  role: "system",
-                  content: "You are an expert Lean4 formal verification reviewer for the RUBIN blockchain protocol. The codebase contains formal proofs for: transaction parsing (TxParseV2), signature hashing (SighashV1), proof-of-work (PowV1), UTXO validation (UtxoBasicV1), block validation (BlockBasicV1), and vault state machines (VaultStateMachine). Focus on: 1) Soundness gaps - theorems that may not prove what they claim 2) Missing edge cases in decidability instances 3) Axiom usage that could weaken guarantees 4) sorry/admit placeholders that bypass proofs 5) Type coercion issues between Nat/Int/BitVec 6) Conformance gaps between Lean specs and Go reference implementation. Output structured markdown with severity levels."
-                },
-                {
-                  role: "user",
-                  content: ("Review these Lean4 proof changes for correctness and completeness:\n\n" + $diff)
-                }
-              ],
-              temperature: 0.1,
-              max_tokens: 16384
-            }')
-
+          DIFF=$(cat pr-diff.txt)
+          BODY=$(jq -n --arg diff "$DIFF" '{
+            model: "openai/gpt-5",
+            messages: [
+              {
+                role: "system",
+                content: "You are an expert Lean4 formal verification reviewer for the RUBIN blockchain protocol. The codebase contains formal proofs for: transaction parsing (TxParseV2), signature hashing (SighashV1), proof-of-work (PowV1), UTXO validation (UtxoBasicV1), block validation (BlockBasicV1), and vault state machines (VaultStateMachine). Focus on: 1) Soundness gaps - theorems that may not prove what they claim 2) Missing edge cases in decidability instances 3) Axiom usage that could weaken guarantees 4) sorry/admit placeholders that bypass proofs 5) Type coercion issues between Nat/Int/BitVec 6) Conformance gaps between Lean specs and Go reference implementation. Output structured markdown with severity levels."
+              },
+              {
+                role: "user",
+                content: ("Review these Lean4 proof changes for correctness and completeness:\n\n" + $diff)
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 16384
+          }')
           RESPONSE=$(curl -sL \
             -X POST \
             -H "Accept: application/vnd.github+json" \
@@ -64,33 +73,43 @@ jobs:
             -H "Content-Type: application/json" \
             https://models.github.ai/inference/chat/completions \
             -d "$BODY")
-
           COMMENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: no response from model"')
+          echo "$COMMENT" > /tmp/lean-review.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lean-review
+          path: /tmp/lean-review.txt
+          retention-days: 1
 
-          echo "comment<<COMMENT_EOF" >> $GITHUB_OUTPUT
-          echo "$COMMENT" >> $GITHUB_OUTPUT
-          echo "COMMENT_EOF" >> $GITHUB_OUTPUT
-
+  post-review:
+    needs: [get-diff, ai-lean-review]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lean-review
       - name: Post review comment
-        if: steps.diff.outputs.skip != 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const body = `## 📜 AI Lean Proof Review (GitHub Models — gpt-5)
-
-            ${{ steps.review.outputs.comment }}
-
-            ---
-            _Automated Lean4 proof analysis. Does not replace formal verification by Lean compiler._`;
-
-                        const marker = '<!-- ai-lean-proof-review -->';
+            const fs = require('fs');
+            const review = fs.readFileSync('lean-review.txt', 'utf8');
+            const body = [
+              '## \ud83d\udcdc AI Lean Proof Review (GitHub Models \u2014 gpt-5)',
+              '',
+              review,
+              '',
+              '---',
+              '_Automated Lean4 proof analysis. Does not replace formal verification by Lean compiler._'
+            ].join('\n');
+            const marker = '<!-- orchestrated-lean-review -->';
             const fullBody = marker + '\n' + body;
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            const existing = comments.find(c => c.body && c.body.includes('<!-- ai-lean-proof-review -->'));
+            const existing = comments.find(c => c.body && c.body.includes('<!-- orchestrated-lean-review -->'));
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
