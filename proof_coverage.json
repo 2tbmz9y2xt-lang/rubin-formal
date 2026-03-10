@@ -12,13 +12,13 @@
       "section_heading": "## 4. Consensus Constants (Wire-Level)",
       "status": "stated",
       "theorems": [
-        "RubinFormal.sem001_mldsa_exact_lengths_proved",
+        "RubinFormal.sem001_mldsa_bounded_lengths_proved",
         "RubinFormal.subsidy_u128_safety_proved",
         "RubinFormal.htlc_timelock_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.sem001_mldsa_exact_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
+        "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
       },
       "notes": "Registry entry anchors selected consensus constants that already participate in executable replay or bounded arithmetic proofs.",
       "limitations": [
@@ -33,13 +33,13 @@
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
         "RubinFormal.Conformance.cv_compact_vectors_pass",
-        "RubinFormal.sem001_mldsa_exact_lengths_proved",
+        "RubinFormal.sem001_mldsa_bounded_lengths_proved",
         "RubinFormal.Wire.compactSize_roundtrip",
         "RubinFormal.Wire.compactSize_overflow_safety"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.sem001_mldsa_exact_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
+        "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
         "RubinFormal.Wire.compactSize_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
         "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean"
       },
