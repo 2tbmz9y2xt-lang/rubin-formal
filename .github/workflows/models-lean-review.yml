@@ -22,7 +22,7 @@ jobs:
       - name: Get PR diff
         id: diff
         run: |
-          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.lean' | head -c 80000)
+          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.lean' | head -c 160000)
           if [ -z "$DIFF" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             exit 0
@@ -41,7 +41,7 @@ jobs:
           BODY=$(jq -n \
             --arg diff "${{ steps.diff.outputs.diff }}" \
             '{
-              model: "openai/gpt-4.1",
+              model: "openai/gpt-5",
               messages: [
                 {
                   role: "system",
@@ -53,7 +53,7 @@ jobs:
                 }
               ],
               temperature: 0.1,
-              max_tokens: 4096
+              max_tokens: 16384
             }')
 
           RESPONSE=$(curl -sL \
@@ -76,7 +76,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const body = `## 📜 AI Lean Proof Review (GitHub Models — GPT-4.1)
+            const body = `## 📜 AI Lean Proof Review (GitHub Models — gpt-5)
 
             ${{ steps.review.outputs.comment }}
 
