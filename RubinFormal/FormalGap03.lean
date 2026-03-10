@@ -74,14 +74,11 @@ theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement 
       · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
           UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
           hDistinct, hPub, hSig0, hSigB]
-        omega
       · have hSigLe : w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 := by omega
         have hSigPos : 0 < w.signature.size := by omega
         simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
           UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-          hDistinct, hPub, hSig0, hSigB, hSigLe, hSigPos]
-        change (Except.ok () : Except String Unit) = Except.ok () ↔ True
-        simp
+          hDistinct, hPub, hSig0, hSigB, hSigLe, hSigPos, Pure.pure]
   · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
       UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
       hDistinct, hPub]
