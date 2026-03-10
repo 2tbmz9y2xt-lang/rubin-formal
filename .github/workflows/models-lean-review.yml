@@ -17,7 +17,7 @@ jobs:
       outputs:
             skip: "${{ steps.diff.outputs.skip }}"
       steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Get PR diff
@@ -30,7 +30,7 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: pr-diff
           path: /tmp/pr-diff.txt
@@ -41,7 +41,7 @@ jobs:
     if: needs.get-diff.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: pr-diff
       - name: AI Lean Proof Analysis
@@ -75,7 +75,7 @@ jobs:
             -d "$BODY")
           COMMENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: no response from model"')
           echo "$COMMENT" > /tmp/lean-review.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: lean-review
           path: /tmp/lean-review.txt
@@ -85,11 +85,11 @@ jobs:
     needs: [get-diff, ai-lean-review]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: lean-review
       - name: Post review comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
