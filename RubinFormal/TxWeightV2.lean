@@ -108,7 +108,7 @@ def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Bool × B
     else
       none
   else if suiteID == SUITE_ID_ML_DSA_87 then
-    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen == ML_DSA_87_SIG_BYTES + 1 then
+    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen > 0 && sigLen <= ML_DSA_87_SIG_BYTES + 1 then
       pure (c5, true, false, false)
     else
       -- Non-canonical ML-DSA-87 (wrong pubkey/sig lengths)

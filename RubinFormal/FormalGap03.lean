@@ -14,12 +14,13 @@ def det001ValidationOrderStatement : Prop :=
     evalOrder (before ++ bad :: suffix) =
       (some bad.err, before.map ValidationCheck.name ++ [bad.name])
 
-def sem001MLDSAExactLengthStatement : Prop :=
+def sem001MLDSABoundedLengthStatement : Prop :=
   ∀ (w : WitnessItem) (blockHeight : Nat),
     w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 →
-      (validateWitnessItemLengths w blockHeight = .ok () ↔
+    (validateWitnessItemLengths w blockHeight = .ok () ↔
         w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
-        w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1)
+        0 < w.signature.size ∧
+        w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1)
 
 def p2pkPubkeyKeyIdBound (entry : UtxoEntry) (w : WitnessItem) : Prop :=
   (SHA3.sha3_256 w.pubkey != entry.covenantData.extract 1 33) = false
@@ -28,12 +29,13 @@ def sem002MLDSABindingStatement : Prop :=
   ∀ (entry : UtxoEntry) (w : WitnessItem) (blockHeight : Nat),
     validateWitnessItemLengths w blockHeight = .ok () →
     validateP2PKSpendPreSig entry w blockHeight = .ok () →
-      w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
-      w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
-      w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 ∧
-      entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
-      (entry.covenantData.get! 0).toNat = w.suiteId ∧
-      p2pkPubkeyKeyIdBound entry w
+    w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
+    w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
+    0 < w.signature.size ∧
+    w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 ∧
+    entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
+    (entry.covenantData.get! 0).toNat = w.suiteId ∧
+    p2pkPubkeyKeyIdBound entry w
 
 theorem evalOrderFrom_first_failure
     (evaluated : List String)
@@ -59,21 +61,25 @@ theorem det001_validation_order_proved : det001ValidationOrderStatement := by
   simpa [det001ValidationOrderStatement, Conformance.evalOrder] using
     evalOrderFrom_first_failure [] before suffix bad hBefore hBad
 
-theorem sem001_mldsa_exact_lengths_proved : sem001MLDSAExactLengthStatement := by
+theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement := by
   intro w blockHeight hSuite
   have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
     native_decide
   by_cases hPub : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES
-  · by_cases hSig : w.signature.size = UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1
-    · simp [sem001MLDSAExactLengthStatement, validateWitnessItemLengths, hSuite,
+  · by_cases hSig0 : w.signature.size = 0
+    · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
         UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-        hDistinct, hPub, hSig]
-      change (Except.ok () : Except String Unit) = Except.ok ()
-      rfl
-    · simp [sem001MLDSAExactLengthStatement, validateWitnessItemLengths, hSuite,
-        UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-        hDistinct, hPub, hSig]
-  · simp [sem001MLDSAExactLengthStatement, validateWitnessItemLengths, hSuite,
+        hDistinct, hPub, hSig0]
+    · by_cases hSigB : w.signature.size > UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1
+      · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
+          UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
+          hDistinct, hPub, hSig0, hSigB]
+      · have hSigLe : w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 := by omega
+        have hSigPos : 0 < w.signature.size := by omega
+        simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
+          UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
+          hDistinct, hPub, hSig0, hSigB, hSigLe, hSigPos, Pure.pure]; rfl
+  · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
       UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
       hDistinct, hPub]
 
@@ -84,9 +90,9 @@ theorem validateP2PKSpendPreSig_binds_pubkey
     (blockHeight : Nat)
     (hOk : validateP2PKSpendPreSig entry w blockHeight = .ok ()) :
     w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
-      entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
-      (entry.covenantData.get! 0).toNat = w.suiteId ∧
-      p2pkPubkeyKeyIdBound entry w := by
+    entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
+    (entry.covenantData.get! 0).toNat = w.suiteId ∧
+    p2pkPubkeyKeyIdBound entry w := by
   by_cases hSuite : (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true
   · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_ALG_INVALID" := by
       simp [validateP2PKSpendPreSig, hSuite, Except.bind]
@@ -131,20 +137,20 @@ theorem validateP2PKSpendPreSig_binds_pubkey
           exact hTag (by simp [hNeEq])
         cases hHash : (SHA3.sha3_256 w.pubkey != entry.covenantData.extract 1 33) with
         | true =>
-            have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_INVALID" := by
-              simp [validateP2PKSpendPreSig, hSuiteFalse, hSizeFalse, hTagFalse, hHash, Except.bind]
-              rfl
-            rw [hErr] at hOk
-            cases hOk
+          have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_INVALID" := by
+            simp [validateP2PKSpendPreSig, hSuiteFalse, hSizeFalse, hTagFalse, hHash, Except.bind]
+            rfl
+          rw [hErr] at hOk
+          cases hOk
         | false =>
-            exact ⟨hSuiteEq, hSizeEq, hTagEq, hHash⟩
+          exact ⟨hSuiteEq, hSizeEq, hTagEq, hHash⟩
 
 theorem sem002_mldsa_binding_proved : sem002MLDSABindingStatement := by
   intro entry w blockHeight hLens hPreSig
   have hBinding := validateP2PKSpendPreSig_binds_pubkey entry w blockHeight hPreSig
   rcases hBinding with ⟨hSuite, hCovSize, hSuiteTag, hKeyHash⟩
-  have hLengths := (sem001_mldsa_exact_lengths_proved w blockHeight hSuite).mp hLens
-  rcases hLengths with ⟨hPub, hSig⟩
-  exact ⟨hSuite, hPub, hSig, hCovSize, hSuiteTag, hKeyHash⟩
+  have hLengths := (sem001_mldsa_bounded_lengths_proved w blockHeight hSuite).mp hLens
+  rcases hLengths with ⟨hPub, hSigPos, hSigLe⟩
+  exact ⟨hSuite, hPub, hSigPos, hSigLe, hCovSize, hSuiteTag, hKeyHash⟩
 
 end RubinFormal
