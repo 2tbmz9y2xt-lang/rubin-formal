@@ -83,9 +83,26 @@ jobs:
             ---
             _Automated Lean4 proof analysis. Does not replace formal verification by Lean compiler._`;
 
-            await github.rest.issues.createComment({
+                        const marker = '<!-- ai-lean-proof-review -->';
+            const fullBody = marker + '\n' + body;
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: body
             });
+            const existing = comments.find(c => c.body && c.body.includes('<!-- ai-lean-proof-review -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: fullBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: fullBody
+              });
+            }
