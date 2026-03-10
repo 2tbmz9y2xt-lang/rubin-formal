@@ -86,7 +86,11 @@ theorem blockSubsidy_bounded (h ag : Nat) :
       · -- baseReward ≥ TAIL → result is shiftRight(remaining, 20) ≤ remaining ≤ MINEABLE_CAP
         exact Nat.le_trans (nat_shiftRight_le _ _) (Nat.sub_le _ _)
 
-/-- MINEABLE_CAP fits in u64. -/
+/-- MINEABLE_CAP fits in u64.
+    F-AUDIT-11: native_decide is used because these are concrete numeric comparisons
+    (4900000000000000 ≤ 2^64-1). Lean's `decide` times out on numbers this large.
+    `norm_num` (Mathlib) would be kernel-verified but Mathlib is not a dependency.
+    native_decide compiles to a native binary checked by the Lean compiler. -/
 theorem mineable_cap_in_u64 : SubsidyV1.MINEABLE_CAP ≤ maxU64 := by
   native_decide
 
@@ -105,6 +109,7 @@ theorem subsidy_accumulation_in_u128 (h ag fees : Nat)
   calc ag + SubsidyV1.blockSubsidy h ag + fees
       ≤ SubsidyV1.MINEABLE_CAP + SubsidyV1.MINEABLE_CAP + maxU64 :=
         Nat.add_le_add (Nat.add_le_add hAg hSub) hFees
+    -- F-AUDIT-11: see mineable_cap_in_u64 comment for native_decide rationale.
     _ ≤ maxU128 := by native_decide
 
 end RubinFormal

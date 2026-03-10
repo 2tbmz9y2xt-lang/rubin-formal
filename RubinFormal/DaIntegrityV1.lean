@@ -98,12 +98,6 @@ def parseDaChunkCore (c : Cursor) : Option (Bytes × Nat × Bytes × Cursor) := 
   let (h, c3) ← c2.getBytes? 32
   pure (daId, idx, h, c3)
 
-def mapWitnessErr (wErr : Wire.TxErr) : Option String :=
-  if wErr == .witnessOverflow then some "TX_ERR_WITNESS_OVERFLOW"
-  else if wErr == .sigAlgInvalid then some "TX_ERR_SIG_ALG_INVALID"
-  else if wErr == .sigNoncanonical then some "TX_ERR_SIG_NONCANONICAL"
-  else none
-
 def parseDATx (tx : Bytes) : Except String ParsedDATx := do
   let c0 : Cursor := { bs := tx, off := 0 }
   let (_, c1) ←
@@ -167,18 +161,18 @@ def parseDATx (tx : Bytes) : Except String ParsedDATx := do
           chunkHash := some h
           pure c'
 
-  let (cW, wErr, wStart, wEnd, _ml) ←
+  let ws ←
     match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
     | none => throw "TX_ERR_PARSE"
     | some x => pure x
-  let witBytes := wEnd - wStart
+  let witBytes := ws.endOff - ws.startOff
   if witBytes > RubinFormal.TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
-  match mapWitnessErr wErr with
-  | some e => throw e
-  | none => pure ()
+  if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
+  if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
+  if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
 
   let (daLen, c10, minDa) ←
-    match cW.getCompactSize? with
+    match ws.cursor.getCompactSize? with
     | none => throw "TX_ERR_PARSE"
     | some x => pure x
   if !minDa then throw "TX_ERR_PARSE"

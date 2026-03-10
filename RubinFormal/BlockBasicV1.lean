@@ -133,17 +133,17 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
     let coreEnd := c9.off
-    let (cW, wErr, wStart, wEnd, _ml) ←
+    let ws ←
       match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
-    let witBytes := wEnd - wStart
+    let witBytes := ws.endOff - ws.startOff
     if witBytes > RubinFormal.TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
-    if wErr == .witnessOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-    if wErr == .sigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
-    if wErr == .sigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
+    if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
+    if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
     let (daLen, c10, minDa) ←
-      match cW.getCompactSize? with
+      match ws.cursor.getCompactSize? with
       | none => throw "BLOCK_ERR_PARSE"
       | some x => pure x
     if !minDa then throw "TX_ERR_PARSE"
@@ -290,6 +290,29 @@ def validateBlockBasic
   if gotCommit != expectCommit then
     throw "BLOCK_ERR_WITNESS_COMMITMENT"
   pure ()
+
+-- F-AUDIT-04: Duplicate txid uniqueness.
+-- Go enforces nonce uniqueness in validateBlockTxSemantics (block_basic_txs.go:35-39)
+-- via TX_ERR_NONCE_REPLAY. Txid = SHA3(core bytes) which includes the nonce, so
+-- under collision resistance, unique nonces ⟹ unique txids.
+-- The basic block validator here does not repeat that check (it runs in a separate
+-- pass in Go); this section documents the invariant for auditors.
+
+/-- Check that a list of byte-arrays has no duplicates (quadratic, OK for proof). -/
+def noDuplicateByteArrays : List Bytes → Bool
+  | [] => true
+  | x :: rest => !rest.contains x && noDuplicateByteArrays rest
+
+/-- noDuplicateByteArrays on empty list is trivially true. -/
+theorem noDuplicateByteArrays_nil : noDuplicateByteArrays [] = true := rfl
+
+/-- noDuplicateByteArrays implies the head is not in the tail. -/
+theorem noDuplicateByteArrays_head_not_in_tail
+    (x : Bytes) (rest : List Bytes)
+    (h : noDuplicateByteArrays (x :: rest) = true) :
+    rest.contains x = false := by
+  simp [noDuplicateByteArrays] at h
+  exact h.1
 
 end BlockBasicV1
 

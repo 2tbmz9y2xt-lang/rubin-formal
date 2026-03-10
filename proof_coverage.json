@@ -8,6 +8,25 @@
   "refinement_bridge_file": "rubin-formal/refinement_bridge.json",
   "coverage": [
     {
+      "section_key": "consensus_constants",
+      "section_heading": "## 4. Consensus Constants (Wire-Level)",
+      "status": "stated",
+      "theorems": [
+        "RubinFormal.sem001_mldsa_exact_lengths_proved",
+        "RubinFormal.subsidy_u128_safety_proved",
+        "RubinFormal.htlc_timelock_proved"
+      ],
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.sem001_mldsa_exact_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
+      },
+      "notes": "Registry entry anchors selected consensus constants that already participate in executable replay or bounded arithmetic proofs.",
+      "limitations": [
+        "No single universal theorem for every numeric constant in §4 is claimed here.",
+        "Coverage scope is limited to constants exercised by the listed theorems."
+      ]
+    },
+    {
       "section_key": "transaction_wire",
       "section_heading": "## 5. Transaction Wire",
       "status": "proved",
@@ -20,9 +39,14 @@
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.sem001_mldsa_exact_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
         "RubinFormal.Wire.compactSize_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
         "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean"
-      }
+      },
+      "limitations": [
+        "The legacy toy model in ByteWire.lean is not treated as a universal wire proof.",
+        "Byte-accurate claim is limited to the listed replay and ByteWireV2 theorems."
+      ]
     },
     {
       "section_key": "transaction_identifiers",
@@ -46,20 +70,34 @@
     {
       "section_key": "witness_commitment",
       "section_heading": "### 10.4.1 Witness Commitment (Coinbase Anchor)",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.Conformance.cv_block_basic_vectors_pass"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "notes": "Current registry entry is bounded to executable replay for witness-commitment enforcement in block-basic vectors.",
+      "limitations": [
+        "PinnedSections.bootstrap theorem for this section is intentionally too weak to count as a universal witness-commitment proof.",
+        "No standalone proof of full witness-commitment semantics is claimed here."
+      ]
     },
     {
       "section_key": "sighash_v1",
       "section_heading": "## 12. Sighash v1 (Normative)",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
-        "RubinFormal.Conformance.cv_sighash_vectors_pass"
+        "RubinFormal.Conformance.cv_sighash_vectors_pass",
+        "RubinFormal.digestV1_deterministic"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.digestV1_deterministic": "rubin-formal/RubinFormal/SighashV1.lean"
+      },
+      "notes": "Claim is limited to executable replay on the conformance fixture set plus determinism of digestV1.",
+      "limitations": [
+        "The bootstrap size-invariant theorem in PinnedSections is not treated as a full sighash correctness proof.",
+        "No universal equivalence proof for every §12 case beyond conformance replay is claimed."
+      ]
     },
     {
       "section_key": "consensus_error_codes",
@@ -85,9 +123,13 @@
       "section_heading": "## 15. Difficulty Update (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_pow_vectors_pass"
+        "RubinFormal.Conformance.cv_pow_vectors_pass",
+        "RubinFormal.retargetV1_clamp_bounded"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.retargetV1_clamp_bounded": "rubin-formal/RubinFormal/PowV1.lean"
+      }
     },
     {
       "section_key": "transaction_structural_rules",
@@ -100,18 +142,9 @@
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.sem002_mldsa_binding_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
+        "RubinFormal.sem002_mldsa_binding_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
+        "RubinFormal.core_ext_cursor_no_ambiguity_proved": "rubin-formal/RubinFormal/PinnedSections.lean"
       }
-    },
-    {
-      "section_key": "core_ext_softfork_tightening",
-      "section_heading": "#### 23.2.2 `CORE_EXT` Deployment Profiles (Normative)",
-      "status": "proved",
-      "theorems": [
-        "RubinFormal.core_ext_tightening_proved",
-        "RubinFormal.core_ext_preactivation_strict_superset_proved"
-      ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
     },
     {
       "section_key": "replay_domain_checks",
@@ -150,27 +183,25 @@
         "RubinFormal.Conformance.cv_vault_with_lifecycle_pass": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_full_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean"
-      }
+      },
+      "notes": "Section claim is limited to structural UTXO/value invariants, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
+      "limitations": [
+        "vault_policy_default_order_safe_proved models only the spend-side safe subset for CV-VAULT-POLICY.",
+        "Uncovered tx-level predicates remain: creation_owner_auth_p2pk_or_multisig, output_whitelist_closure, vault_recursion_ban, parse_vault_canonical_invariants, owner_destination_forbidden."
+      ]
     },
     {
-      "section_key": "block_validation_order",
-      "section_heading": "## 25. Block Validation Order (Normative)",
+      "section_key": "coinbase_and_subsidy",
+      "section_heading": "## 19. Coinbase and Subsidy (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved",
-        "RubinFormal.utxo_conservation_theorem",
-        "RubinFormal.no_double_spend_theorem",
-        "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved",
-        "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available",
-        "RubinFormal.scanInputs_no_intra_tx_double_spend"
+        "RubinFormal.Conformance.cv_subsidy_vectors_pass",
+        "RubinFormal.subsidy_u128_safety_proved",
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved"
       ],
-      "file": "rubin-formal/RubinFormal/SubsidyV1.lean",
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
-        "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
-        "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
-        "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
-        "RubinFormal.scanInputs_no_intra_tx_double_spend": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved": "rubin-formal/RubinFormal/SubsidyV1.lean"
       }
     },
     {
@@ -195,19 +226,55 @@
         "RubinFormal.Conformance.cv_da_integrity_vectors_pass"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+    },
+    {
+      "section_key": "block_timestamp_rules",
+      "section_heading": "## 22. Block Timestamp Rules (Normative)",
+      "status": "stated",
+      "theorems": [
+        "RubinFormal.Conformance.cv_timestamp_vectors_pass"
+      ],
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "notes": "Current entry is executable replay for timestamp-bounds and block-basic timestamp validation vectors.",
+      "limitations": [
+        "No standalone universal theorem for every timestamp-rule case is claimed beyond conformance replay."
+      ]
+    },
+    {
+      "section_key": "block_validation_order",
+      "section_heading": "## 25. Block Validation Order (Normative)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved",
+        "RubinFormal.utxo_conservation_theorem",
+        "RubinFormal.no_double_spend_theorem",
+        "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved",
+        "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available",
+        "RubinFormal.scanInputs_no_intra_tx_double_spend"
+      ],
+      "file": "rubin-formal/RubinFormal/SubsidyV1.lean",
+      "theorem_files": {
+        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.scanInputs_no_intra_tx_double_spend": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
+      }
     }
   ],
   "proof_level": "refinement",
   "claims": {
     "allowed": [
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; this is not a universal proof of CANONICAL semantics",
-      "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
+      "Go(reference) \u2192 Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
+      "The pinned-section registry covers all 17 hash-pinned section keys, but some entries are intentionally stated or explicitly scope-limited via notes/limitations",
       "formal claims are bounded by explicit forbidden claims below"
     ],
     "forbidden": [
       "formal verification of full RUBIN consensus / CANONICAL semantics",
-      "cryptographic security proofs of ML-DSA / SHA3-256",
+      "cryptographic security proofs of ML-DSA / non-native candidate suites / SHA3-256",
       "bit-exact wire/serialization proof beyond what is exercised by conformance fixtures",
+      "treating formal-only extra theorems as additional pinned-section coverage when they are not in the registry",
       "universal mechanized refinement between spec text and Go/Rust implementations"
     ]
   }

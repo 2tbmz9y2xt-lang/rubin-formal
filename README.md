@@ -5,8 +5,8 @@
 ## Что есть сейчас
 
 - Lean4-пакет `RubinFormal`
-- `proof_coverage.json` с machine-readable coverage registry (текущая явная формальная матрица: 13 pinned section keys)
-- модельные теоремы (`status=proved`) для pinned секций в `RubinFormal/PinnedSections.lean`
+- `proof_coverage.json` с machine-readable coverage registry по всем 17 pinned section keys
+- formal registry entries со статусами `proved` / `stated` и явными `notes` / `limitations` там, где claim scope уже не тянет на полное секционное доказательство
 
 ## Граница claims (критично)
 
@@ -17,14 +17,15 @@
 
 Разрешённые формулировки (OK):
 
-- “Lean executable semantics replay all conformance fixtures (CV-*.json)”
-- “Go(reference) → Lean refinement is checked for critical ops over conformance fixture set”
+- "Lean executable semantics replay all conformance fixtures (CV-*.json)"
+- "Go(reference) → Lean refinement is checked for critical ops over conformance fixture set"
+- "Pinned-section coverage is machine-readable, but some section entries are intentionally `stated` or explicitly scope-limited"
 
 Запрещённые формулировки (NOT OK):
 
-- “formal verification of RUBIN consensus / CANONICAL”
-- “bit-exact wire/serialization proven”
-- “universal mechanized equivalence between spec text and Go/Rust implementations”
+- "formal verification of RUBIN consensus / CANONICAL"
+- "bit-exact wire/serialization proven"
+- "universal mechanized equivalence between spec text and Go/Rust implementations"
 
 Источник истины по границе claims — `rubin-formal/proof_coverage.json` (`proof_level`, `claims`).
 Дополнительно используется `claim_level` (`toy|byte|refined`) с CI-валидацией консистентности относительно `proof_level`.
@@ -32,28 +33,34 @@
 ## Risk model / CI gate
 
 - Док: `rubin-formal/RISK_MODEL.md`
-- Скрипты:
-  - `tools/formal_risk_score.py`
-  - `tools/check_formal_risk_gate.py --profile phase0`
-  - `tools/check_formal_refinement_bridge.py`
-  - `tools/check_formal_claims_lint.py`
+- Lean validation в standalone репо: `lake build`
+- Registry/claims lint в integrated workspace выполняются sibling-tooling из `../rubin-protocol/tools/`
 
 ## Что это значит
 
-- Это **не** полный freeze-ready пакет уровня “универсальная байтовая модель wire + state transition для всех секций”.
+- Это **не** полный freeze-ready пакет уровня "универсальная байтовая модель wire + state transition для всех секций".
 - Консенсусные правила не меняются.
-- Формальный coverage registry сейчас явно отражает 13 pinned section keys; остальные pinned keys
-  покрываются conformance/CI и должны коммуницироваться как такой coverage (без overclaim).
+- Формальный coverage registry сейчас явно отражает все 17 pinned section keys.
+- Не все 17 записей имеют одинаковую силу: часть entries остаётся `stated`, а часть `proved` entries
+  дополнительно ограничена `notes` / `limitations` в `proof_coverage.json`.
+- Extra formal-only theorems не считаются pinned-section claims, если они не внесены в machine-readable registry.
 
 ## Локальный запуск
 
 ```bash
-scripts/dev-env.sh -- bash -lc 'cd rubin-formal && lake env lean --version'
-scripts/dev-env.sh -- bash -lc 'cd rubin-formal && lake build'
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean --version
+lake build
+```
+
+В integrated workspace можно использовать wrapper:
+
+```bash
+cd ../rubin-protocol && scripts/dev-env.sh -- bash -lc 'cd ../rubin-formal && lake build'
 ```
 
 ## Дальше
 
-1. Расширить формальный coverage registry с 13 до полного набора pinned section keys.
-2. Углубить универсальные теоремы beyond-fixtures поверх текущего refinement слоя.
-3. Поддерживать `proof_coverage.json` в синхроне со `spec/SECTION_HASHES.json` и narrative в `rubin-spec`.
+1. Углубить `stated` entries и scope-limited `proved` entries до более сильных секционных теорем там, где это действительно нужно.
+2. Поддерживать `proof_coverage.json` в синхроне со `spec/SECTION_HASHES.json` и narrative в `rubin-spec`.
+3. Не поднимать formal-only extra theorems в публичные pinned-section claims без явного registry update.
