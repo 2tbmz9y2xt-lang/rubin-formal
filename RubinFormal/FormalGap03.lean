@@ -65,17 +65,26 @@ theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement 
   intro w blockHeight hSuite
   have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
     native_decide
-  constructor
-  · intro h
-    simp [validateWitnessItemLengths, hSuite,
+  by_cases hPub : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES
+  · by_cases hSig0 : w.signature.size = 0
+    · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
+        UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
+        hDistinct, hPub, hSig0]
+    · by_cases hSigB : w.signature.size > UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1
+      · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
+          UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
+          hDistinct, hPub, hSig0, hSigB]
+        omega
+      · have hSigLe : w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1 := by omega
+        have hSigPos : 0 < w.signature.size := by omega
+        simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
+          UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
+          hDistinct, hPub, hSig0, hSigB, hSigLe, hSigPos]
+        change (Except.ok () : Except String Unit) = Except.ok () ↔ True
+        simp
+  · simp [sem001MLDSABoundedLengthStatement, validateWitnessItemLengths, hSuite,
       UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-      hDistinct] at h
-    omega
-  · intro ⟨hPub, hSigPos, hSigLe⟩
-    simp [validateWitnessItemLengths, hSuite,
-      UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, UtxoApplyGenesisV1.SUITE_ID_SENTINEL,
-      hDistinct, hPub, hSigPos, hSigLe]
-    omega
+      hDistinct, hPub]
 
 set_option maxHeartbeats 1000000 in
 theorem validateP2PKSpendPreSig_binds_pubkey
