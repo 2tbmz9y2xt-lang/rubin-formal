@@ -162,6 +162,7 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
+        "RubinFormal.UtxoBasicV1.validateCoinbaseMaturity_reject_iff",
         "RubinFormal.det001_validation_order_proved",
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved",
         "RubinFormal.UtxoApplyGenesisV1.creation_owner_auth_p2pk_or_multisig",
@@ -180,6 +181,7 @@
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.UtxoBasicV1.validateCoinbaseMaturity_reject_iff": "rubin-formal/RubinFormal/UtxoBasicV1.lean",
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved": "rubin-formal/RubinFormal/Conformance/CVVaultPolicyReplay.lean",
         "RubinFormal.UtxoApplyGenesisV1.creation_owner_auth_p2pk_or_multisig": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
         "RubinFormal.UtxoApplyGenesisV1.output_whitelist_closure": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
@@ -195,7 +197,7 @@
         "RubinFormal.Conformance.vault_full_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean"
       },
-      "notes": "Section claim is limited to structural UTXO/value invariants, concrete tx-level vault predicate witnesses, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
+      "notes": "Section claim is limited to structural UTXO/value invariants, a direct immature-coinbase reject boundary theorem, concrete tx-level vault predicate witnesses, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
       "limitations": [
         "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1↔L2 equivalence for all vault transactions."
       ]
