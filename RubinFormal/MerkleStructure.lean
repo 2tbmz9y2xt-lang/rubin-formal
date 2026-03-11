@@ -44,6 +44,10 @@ theorem reduceLevel_length_lt (xs : List Bytes) (h : 2 ≤ xs.length) :
           simp [reduceLevel]
           omega
 
+theorem merkleRoot_termination_measure (level : List Bytes) (h : 2 ≤ level.length) :
+    (reduceLevel level).length < level.length := by
+  exact reduceLevel_length_lt level h
+
 theorem leafTag_ne_nodeTag : (0x00 : UInt8) ≠ 0x01 := by
   decide
 
