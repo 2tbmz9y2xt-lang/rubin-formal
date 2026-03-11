@@ -1,4 +1,5 @@
-import RubinFormal.ByteWire
+import RubinFormal.ByteWireLegacy
+import RubinFormal.ByteWireV2
 import RubinFormal.ArithmeticSafety
 import RubinFormal.Conformance.Index
 import RubinFormal.PinnedSections

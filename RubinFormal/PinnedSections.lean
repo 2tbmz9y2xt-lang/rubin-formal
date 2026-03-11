@@ -1,5 +1,5 @@
 import RubinFormal.CriticalInvariants
-import RubinFormal.ByteWire
+import RubinFormal.ByteWireLegacy
 import RubinFormal.ArithmeticSafety
 import RubinFormal.CoreExtInvariants
 import RubinFormal.SighashV1
@@ -7,10 +7,16 @@ import RubinFormal.CovenantGenesisV1
 
 namespace RubinFormal
 
+/-- Bootstrap-only transaction-wire statement.
+    The `CompactSize` and `TxMini` conjuncts intentionally use the legacy toy model in
+    `ByteWireLegacy`; byte-accurate wire claims come from `ByteWireV2` and conformance replay,
+    as tracked in `proof_coverage.json`. -/
 def transactionWireStatement : Prop :=
   parseTransactionWire [] = none ∧
-  (∀ n : Nat, n < 253 → parseCompactSize (encodeCompactSize n) = some (n, [])) ∧
-  (∀ tx : TxMini, txMiniByteValid tx → parseTxMini (serializeTxMini tx) = some tx)
+  (∀ n : Nat, n < 253 →
+    ByteWireLegacy.parseCompactSizeToy (ByteWireLegacy.encodeCompactSizeToy n) = some (n, [])) ∧
+  (∀ tx : ByteWireLegacy.TxMini, ByteWireLegacy.txMiniByteValid tx →
+    ByteWireLegacy.parseTxMini (ByteWireLegacy.serializeTxMini tx) = some tx)
 /-- v2 (F-01 fix): ByteArray preimage distinctness for txid ≠ wtxid.
     When witness is non-empty (coreEnd < tx.size), the txid preimage
     (tx.extract 0 coreEnd) differs from the wtxid preimage (full tx). -/
@@ -109,9 +115,9 @@ theorem transaction_wire_proved : transactionWireStatement := by
   refine ⟨?_, ?_, ?_⟩
   · simpa using parse_empty_none
   · intro n hn
-    exact parse_encodeCompactSize_roundtrip n hn
+    exact ByteWireLegacy.parse_encodeCompactSizeToy_roundtrip n hn
   · intro tx htx
-    exact parse_serializeTxMini_roundtrip tx htx
+    exact ByteWireLegacy.parse_serializeTxMini_roundtrip tx htx
 
 theorem transaction_identifiers_proved : transactionIdentifiersStatement := by
   intro tx coreEnd h
