@@ -15,4 +15,5 @@ import RubinFormal.ConnectBlockStrong
 import RubinFormal.CovenantGenesisV1
 import RubinFormal.UtxoApplyGenesisV1
 import RubinFormal.FormalGap03
+import RubinFormal.BlockValidationOrder
 import RubinFormal.Refinement.Index
