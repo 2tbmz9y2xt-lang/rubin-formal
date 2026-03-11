@@ -23,7 +23,7 @@ def vaultPolicyCoverageComplements : List String := [
 ]
 
 /-- Spend-side safe-subset evaluator for `CV-VAULT-POLICY`.
-    This is not a full L1↔L2 equivalence model; see `vaultPolicyCoverageGaps`. -/
+    This is not a full L1↔L2 equivalence model; see `vaultPolicyCoverageComplements`. -/
 def vaultPolicyEval (v : CVVaultPolicyVector) : (Bool × Option String) :=
   let sentinelOk :=
     v.sentinelSuiteId == 0 &&
