@@ -44,7 +44,7 @@
         "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean"
       },
       "limitations": [
-        "The legacy toy model in ByteWire.lean is not treated as a universal wire proof.",
+        "The deprecated shim ByteWire.lean is not a proof surface; the toy bootstrap model lives in ByteWireLegacy.lean.",
         "Byte-accurate claim is limited to the listed replay and ByteWireV2 theorems."
       ]
     },
