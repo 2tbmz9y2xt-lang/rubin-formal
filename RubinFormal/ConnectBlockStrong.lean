@@ -382,4 +382,69 @@ theorem no_double_spend_theorem
                           tx utxoMap height blockTimestamp chainId prepared hPrep
                       · exact ih prepared.nextUtxoMap feesTail finalTail hTail
 
+/-- Scoped context for sequentially applying already-parsed non-coinbase block
+transactions over an evolving UTXO map. This deliberately stays below the
+full `connectBlockBasic` surface: header linkage, PoW, and coinbase checks are
+proved elsewhere. -/
+structure ChainConnectStep where
+  txs : List Bytes
+  height : Nat
+  blockTimestamp : Nat
+  chainId : Bytes
+
+/-- Execute a list of block-local `connectBlockTxs` steps, threading the UTXO
+map from one block to the next. -/
+def connectBlockSequence
+    (steps : List ChainConnectStep)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint) :
+    Except String (Std.RBMap Outpoint UtxoEntry cmpOutpoint) :=
+  match steps with
+  | [] => .ok utxoMap
+  | step :: rest =>
+      match connectBlockTxs step.txs utxoMap step.height step.blockTimestamp step.chainId with
+      | .error e => .error e
+      | .ok (_sumFees, nextUtxoMap) => connectBlockSequence rest nextUtxoMap
+
+/-- Chain-level composition witness for `connectBlockSequence`.
+If sequential block application succeeds, each step preserves the same
+block-local UTXO conservation and anti-double-spend invariants that were
+already proved for a single `connectBlockTxs` call. -/
+def chainConsistency
+    (steps : List ChainConnectStep)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint) : Prop :=
+  match steps with
+  | [] => True
+  | step :: rest =>
+      ∃ sumFees nextUtxoMap,
+        connectBlockTxs step.txs utxoMap step.height step.blockTimestamp step.chainId =
+          .ok (sumFees, nextUtxoMap) ∧
+        utxo_conserved step.txs utxoMap step.height step.blockTimestamp step.chainId ∧
+        no_double_spend step.txs utxoMap step.height step.blockTimestamp step.chainId ∧
+        chainConsistency rest nextUtxoMap
+
+theorem chainConsistency_inductive
+    (steps : List ChainConnectStep)
+    (utxoMap finalMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (hSequence : connectBlockSequence steps utxoMap = .ok finalMap) :
+    chainConsistency steps utxoMap := by
+  induction steps generalizing utxoMap finalMap with
+  | nil =>
+      simp [connectBlockSequence, chainConsistency]
+  | cons step rest ih =>
+      cases hStep : connectBlockTxs step.txs utxoMap step.height step.blockTimestamp step.chainId with
+      | error e =>
+          simp [connectBlockSequence, hStep] at hSequence
+      | ok connectResult =>
+          cases connectResult with
+          | mk sumFees nextUtxoMap =>
+              simp [connectBlockSequence, hStep] at hSequence
+              refine ⟨sumFees, nextUtxoMap, hStep, ?_, ?_, ?_⟩
+              · exact utxo_conservation_theorem
+                  step.txs utxoMap step.height step.blockTimestamp step.chainId
+                  sumFees nextUtxoMap hStep
+              · exact no_double_spend_theorem
+                  step.txs utxoMap step.height step.blockTimestamp step.chainId
+                  sumFees nextUtxoMap hStep
+              · exact ih nextUtxoMap finalMap hSequence
+
 end RubinFormal
