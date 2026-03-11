@@ -93,10 +93,11 @@
       "theorem_files": {
         "RubinFormal.digestV1_deterministic": "rubin-formal/RubinFormal/SighashV1.lean"
       },
-      "notes": "Claim is limited to executable replay on the conformance fixture set plus determinism of digestV1.",
+      "notes": "Claim is limited to executable replay on the conformance fixture set plus determinism of digestV1; structural pre-hash injectivity is intentionally outside the claimed proof surface for this entry.",
       "limitations": [
         "The bootstrap size-invariant theorem in PinnedSections is not treated as a full sighash correctness proof.",
-        "No universal equivalence proof for every §12 case beyond conformance replay is claimed."
+        "No universal equivalence proof for every §12 case beyond conformance replay is claimed.",
+        "No standalone theorem is claimed that different signing contexts necessarily produce distinct pre-hash sighash preimage bytes before SHA3-256."
       ]
     },
     {
