@@ -161,6 +161,7 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
+        "RubinFormal.UtxoBasicV1.validateCoinbaseMaturity_reject_iff",
         "RubinFormal.det001_validation_order_proved",
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved",
         "RubinFormal.triggered_implies_sweepable",
@@ -174,6 +175,7 @@
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.UtxoBasicV1.validateCoinbaseMaturity_reject_iff": "rubin-formal/RubinFormal/UtxoBasicV1.lean",
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved": "rubin-formal/RubinFormal/Conformance/CVVaultPolicyReplay.lean",
         "RubinFormal.triggered_implies_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
         "RubinFormal.cancelled_implies_not_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
@@ -184,7 +186,7 @@
         "RubinFormal.Conformance.vault_full_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean"
       },
-      "notes": "Section claim is limited to structural UTXO/value invariants, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
+      "notes": "Section claim is limited to structural UTXO/value invariants, a direct immature-coinbase reject boundary theorem, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
       "limitations": [
         "vault_policy_default_order_safe_proved models only the spend-side safe subset for CV-VAULT-POLICY.",
         "Uncovered tx-level predicates remain: creation_owner_auth_p2pk_or_multisig, output_whitelist_closure, vault_recursion_ban, parse_vault_canonical_invariants, owner_destination_forbidden."
