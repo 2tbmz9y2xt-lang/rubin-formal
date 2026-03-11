@@ -30,12 +30,18 @@ jobs:
               : 'failure';
             const description = state === 'success' ? 'build passed' : `build ${state}`;
             const target_url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.sha,
-              state,
-              context: 'build',
-              description,
-              target_url,
-            });
+            const shas = new Set([context.sha]);
+            if (context.eventName === 'pull_request') {
+              shas.add(context.payload.pull_request.head.sha);
+            }
+            for (const sha of shas) {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha,
+                state,
+                context: 'build',
+                description,
+                target_url,
+              });
+            }

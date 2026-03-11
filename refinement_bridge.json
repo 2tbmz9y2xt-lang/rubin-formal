@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "status": "baseline",
-  "notes": "Bridge map for model theorem -> executable conformance op evidence. This is baseline trace-compatibility metadata, not full mechanized refinement.",
+  "status": "partial-mechanized",
+  "notes": "Bridge map for model theorem -> executable conformance op evidence. The registry remains narrower than universal mechanized refinement, but `retarget_v1` is now backed by a machine-checked Go-trace contract instead of metadata-only baseline evidence.",
   "critical_ops": [
     {
       "op": "parse_tx",
@@ -20,9 +20,14 @@
     {
       "op": "retarget_v1",
       "gate": "CV-POW",
-      "model_theorem": "RubinFormal.difficulty_update_proved",
-      "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "evidence_level": "baseline"
+      "model_theorem": "RubinFormal.retarget_v1_go_trace_contract_proved",
+      "lean_file": "rubin-formal/RubinFormal/RefinementBridgeV1.lean",
+      "evidence_level": "machine_checked_contract",
+      "contract_scope": "Generated Go trace v1 rows with `op=retarget_v1`, replayed against Lean `PowV1.retargetV1` on matching `CV-POW` fixture ids.",
+      "limitations": [
+        "This is a narrow trace-backed equivalence contract, not a universal proof for all possible retarget inputs.",
+        "Other critical ops remain baseline-only until they receive their own machine-checked bridge."
+      ]
     },
     {
       "op": "utxo_apply_basic",
