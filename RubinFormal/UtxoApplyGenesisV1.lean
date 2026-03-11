@@ -140,6 +140,26 @@ def validateHTLCSpendNoCrypto
   -- crypto verify omitted
   pure ()
 
+def vaultCreationOwnerAuthorized
+    (owner : Bytes)
+    (inputLockIds : List Bytes)
+    (inputCovTypes : List Nat) : Bool :=
+  (List.zip inputLockIds inputCovTypes).any (fun (lockId, covType) =>
+    lockId == owner &&
+      (covType == CovenantGenesisV1.COV_TYPE_P2PK ||
+        covType == CovenantGenesisV1.COV_TYPE_MULTISIG))
+
+def vaultSpendOutputAllowed
+    (whitelist : List Bytes)
+    (o : UtxoBasicV1.TxOut) : Bool :=
+  (o.covenantType != CovenantGenesisV1.COV_TYPE_VAULT) &&
+    whitelist.contains (RubinFormal.OutputDescriptor.hash o.covenantType o.covenantData)
+
+def vaultSpendOutputsAllowed
+    (whitelist : List Bytes)
+    (outs : List UtxoBasicV1.TxOut) : Bool :=
+  outs.all (vaultSpendOutputAllowed whitelist)
+
 def applyNonCoinbaseTxBasicNoCrypto
     (txBytes : Bytes)
     (utxos : List (Outpoint × UtxoEntry))
@@ -273,16 +293,7 @@ def applyNonCoinbaseTxBasicNoCrypto
         continue
       let v ← CovenantGenesisV1.parseVaultCovenantData o.covenantData
       let owner := v.ownerLockId
-      let mut hasOwnerLockId : Bool := false
-      let mut hasOwnerLockType : Bool := false
-      for idx in [0:inputLockIds.length] do
-        if inputLockIds.get! idx != owner then
-          continue
-        hasOwnerLockId := true
-        let cov := inputCovTypes.get! idx
-        if cov == CovenantGenesisV1.COV_TYPE_P2PK || cov == CovenantGenesisV1.COV_TYPE_MULTISIG then
-          hasOwnerLockType := true
-      if !hasOwnerLockId || !hasOwnerLockType then
+      if !vaultCreationOwnerAuthorized owner inputLockIds inputCovTypes then
         throw "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
 
   -- CORE_VAULT spend rules (safe-only model).
@@ -299,13 +310,8 @@ def applyNonCoinbaseTxBasicNoCrypto
       if inputLockIds.get! idx != vaultOwnerLockId then
         throw "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN"
     validateThresholdSigSpendNoCrypto vaultKeys vaultThreshold vaultWitness height "CORE_VAULT"
-    for o in tx.outputs do
-      -- vault recursion is forbidden: a vault-spend must not create CORE_VAULT outputs
-      if o.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
-        throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
-      let h := RubinFormal.OutputDescriptor.hash o.covenantType o.covenantData
-      if !(vaultWhitelist.contains h) then
-        throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
+    if !vaultSpendOutputsAllowed vaultWhitelist tx.outputs then
+      throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
 
   if sumOut > sumIn then
     throw "TX_ERR_VALUE_CONSERVATION"
@@ -314,6 +320,62 @@ def applyNonCoinbaseTxBasicNoCrypto
 
   let fee := sumIn - sumOut
   pure (fee, next.size)
+
+private def repeatByte (b : UInt8) (n : Nat) : Bytes :=
+  Id.run <| do
+    let mut out := ByteArray.empty
+    for _ in [0:n] do
+      out := out.push b
+    pure out
+
+private def byte32 (n : Nat) : Bytes :=
+  repeatByte (UInt8.ofNat n) 32
+
+private def sampleOwnerP2PKKeyId : Bytes :=
+  byte32 0x41
+
+private def sampleOwnerP2PKData : Bytes :=
+  RubinFormal.bytes #[UInt8.ofNat SUITE_ID_ML_DSA_87] ++ sampleOwnerP2PKKeyId
+
+private def sampleOwnerP2PKLockId : Bytes :=
+  RubinFormal.OutputDescriptor.hash CovenantGenesisV1.COV_TYPE_P2PK sampleOwnerP2PKData
+
+private def sampleOwnerMultisigKey : Bytes :=
+  byte32 0x52
+
+private def sampleOwnerMultisigData : Bytes :=
+  RubinFormal.bytes #[UInt8.ofNat 0x01, UInt8.ofNat 0x01] ++ sampleOwnerMultisigKey
+
+private def sampleOwnerMultisigLockId : Bytes :=
+  RubinFormal.OutputDescriptor.hash CovenantGenesisV1.COV_TYPE_MULTISIG sampleOwnerMultisigData
+
+private def sampleSpendOutput1 : UtxoBasicV1.TxOut :=
+  { value := 10, covenantType := CovenantGenesisV1.COV_TYPE_P2PK, covenantData := sampleOwnerP2PKData }
+
+private def sampleSpendOutput2 : UtxoBasicV1.TxOut :=
+  { value := 20, covenantType := CovenantGenesisV1.COV_TYPE_MULTISIG, covenantData := sampleOwnerMultisigData }
+
+private def sampleSpendWhitelist : List Bytes :=
+  [
+    RubinFormal.OutputDescriptor.hash sampleSpendOutput1.covenantType sampleSpendOutput1.covenantData,
+    RubinFormal.OutputDescriptor.hash sampleSpendOutput2.covenantType sampleSpendOutput2.covenantData
+  ]
+
+private def sampleRecursiveVaultOutput : UtxoBasicV1.TxOut :=
+  { value := 30, covenantType := CovenantGenesisV1.COV_TYPE_VAULT, covenantData := byte32 0x63 }
+
+theorem creation_owner_auth_p2pk_or_multisig :
+    vaultCreationOwnerAuthorized sampleOwnerP2PKLockId [sampleOwnerP2PKLockId] [CovenantGenesisV1.COV_TYPE_P2PK] = true ∧
+      vaultCreationOwnerAuthorized sampleOwnerMultisigLockId [sampleOwnerMultisigLockId] [CovenantGenesisV1.COV_TYPE_MULTISIG] = true := by
+  native_decide
+
+theorem output_whitelist_closure :
+    vaultSpendOutputsAllowed sampleSpendWhitelist [sampleSpendOutput1, sampleSpendOutput2] = true := by
+  native_decide
+
+theorem vault_recursion_ban :
+    vaultSpendOutputsAllowed sampleSpendWhitelist [sampleSpendOutput1, sampleRecursiveVaultOutput] = false := by
+  native_decide
 
 end UtxoApplyGenesisV1
 
