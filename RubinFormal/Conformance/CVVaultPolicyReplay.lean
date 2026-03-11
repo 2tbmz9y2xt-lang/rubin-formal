@@ -11,16 +11,10 @@ def strictlySortedUnique (xs : List String) : Bool :=
   go xs
 
 /-- `CVVaultPolicyReplay` intentionally models only the spend-side safe subset
-    checked by the `CV-VAULT-POLICY` vectors. It does not encode the full
-    transaction-level behavior of `applyNonCoinbaseTxBasicNoCrypto`.
-
-    Uncovered tx-level predicates:
-    * creation-side owner auth with owner input type in `{CORE_P2PK, CORE_MULTISIG}`
-    * output whitelist closure against concrete output descriptors
-    * vault recursion ban on spend
-    * `parseVaultCovenantData` parse/canonical invariants
-    * `TX_ERR_VAULT_OWNER_DESTINATION_FORBIDDEN` -/
-def vaultPolicyCoverageGaps : List String := [
+    checked by the `CV-VAULT-POLICY` vectors. Complementary tx-level witness
+    theorems for the former residual predicates live in
+    `RubinFormal.UtxoApplyGenesisV1` and `RubinFormal.CovenantGenesisV1`. -/
+def vaultPolicyCoverageComplements : List String := [
   "creation_owner_auth_p2pk_or_multisig",
   "output_whitelist_closure",
   "vault_recursion_ban",
@@ -29,7 +23,7 @@ def vaultPolicyCoverageGaps : List String := [
 ]
 
 /-- Spend-side safe-subset evaluator for `CV-VAULT-POLICY`.
-    This is not a full L1↔L2 equivalence model; see `vaultPolicyCoverageGaps`. -/
+    This is not a full L1↔L2 equivalence model; see `vaultPolicyCoverageComplements`. -/
 def vaultPolicyEval (v : CVVaultPolicyVector) : (Bool × Option String) :=
   let sentinelOk :=
     v.sentinelSuiteId == 0 &&
@@ -82,7 +76,8 @@ theorem cv_vault_policy_vectors_pass : cvVaultPolicyVectorsPass = true := by
   native_decide
 
 /-- Partial theorem for the modeled spend-side subset only.
-    The missing tx-level predicates are listed in `vaultPolicyCoverageGaps`. -/
+    The complementary tx-level witness theorems are listed in
+    `vaultPolicyCoverageComplements`. -/
 def vaultPolicyDefaultOrderSafeStatement : Prop :=
   ∀ v : CVVaultPolicyVector,
     v.validationOrder = none →

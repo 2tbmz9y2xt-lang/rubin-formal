@@ -63,6 +63,21 @@ structure VaultCovenant where
   whitelist : List Bytes
 deriving Repr, DecidableEq
 
+private def repeatByte (b : UInt8) (n : Nat) : Bytes :=
+  Id.run <| do
+    let mut out := ByteArray.empty
+    for _ in [0:n] do
+      out := out.push b
+    pure out
+
+private def byte32 (n : Nat) : Bytes :=
+  repeatByte (UInt8.ofNat n) 32
+
+private def u16leBytes (n : Nat) : Bytes :=
+  let lo : UInt8 := UInt8.ofNat (n % 256)
+  let hi : UInt8 := UInt8.ofNat ((n / 256) % 256)
+  RubinFormal.bytes #[lo, hi]
+
 def parseVaultCovenantData (covData : Bytes) : Except String VaultCovenant := do
   if covData.size < 34 then
     throw "TX_ERR_VAULT_MALFORMED"
@@ -108,6 +123,45 @@ def parseVaultCovenantData (covData : Bytes) : Except String VaultCovenant := do
     whitelistCount := wlCountNat
     whitelist := whitelist
   }
+
+private def sampleCanonicalOwner : Bytes :=
+  byte32 0x10
+
+private def sampleCanonicalKey : Bytes :=
+  byte32 0x20
+
+private def sampleCanonicalWhitelistEntry : Bytes :=
+  byte32 0x30
+
+private def sampleCanonicalVaultData : Bytes :=
+  sampleCanonicalOwner ++
+    RubinFormal.bytes #[UInt8.ofNat 0x01, UInt8.ofNat 0x01] ++
+    sampleCanonicalKey ++
+    u16leBytes 1 ++
+    sampleCanonicalWhitelistEntry
+
+private def sampleOwnerDestinationForbiddenVaultData : Bytes :=
+  sampleCanonicalOwner ++
+    RubinFormal.bytes #[UInt8.ofNat 0x01, UInt8.ofNat 0x01] ++
+    sampleCanonicalKey ++
+    u16leBytes 2 ++
+    sampleCanonicalOwner ++
+    sampleCanonicalWhitelistEntry
+
+theorem parse_vault_canonical_invariants :
+    (match parseVaultCovenantData sampleCanonicalVaultData with
+      | .ok v =>
+          strictlySortedUnique32 v.keys &&
+            strictlySortedUnique32 v.whitelist &&
+            !(v.whitelist.contains v.ownerLockId)
+      | .error _ => false) = true := by
+  native_decide
+
+theorem owner_destination_forbidden :
+    (match parseVaultCovenantData sampleOwnerDestinationForbiddenVaultData with
+      | .error "TX_ERR_VAULT_OWNER_DESTINATION_FORBIDDEN" => true
+      | _ => false) = true := by
+  native_decide
 
 structure MultisigCovenant where
   threshold : Nat

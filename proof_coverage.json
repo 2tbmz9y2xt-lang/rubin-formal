@@ -164,6 +164,11 @@
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
         "RubinFormal.det001_validation_order_proved",
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved",
+        "RubinFormal.UtxoApplyGenesisV1.creation_owner_auth_p2pk_or_multisig",
+        "RubinFormal.UtxoApplyGenesisV1.output_whitelist_closure",
+        "RubinFormal.UtxoApplyGenesisV1.vault_recursion_ban",
+        "RubinFormal.CovenantGenesisV1.parse_vault_canonical_invariants",
+        "RubinFormal.CovenantGenesisV1.owner_destination_forbidden",
         "RubinFormal.triggered_implies_sweepable",
         "RubinFormal.cancelled_implies_not_sweepable",
         "RubinFormal.no_dead_states",
@@ -176,6 +181,11 @@
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.Conformance.vault_policy_default_order_safe_proved": "rubin-formal/RubinFormal/Conformance/CVVaultPolicyReplay.lean",
+        "RubinFormal.UtxoApplyGenesisV1.creation_owner_auth_p2pk_or_multisig": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
+        "RubinFormal.UtxoApplyGenesisV1.output_whitelist_closure": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
+        "RubinFormal.UtxoApplyGenesisV1.vault_recursion_ban": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
+        "RubinFormal.CovenantGenesisV1.parse_vault_canonical_invariants": "rubin-formal/RubinFormal/CovenantGenesisV1.lean",
+        "RubinFormal.CovenantGenesisV1.owner_destination_forbidden": "rubin-formal/RubinFormal/CovenantGenesisV1.lean",
         "RubinFormal.triggered_implies_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
         "RubinFormal.cancelled_implies_not_sweepable": "rubin-formal/RubinFormal/VaultStateMachine.lean",
         "RubinFormal.no_dead_states": "rubin-formal/RubinFormal/VaultStateMachine.lean",
@@ -185,10 +195,9 @@
         "RubinFormal.Conformance.vault_full_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean"
       },
-      "notes": "Section claim is limited to structural UTXO/value invariants, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
+      "notes": "Section claim is limited to structural UTXO/value invariants, concrete tx-level vault predicate witnesses, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
       "limitations": [
-        "vault_policy_default_order_safe_proved models only the spend-side safe subset for CV-VAULT-POLICY.",
-        "Uncovered tx-level predicates remain: creation_owner_auth_p2pk_or_multisig, output_whitelist_closure, vault_recursion_ban, parse_vault_canonical_invariants, owner_destination_forbidden."
+        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1↔L2 equivalence for all vault transactions."
       ]
     },
     {
