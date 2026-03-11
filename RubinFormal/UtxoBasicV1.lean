@@ -315,6 +315,32 @@ def InputScanState.empty : InputScanState :=
     consumedOutpoints := []
   }
 
+def validateCoinbaseMaturity
+    (e : UtxoEntry)
+    (height : Nat) : Except String Unit :=
+  if e.createdByCoinbase = true ∧ height < e.creationHeight + COINBASE_MATURITY then
+    .error "TX_ERR_COINBASE_IMMATURE"
+  else
+    .ok ()
+
+theorem validateCoinbaseMaturity_reject_iff
+    (e : UtxoEntry)
+    (height : Nat) :
+    validateCoinbaseMaturity e height = .error "TX_ERR_COINBASE_IMMATURE" ↔
+      e.createdByCoinbase = true ∧ height < e.creationHeight + COINBASE_MATURITY := by
+  by_cases hReject : e.createdByCoinbase = true ∧ height < e.creationHeight + COINBASE_MATURITY
+  · simp [validateCoinbaseMaturity, hReject]
+  · simp [validateCoinbaseMaturity, hReject]
+
+theorem validateCoinbaseMaturity_accept_iff
+    (e : UtxoEntry)
+    (height : Nat) :
+    validateCoinbaseMaturity e height = .ok () ↔
+      ¬(e.createdByCoinbase = true ∧ height < e.creationHeight + COINBASE_MATURITY) := by
+  by_cases hReject : e.createdByCoinbase = true ∧ height < e.creationHeight + COINBASE_MATURITY
+  · simp [validateCoinbaseMaturity, hReject]
+  · simp [validateCoinbaseMaturity, hReject]
+
 structure PreparedNonCoinbaseTx where
   tx : Tx
   inputState : InputScanState
@@ -347,9 +373,7 @@ def scanSingleInputStep
   if e.covenantType == COV_TYPE_ANCHOR || e.covenantType == COV_TYPE_DA_COMMIT then
     throw "TX_ERR_MISSING_UTXO"
 
-  if e.createdByCoinbase then
-    if height < e.creationHeight + COINBASE_MATURITY then
-      throw "TX_ERR_COINBASE_IMMATURE"
+  validateCoinbaseMaturity e height
 
   if e.covenantType == COV_TYPE_P2PK then
     if e.covenantData.size != MAX_P2PK_COVENANT_DATA then
