@@ -10,6 +10,7 @@ import RubinFormal.UtxoBasicV1
 import RubinFormal.VaultStateMachine
 import RubinFormal.BlockBasicV1
 import RubinFormal.BlockBasicCheckV1
+import RubinFormal.MerkleStructure
 import RubinFormal.SubsidyV1
 import RubinFormal.ConnectBlockStrong
 import RubinFormal.SpendTxEndToEnd
