@@ -34,12 +34,52 @@ def medianTimePast (prevTimestamps : List Nat) : Except String Nat := do
   let sorted := sortNat prevTimestamps
   pure (sorted.get! (sorted.length / 2))
 
-def timestampBounds (mtp ts : Nat) : Except String Unit := do
+def timestampBounds (mtp ts : Nat) : Except String Unit :=
   if ts <= mtp then
-    throw "BLOCK_ERR_TIMESTAMP_OLD"
-  if ts > mtp + MAX_FUTURE_DRIFT then
-    throw "BLOCK_ERR_TIMESTAMP_FUTURE"
-  pure ()
+    .error "BLOCK_ERR_TIMESTAMP_OLD"
+  else if ts > mtp + MAX_FUTURE_DRIFT then
+    .error "BLOCK_ERR_TIMESTAMP_FUTURE"
+  else
+    .ok ()
+
+theorem timestampBounds_ok_iff (mtp ts : Nat) :
+    timestampBounds mtp ts = .ok () ↔ mtp < ts ∧ ts ≤ mtp + MAX_FUTURE_DRIFT := by
+  unfold timestampBounds
+  by_cases hOld : ts ≤ mtp
+  · have hNotGt : ¬ mtp < ts := Nat.not_lt_of_ge hOld
+    simp [hOld, hNotGt]
+  · have hGt : mtp < ts := Nat.lt_of_not_ge hOld
+    by_cases hFuture : ts > mtp + MAX_FUTURE_DRIFT
+    · have hNotLe : ¬ ts ≤ mtp + MAX_FUTURE_DRIFT := Nat.not_le_of_gt hFuture
+      simp [hOld, hFuture, hGt, hNotLe]
+    · have hLe : ts ≤ mtp + MAX_FUTURE_DRIFT := Nat.le_of_not_gt hFuture
+      simp [hOld, hFuture, hGt, hLe]
+
+theorem timestampBounds_old_iff (mtp ts : Nat) :
+    timestampBounds mtp ts = .error "BLOCK_ERR_TIMESTAMP_OLD" ↔ ts ≤ mtp := by
+  unfold timestampBounds
+  by_cases hOld : ts ≤ mtp
+  · simp [hOld]
+  · have hGt : mtp < ts := Nat.lt_of_not_ge hOld
+    by_cases hFuture : ts > mtp + MAX_FUTURE_DRIFT
+    · have hErrNe : ("BLOCK_ERR_TIMESTAMP_FUTURE" : String) ≠ "BLOCK_ERR_TIMESTAMP_OLD" := by
+        decide
+      simp [hOld, hFuture, hGt, hErrNe]
+    · simp [hOld, hFuture, hGt]
+
+theorem timestampBounds_future_iff (mtp ts : Nat) :
+    timestampBounds mtp ts = .error "BLOCK_ERR_TIMESTAMP_FUTURE" ↔ mtp < ts ∧ mtp + MAX_FUTURE_DRIFT < ts := by
+  unfold timestampBounds
+  by_cases hOld : ts ≤ mtp
+  · have hNotGt : ¬ mtp < ts := Nat.not_lt_of_ge hOld
+    have hErrNe : ("BLOCK_ERR_TIMESTAMP_OLD" : String) ≠ "BLOCK_ERR_TIMESTAMP_FUTURE" := by
+      decide
+    simp [hOld, hNotGt, hErrNe]
+  · have hGt : mtp < ts := Nat.lt_of_not_ge hOld
+    by_cases hFuture : ts > mtp + MAX_FUTURE_DRIFT
+    · simp [hOld, hFuture, hGt]
+    · have hNotFuture : ¬ mtp + MAX_FUTURE_DRIFT < ts := hFuture
+      simp [hOld, hFuture, hGt, hNotFuture]
 
 def txNonceFromTxBytes (tx : Bytes) : Except String Nat := do
   let c0 : Cursor := { bs := tx, off := 0 }

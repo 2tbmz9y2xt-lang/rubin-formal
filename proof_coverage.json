@@ -242,14 +242,21 @@
     {
       "section_key": "block_timestamp_rules",
       "section_heading": "## 22. Block Timestamp Rules (Normative)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_timestamp_vectors_pass"
+        "RubinFormal.Conformance.cv_timestamp_vectors_pass",
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff",
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff",
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "notes": "Current entry is executable replay for timestamp-bounds and block-basic timestamp validation vectors.",
+      "file": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
+      "theorem_files": {
+        "RubinFormal.Conformance.cv_timestamp_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTimestampReplay.lean"
+      },
+      "notes": "Current entry combines executable replay for timestamp-bounds and block-basic timestamp vectors with universal theorems for the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied.",
       "limitations": [
-        "No standalone universal theorem for every timestamp-rule case is claimed beyond conformance replay."
+        "The universal theorem layer is over `timestampBounds` given an already-derived median-time-past value; the list-to-MTP extraction path remains evidenced by executable replay rather than a standalone theorem.",
+        "No chain-wide timestamp monotonicity claim beyond the covered `timestampBounds` gate and current replayed integration path is asserted here."
       ]
     },
     {
