@@ -1,5 +1,6 @@
 import Std
 import RubinFormal.Conformance.CVForkChoiceVectors
+import RubinFormal.ForkChoiceV1
 
 namespace RubinFormal.Conformance
 
@@ -33,41 +34,37 @@ def parseHexBytes (s : String) : Option (List UInt8) :=
       | [] => some acc
       | a :: b :: rest =>
         match hexNib a, hexNib b with
-        | some x, some y => go rest (acc ++ [UInt8.ofNat (x*16+y)])
+        | some x, some y => go rest (acc ++ [UInt8.ofNat (x * 16 + y)])
         | _, _ => none
       | _ => none
     go chars []
 
-def bytesLT (a b : List UInt8) : Bool :=
-  match a, b with
-  | [], [] => false
-  | [], _ => true
-  | _, [] => false
-  | x::xs, y::ys =>
-    if x < y then true else if x > y then false else bytesLT xs ys
-
-def forkWork (target : Nat) : Nat :=
-  ((Nat.shiftLeft 1 256) / target)
-
 def checkForkWork (targetHex expectWorkHex : String) : Bool :=
   match parseHexNat targetHex, parseHexNat expectWorkHex with
-  | some t, some exp =>
-    if t == 0 then false
-    else forkWork t == exp
+  | some target, some expected =>
+      if RubinFormal.ForkChoiceV1.validTargetNat target then
+        RubinFormal.ChainWorkV1.blockWork target == expected
+      else
+        false
   | _, _ => false
 
 def chainTotalWork (targets : List String) : Option Nat :=
-  targets.foldl
-    (fun acc th =>
-      match acc with
-      | none => none
-      | some total =>
-          match parseHexNat th with
+  match targets with
+  | [] => none
+  | _ =>
+      targets.foldl
+        (fun acc th =>
+          match acc with
           | none => none
-          | some t =>
-              if t == 0 then none else some (total + forkWork t)
-    )
-    (some 0)
+          | some total =>
+              match parseHexNat th with
+              | none => none
+              | some target =>
+                  if RubinFormal.ForkChoiceV1.validTargetNat target then
+                    some (total + RubinFormal.ChainWorkV1.blockWork target)
+                  else
+                    none)
+        (some 0)
 
 def selectWinner (chains : List ForkChain) : Option String := do
   let mut bestId : Option String := none
@@ -79,24 +76,35 @@ def selectWinner (chains : List ForkChain) : Option String := do
     let wI : Int := Int.ofNat w
     let better :=
       (wI > bestWork) ||
-      (wI == bestWork && (match bestTip with | none => true | some bt => bytesLT tip bt))
+      (wI == bestWork && (match bestTip with | none => true | some bt => RubinFormal.ForkChoiceV1.bytesLT tip bt))
     if better then
       bestWork := wI
       bestTip := some tip
       bestId := some ch.id
   bestId
 
+def checkRejectedForkWorkTarget (targetHex : String) : Bool :=
+  match parseHexNat targetHex with
+  | none => true
+  | some target => target == 0 || target > RubinFormal.PowV1.powLimit
+
 def checkForkChoiceVector (v : CVForkChoiceVector) : Bool :=
   if v.op == "fork_work" then
-    match v.target, v.expectWork with
-    | some t, some exp =>
-      v.expectOk && checkForkWork t exp
-    | _, _ => false
+    if v.expectOk then
+      match v.target, v.expectWork with
+      | some target, some expected => checkForkWork target expected
+      | _, _ => false
+    else
+      match v.target with
+      | some target => checkRejectedForkWorkTarget target
+      | none => false
   else if v.op == "fork_choice_select" then
-    match v.expectWinner with
-    | some w =>
-      v.expectOk && (selectWinner v.chains == some w)
-    | none => false
+    if v.expectOk then
+      match v.expectWinner with
+      | some winner => selectWinner v.chains == some winner
+      | none => false
+    else
+      selectWinner v.chains == none
   else
     false
 

@@ -253,6 +253,28 @@
       ]
     },
     {
+      "section_key": "fork_choice",
+      "section_heading": "## 23. Fork-Choice Rule (Non-Validation Procedure)",
+      "status": "stated",
+      "theorems": [
+        "RubinFormal.Conformance.cv_fork_choice_vectors_pass",
+        "RubinFormal.ForkChoiceV1.emptyChain_loses",
+        "RubinFormal.ForkChoiceV1.heavierChain_wins",
+        "RubinFormal.ForkChoiceV1.zeroTarget_rejected",
+        "RubinFormal.ForkChoiceV1.overLimitTarget_rejected"
+      ],
+      "file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
+      "theorem_files": {
+        "RubinFormal.Conformance.cv_fork_choice_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVForkChoiceReplay.lean"
+      },
+      "notes": "Section claim is limited to executable replay on the current fork-choice conformance fixtures plus a narrowed theorem surface for valid-target guards, empty-chain ordering, strict heavier-chain selection, and the byte-level tie-break comparator. This remains a non-validation procedure and does not claim universal equivalence with Go runtime selection for every possible input.",
+      "limitations": [
+        "Tie-break behavior is covered only by executable replay over the parsed byte-list comparator used in CVForkChoiceReplay.",
+        "No machine-checked bridge is claimed for fork_choice_select beyond baseline registry linkage and current fixture replay.",
+        "The registry entry is intentionally stated rather than proved until the full refinement contract is widened beyond the covered fixture families."
+      ]
+    },
+    {
       "section_key": "block_validation_order",
       "section_heading": "## 25. Block Validation Order (Normative)",
       "status": "proved",
