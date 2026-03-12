@@ -6,21 +6,24 @@ namespace RubinFormal
 namespace ChainWorkV1
 
 def blockWork (targetNat : Nat) : Nat :=
-  PowV1.powLimit / targetNat
+  Nat.shiftLeft 1 256 / targetNat
 
 theorem blockWork_pos (targetNat : Nat)
     (hTargetPos : 0 < targetNat)
     (hTargetLe : targetNat ≤ PowV1.powLimit) :
     0 < blockWork targetNat := by
   unfold blockWork
-  apply Nat.pos_of_ne_zero
+  apply Nat.zero_lt_of_ne_zero
   intro hZero
-  have hDecomp := Nat.div_add_mod PowV1.powLimit targetNat
+  have hDecomp := Nat.div_add_mod (Nat.shiftLeft 1 256) targetNat
   rw [hZero, Nat.mul_zero, Nat.zero_add] at hDecomp
-  have hLt : PowV1.powLimit < targetNat := by
+  have hLt : Nat.shiftLeft 1 256 < targetNat := by
     rw [← hDecomp]
     exact Nat.mod_lt _ hTargetPos
-  exact (Nat.not_lt_of_ge hTargetLe) hLt
+  have hPow : PowV1.powLimit < Nat.shiftLeft 1 256 := by
+    native_decide
+  have hTargetLt : targetNat < Nat.shiftLeft 1 256 := Nat.lt_of_le_of_lt hTargetLe hPow
+  exact (Nat.not_lt_of_ge (Nat.le_of_lt hTargetLt)) hLt
 
 def chainWork : List Nat → Nat
   | [] => 0
