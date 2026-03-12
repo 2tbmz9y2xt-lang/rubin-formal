@@ -145,6 +145,70 @@ def hashOfDA (txKind : UInt8) : Bytes :=
     -- Not needed for current CV-SIGHASH vectors.
     SHA3.sha3_256 ByteArray.empty
 
+structure SighashPreimageFrame where
+  chainId : Bytes
+  versionLE : Bytes
+  txKind : UInt8
+  txNonceLE : Bytes
+  hashDA : Bytes
+  hashPrevouts : Bytes
+  hashSeq : Bytes
+  inputIndexLE : Bytes
+  prevTxid : Bytes
+  prevVoutLE : Bytes
+  inputValueLE : Bytes
+  sequenceLE : Bytes
+  hashOutputs : Bytes
+  locktimeLE : Bytes
+deriving Repr, DecidableEq
+
+def SighashPreimageFrame.WellFormed (f : SighashPreimageFrame) : Prop :=
+  f.chainId.size = 32 ∧
+  f.versionLE.size = 4 ∧
+  f.txNonceLE.size = 8 ∧
+  f.hashDA.size = 32 ∧
+  f.hashPrevouts.size = 32 ∧
+  f.hashSeq.size = 32 ∧
+  f.inputIndexLE.size = 4 ∧
+  f.prevTxid.size = 32 ∧
+  f.prevVoutLE.size = 4 ∧
+  f.inputValueLE.size = 8 ∧
+  f.sequenceLE.size = 4 ∧
+  f.hashOutputs.size = 32 ∧
+  f.locktimeLE.size = 4
+
+def buildPreimageFrameParts (f : SighashPreimageFrame) : List Bytes :=
+  [
+    sighashPrefix,
+    f.chainId,
+    f.versionLE,
+    RubinFormal.bytes #[f.txKind],
+    f.txNonceLE,
+    f.hashDA,
+    f.hashPrevouts,
+    f.hashSeq,
+    f.inputIndexLE,
+    f.prevTxid,
+    f.prevVoutLE,
+    f.inputValueLE,
+    f.sequenceLE,
+    f.hashOutputs,
+    f.locktimeLE
+  ]
+
+def buildPreimageFrame (f : SighashPreimageFrame) : Bytes :=
+  concatBytes (buildPreimageFrameParts f)
+
+theorem buildPreimageFrameParts_injective (a b : SighashPreimageFrame)
+    (hEq : buildPreimageFrameParts a = buildPreimageFrameParts b) :
+    a = b := by
+  cases a with
+  | mk aChainId aVersionLE aTxKind aTxNonceLE aHashDA aHashPrevouts aHashSeq aInputIndexLE aPrevTxid aPrevVoutLE aInputValueLE aSequenceLE aHashOutputs aLocktimeLE =>
+    cases b with
+    | mk bChainId bVersionLE bTxKind bTxNonceLE bHashDA bHashPrevouts bHashSeq bInputIndexLE bPrevTxid bPrevVoutLE bInputValueLE bSequenceLE bHashOutputs bLocktimeLE =>
+      simp [buildPreimageFrameParts, RubinFormal.bytes] at hEq ⊢
+      simpa using hEq
+
 def digestV1 (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat) : Except String Bytes := do
   let core ← parseTxCoreForSighash tx
   let inCount := core.inputs.length
