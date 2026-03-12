@@ -33,7 +33,6 @@
 Важно по wire-моделям:
 
 - `RubinFormal.ByteWireV2` — реальная CompactSize / byte-accurate proof surface для текущих wire claims.
-- `RubinFormal.ByteWire` — deprecated shim без собственных wire-лемм.
 - `RubinFormal.ByteWireLegacy` — toy bootstrap-модель только для single-byte `CompactSize` (`n < 253`) и `TxMini`.
 
 ## Risk model / CI gate
