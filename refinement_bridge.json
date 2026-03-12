@@ -30,6 +30,17 @@
       ]
     },
     {
+      "op": "fork_choice_select",
+      "gate": "CV-FORK-CHOICE",
+      "model_theorem": "RubinFormal.ForkChoiceV1.heavierChain_wins",
+      "lean_file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
+      "evidence_level": "baseline",
+      "limitations": [
+        "This row binds the executable fork_choice_select op to the narrowed heavier-chain theorem surface and current fixture replay; it is not a universal equivalence proof for every runtime input.",
+        "Tie-break semantics remain baseline-only and are covered only by fixture replay over the byte comparator used in CVForkChoiceReplay."
+      ]
+    },
+    {
       "op": "utxo_apply_basic",
       "gate": "CV-UTXO-BASIC",
       "model_theorem": "RubinFormal.value_conservation_proved",
