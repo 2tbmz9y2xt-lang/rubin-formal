@@ -35,17 +35,21 @@
         "RubinFormal.Conformance.cv_compact_vectors_pass",
         "RubinFormal.sem001_mldsa_bounded_lengths_proved",
         "RubinFormal.Wire.compactSize_roundtrip",
-        "RubinFormal.Wire.compactSize_overflow_safety"
+        "RubinFormal.Wire.compactSize_overflow_safety",
+        "RubinFormal.Wire.compactSize_encode_roundtrip",
+        "RubinFormal.Wire.compactSize_encode_cursor_advances"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
         "RubinFormal.Wire.compactSize_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
-        "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean"
+        "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean",
+        "RubinFormal.Wire.compactSize_encode_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
+        "RubinFormal.Wire.compactSize_encode_cursor_advances": "rubin-formal/RubinFormal/ByteWireV2.lean"
       },
       "limitations": [
         "The deprecated shim ByteWire.lean is not a proof surface; the toy bootstrap model lives in ByteWireLegacy.lean.",
-        "Byte-accurate claim is limited to the listed replay and ByteWireV2 theorems."
+        "Byte-accurate claim is limited to the listed replay and ByteWireV2 framing theorems; no full transaction parse-serialize roundtrip is claimed."
       ]
     },
     {
