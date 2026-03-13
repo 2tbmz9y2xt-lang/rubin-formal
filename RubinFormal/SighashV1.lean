@@ -145,6 +145,65 @@ def hashOfDA (txKind : UInt8) : Bytes :=
     -- Not needed for current CV-SIGHASH vectors.
     SHA3.sha3_256 ByteArray.empty
 
+def SIGHASH_ALL : UInt8 := 0x01
+def SIGHASH_NONE : UInt8 := 0x02
+def SIGHASH_SINGLE : UInt8 := 0x03
+def SIGHASH_ANYONECANPAY : UInt8 := 0x80
+def SIGHASH_ALL_ANYONECANPAY : UInt8 := 0x81
+def SIGHASH_NONE_ANYONECANPAY : UInt8 := 0x82
+def SIGHASH_SINGLE_ANYONECANPAY : UInt8 := 0x83
+
+def selectHashPrevouts (sighashType : UInt8) (allInputs currentInput : Bytes) : Option Bytes :=
+  if _ : sighashType = SIGHASH_ALL_ANYONECANPAY then
+    some currentInput
+  else if _ : sighashType = SIGHASH_NONE_ANYONECANPAY then
+    some currentInput
+  else if _ : sighashType = SIGHASH_SINGLE_ANYONECANPAY then
+    some currentInput
+  else if _ : sighashType = SIGHASH_ALL then
+    some allInputs
+  else if _ : sighashType = SIGHASH_NONE then
+    some allInputs
+  else if _ : sighashType = SIGHASH_SINGLE then
+    some allInputs
+  else
+    none
+
+def selectHashSequences (sighashType : UInt8) (allInputs currentInput : Bytes) : Option Bytes :=
+  if _ : sighashType = SIGHASH_ALL_ANYONECANPAY then
+    some currentInput
+  else if _ : sighashType = SIGHASH_NONE_ANYONECANPAY then
+    some currentInput
+  else if _ : sighashType = SIGHASH_SINGLE_ANYONECANPAY then
+    some currentInput
+  else if _ : sighashType = SIGHASH_ALL then
+    some allInputs
+  else if _ : sighashType = SIGHASH_NONE then
+    some allInputs
+  else if _ : sighashType = SIGHASH_SINGLE then
+    some allInputs
+  else
+    none
+
+def selectHashOutputs
+    (sighashType : UInt8)
+    (inputIndex outputCount : Nat)
+    (allOutputs selectedOutput emptyHash : Bytes) : Option Bytes :=
+  if _ : sighashType = SIGHASH_ALL then
+    some allOutputs
+  else if _ : sighashType = SIGHASH_ALL_ANYONECANPAY then
+    some allOutputs
+  else if _ : sighashType = SIGHASH_NONE then
+    some emptyHash
+  else if _ : sighashType = SIGHASH_NONE_ANYONECANPAY then
+    some emptyHash
+  else if _ : sighashType = SIGHASH_SINGLE then
+    if inputIndex < outputCount then some selectedOutput else some emptyHash
+  else if _ : sighashType = SIGHASH_SINGLE_ANYONECANPAY then
+    if inputIndex < outputCount then some selectedOutput else some emptyHash
+  else
+    none
+
 structure SighashPreimageFrame where
   chainId : Bytes
   versionLE : Bytes
@@ -160,6 +219,7 @@ structure SighashPreimageFrame where
   sequenceLE : Bytes
   hashOutputs : Bytes
   locktimeLE : Bytes
+  sighashType : UInt8
 deriving Repr, DecidableEq
 
 def SighashPreimageFrame.WellFormed (f : SighashPreimageFrame) : Prop :=
@@ -193,7 +253,8 @@ def buildPreimageFrameParts (f : SighashPreimageFrame) : List Bytes :=
     f.inputValueLE,
     f.sequenceLE,
     f.hashOutputs,
-    f.locktimeLE
+    f.locktimeLE,
+    RubinFormal.bytes #[f.sighashType]
   ]
 
 def buildPreimageFrame (f : SighashPreimageFrame) : Bytes :=
@@ -208,6 +269,137 @@ theorem buildPreimageFrameParts_injective (a b : SighashPreimageFrame)
     | mk bChainId bVersionLE bTxKind bTxNonceLE bHashDA bHashPrevouts bHashSeq bInputIndexLE bPrevTxid bPrevVoutLE bInputValueLE bSequenceLE bHashOutputs bLocktimeLE =>
       simp [buildPreimageFrameParts, RubinFormal.bytes] at hEq ⊢
       simpa using hEq
+
+def SighashPreimageFrame.inputContextView (f : SighashPreimageFrame) :
+    Bytes × Bytes × Bytes × Bytes × Bytes × Bytes × Bytes :=
+  (f.hashPrevouts, f.hashSeq, f.inputIndexLE, f.prevTxid, f.prevVoutLE, f.inputValueLE, f.sequenceLE)
+
+def SighashPreimageFrame.outputContextView (f : SighashPreimageFrame) : Bytes × UInt8 :=
+  (f.hashOutputs, f.sighashType)
+
+def SighashPreimageFrame.declaredTxFieldView (f : SighashPreimageFrame) :
+    Bytes × Bytes × (Bytes × Bytes × Bytes × Bytes × Bytes × Bytes × Bytes) × (Bytes × UInt8) :=
+  (f.versionLE, f.locktimeLE, f.inputContextView, f.outputContextView)
+
+theorem selectHashPrevouts_all_commits_all_inputs
+    (allInputs currentInput : Bytes) :
+    selectHashPrevouts SIGHASH_ALL allInputs currentInput = some allInputs := by
+  have hAllAcp : ¬ (SIGHASH_ALL = SIGHASH_ALL_ANYONECANPAY) := by decide
+  have hNoneAcp : ¬ (SIGHASH_ALL = SIGHASH_NONE_ANYONECANPAY) := by decide
+  have hSingleAcp : ¬ (SIGHASH_ALL = SIGHASH_SINGLE_ANYONECANPAY) := by decide
+  have hAll : SIGHASH_ALL = SIGHASH_ALL := rfl
+  simp [selectHashPrevouts, hAllAcp, hNoneAcp, hSingleAcp, hAll]
+
+theorem selectHashPrevouts_anyonecanpay_commits_current_input
+    (allInputs currentInput : Bytes) :
+    selectHashPrevouts SIGHASH_ALL_ANYONECANPAY allInputs currentInput = some currentInput := by
+  have hAllAcp : SIGHASH_ALL_ANYONECANPAY = SIGHASH_ALL_ANYONECANPAY := rfl
+  simp [selectHashPrevouts, hAllAcp]
+
+theorem selectHashSequences_all_commits_all_inputs
+    (allInputs currentInput : Bytes) :
+    selectHashSequences SIGHASH_NONE allInputs currentInput = some allInputs := by
+  have hAllAcp : ¬ (SIGHASH_NONE = SIGHASH_ALL_ANYONECANPAY) := by decide
+  have hNoneAcp : ¬ (SIGHASH_NONE = SIGHASH_NONE_ANYONECANPAY) := by decide
+  have hSingleAcp : ¬ (SIGHASH_NONE = SIGHASH_SINGLE_ANYONECANPAY) := by decide
+  have hAll : ¬ (SIGHASH_NONE = SIGHASH_ALL) := by decide
+  have hNone : SIGHASH_NONE = SIGHASH_NONE := rfl
+  simp [selectHashSequences, hAllAcp, hNoneAcp, hSingleAcp, hAll, hNone]
+
+theorem selectHashSequences_anyonecanpay_commits_current_input
+    (allInputs currentInput : Bytes) :
+    selectHashSequences SIGHASH_NONE_ANYONECANPAY allInputs currentInput = some currentInput := by
+  have hNoneAcp : SIGHASH_NONE_ANYONECANPAY = SIGHASH_NONE_ANYONECANPAY := rfl
+  simp [selectHashSequences, hNoneAcp]
+
+theorem selectHashOutputs_all_commits_all_outputs
+    (inputIndex outputCount : Nat)
+    (allOutputs selectedOutput emptyHash : Bytes) :
+    selectHashOutputs SIGHASH_ALL inputIndex outputCount allOutputs selectedOutput emptyHash = some allOutputs := by
+  have hAll : SIGHASH_ALL = SIGHASH_ALL := rfl
+  simp [selectHashOutputs, hAll]
+
+theorem selectHashOutputs_none_commits_no_outputs
+    (inputIndex outputCount : Nat)
+    (allOutputs selectedOutput emptyHash : Bytes) :
+    selectHashOutputs SIGHASH_NONE inputIndex outputCount allOutputs selectedOutput emptyHash = some emptyHash := by
+  have hAll : ¬ (SIGHASH_NONE = SIGHASH_ALL) := by decide
+  have hAllAcp : ¬ (SIGHASH_NONE = SIGHASH_ALL_ANYONECANPAY) := by decide
+  have hNone : SIGHASH_NONE = SIGHASH_NONE := rfl
+  simp [selectHashOutputs, hAll, hAllAcp, hNone]
+
+theorem selectHashOutputs_single_commits_selected_output
+    (inputIndex outputCount : Nat)
+    (allOutputs selectedOutput emptyHash : Bytes)
+    (h : inputIndex < outputCount) :
+    selectHashOutputs SIGHASH_SINGLE inputIndex outputCount allOutputs selectedOutput emptyHash =
+      some selectedOutput := by
+  have hAll : ¬ (SIGHASH_SINGLE = SIGHASH_ALL) := by decide
+  have hAllAcp : ¬ (SIGHASH_SINGLE = SIGHASH_ALL_ANYONECANPAY) := by decide
+  have hNone : ¬ (SIGHASH_SINGLE = SIGHASH_NONE) := by decide
+  have hNoneAcp : ¬ (SIGHASH_SINGLE = SIGHASH_NONE_ANYONECANPAY) := by decide
+  have hSingle : SIGHASH_SINGLE = SIGHASH_SINGLE := rfl
+  simp [selectHashOutputs, hAll, hAllAcp, hNone, hNoneAcp, hSingle, h]
+
+theorem selectHashOutputs_single_oob_commits_empty
+    (inputIndex outputCount : Nat)
+    (allOutputs selectedOutput emptyHash : Bytes)
+    (h : ¬ inputIndex < outputCount) :
+    selectHashOutputs SIGHASH_SINGLE inputIndex outputCount allOutputs selectedOutput emptyHash =
+      some emptyHash := by
+  have hAll : ¬ (SIGHASH_SINGLE = SIGHASH_ALL) := by decide
+  have hAllAcp : ¬ (SIGHASH_SINGLE = SIGHASH_ALL_ANYONECANPAY) := by decide
+  have hNone : ¬ (SIGHASH_SINGLE = SIGHASH_NONE) := by decide
+  have hNoneAcp : ¬ (SIGHASH_SINGLE = SIGHASH_NONE_ANYONECANPAY) := by decide
+  have hSingle : SIGHASH_SINGLE = SIGHASH_SINGLE := rfl
+  simp [selectHashOutputs, hAll, hAllAcp, hNone, hNoneAcp, hSingle, h]
+
+theorem buildPreimageFrameParts_eq_iff (a b : SighashPreimageFrame) :
+    buildPreimageFrameParts a = buildPreimageFrameParts b ↔ a = b := by
+  constructor
+  · exact buildPreimageFrameParts_injective a b
+  · intro h
+    simp [h]
+
+theorem buildPreimageFrameParts_commits_version
+    (a b : SighashPreimageFrame)
+    (h : a.versionLE ≠ b.versionLE) :
+    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
+  intro hEq
+  apply h
+  exact congrArg SighashPreimageFrame.versionLE (buildPreimageFrameParts_injective a b hEq)
+
+theorem buildPreimageFrameParts_commits_locktime
+    (a b : SighashPreimageFrame)
+    (h : a.locktimeLE ≠ b.locktimeLE) :
+    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
+  intro hEq
+  apply h
+  exact congrArg SighashPreimageFrame.locktimeLE (buildPreimageFrameParts_injective a b hEq)
+
+theorem buildPreimageFrameParts_commits_input_context
+    (a b : SighashPreimageFrame)
+    (h : a.inputContextView ≠ b.inputContextView) :
+    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
+  intro hEq
+  apply h
+  exact congrArg SighashPreimageFrame.inputContextView (buildPreimageFrameParts_injective a b hEq)
+
+theorem buildPreimageFrameParts_commits_output_context
+    (a b : SighashPreimageFrame)
+    (h : a.outputContextView ≠ b.outputContextView) :
+    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
+  intro hEq
+  apply h
+  exact congrArg SighashPreimageFrame.outputContextView (buildPreimageFrameParts_injective a b hEq)
+
+theorem buildPreimageFrameParts_commits_declared_tx_fields
+    (a b : SighashPreimageFrame)
+    (h : a.declaredTxFieldView ≠ b.declaredTxFieldView) :
+    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
+  intro hEq
+  apply h
+  exact congrArg SighashPreimageFrame.declaredTxFieldView (buildPreimageFrameParts_injective a b hEq)
 
 def digestV1 (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat) : Except String Bytes := do
   let core ← parseTxCoreForSighash tx

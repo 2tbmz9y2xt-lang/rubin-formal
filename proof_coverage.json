@@ -100,22 +100,48 @@
       "section_heading": "## 12. Sighash v1 (Normative)",
       "status": "stated",
       "theorems": [
-      "RubinFormal.Conformance.cv_sighash_vectors_pass",
-      "RubinFormal.digestV1_deterministic",
-      "RubinFormal.SighashV1.buildPreimageFrameParts_injective"
-    ],
-    "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-    "theorem_files": {
-      "RubinFormal.digestV1_deterministic": "rubin-formal/RubinFormal/SighashV1.lean",
-      "RubinFormal.SighashV1.buildPreimageFrameParts_injective": "rubin-formal/RubinFormal/SighashV1.lean"
+        "RubinFormal.Conformance.cv_sighash_vectors_pass",
+        "RubinFormal.digestV1_deterministic",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
+        "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs",
+        "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input",
+        "RubinFormal.SighashV1.selectHashSequences_all_commits_all_inputs",
+        "RubinFormal.SighashV1.selectHashSequences_anyonecanpay_commits_current_input",
+        "RubinFormal.SighashV1.selectHashOutputs_all_commits_all_outputs",
+        "RubinFormal.SighashV1.selectHashOutputs_none_commits_no_outputs",
+        "RubinFormal.SighashV1.selectHashOutputs_single_commits_selected_output",
+        "RubinFormal.SighashV1.selectHashOutputs_single_oob_commits_empty",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_version",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_locktime",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_input_context",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_output_context",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields"
+      ],
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.digestV1_deterministic": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_injective": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashSequences_all_commits_all_inputs": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashSequences_anyonecanpay_commits_current_input": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashOutputs_all_commits_all_outputs": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashOutputs_none_commits_no_outputs": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashOutputs_single_commits_selected_output": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.selectHashOutputs_single_oob_commits_empty": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_version": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_locktime": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_input_context": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_output_context": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields": "rubin-formal/RubinFormal/SighashV1.lean"
+      },
+      "notes": "Claim is limited to executable replay on the current CV-SIGHASH fixture subset plus a stronger spec-level theorem surface for the typed preimage-frame builder: selector helpers now cover `ALL/NONE/SINGLE/ANYONECANPAY`, and dedicated corollaries show that version, locktime, input context, and output context including `sighash_type` are all committed in the segmented fixed-width preimage parts.",
+      "limitations": [
+        "The executable `digestV1` replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 `sighash_type` branch or invalid-type rejection path.",
+        "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
+        "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried `sighash_type` extraction."
+      ]
     },
-    "notes": "Claim is limited to executable replay on the conformance fixture set plus determinism of digestV1 and a standalone injectivity theorem for the segmented fixed-width preimage frame builder before final byte concatenation and the final SHA3-256 call.",
-    "limitations": [
-      "The bootstrap size-invariant theorem in PinnedSections is not treated as a full sighash correctness proof.",
-      "No universal equivalence proof for every §12 case beyond conformance replay is claimed.",
-      "The injectivity theorem is over the segmented fixed-width preimage frame builder after field-by-field byte encoding, not over arbitrary raw transactions, fully concatenated preimage bytes, or cryptographic collision resistance."
-    ]
-  },
     {
       "section_key": "consensus_error_codes",
       "section_heading": "## 13. Consensus Error Codes (Normative)",
