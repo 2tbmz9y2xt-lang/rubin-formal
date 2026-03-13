@@ -206,8 +206,8 @@ def merkleRootTxids (txids : List Bytes) : Except String Bytes := do
 
 def merkleRootTagged (ids : List Bytes) (leafTag nodeTag : UInt8) : Except String Bytes := do
   if ids.isEmpty then throw "BLOCK_ERR_PARSE"
-  let leaf := fun (x : Bytes) => SHA3.sha3_256 ((ByteArray.empty.push leafTag) ++ x)
-  let node := fun (l r : Bytes) => SHA3.sha3_256 ((ByteArray.empty.push nodeTag) ++ l ++ r)
+  let leaf := fun (x : Bytes) => RubinFormal.Merkle.taggedLeafHash leafTag x
+  let node := fun (l r : Bytes) => RubinFormal.Merkle.taggedNodeHash nodeTag l r
   let mut level : List Bytes := ids.map leaf
   while level.length > 1 do
     let mut nxt : List Bytes := []

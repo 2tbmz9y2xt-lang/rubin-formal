@@ -76,18 +76,23 @@
         "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot",
         "RubinFormal.WitnessCommitmentV1.checkWitnessCommitment_ok_iff",
         "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage",
-        "RubinFormal.Conformance.cv_block_basic_vectors_pass"
+        "RubinFormal.Conformance.cv_block_basic_vectors_pass",
+        "RubinFormal.Merkle.merkle_tag_equivalence_leaf_collision_reduces_to_sha3_collision",
+        "RubinFormal.Merkle.merkle_tag_equivalence_node_collision_reduces_to_sha3_collision"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
         "RubinFormal.WitnessCommitmentV1.checkWitnessCommitment_ok_iff": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
-        "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean"
+        "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
+        "RubinFormal.Merkle.merkle_tag_equivalence_leaf_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/MerkleStructure.lean",
+        "RubinFormal.Merkle.merkle_tag_equivalence_node_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/MerkleStructure.lean"
       },
-      "notes": "Pinned section now has a standalone theorem surface for witness-merkle zeroing, isolated witness-step acceptance semantics, and reduction of validateBlockBasic to that step after earlier gates pass.",
+      "notes": "Standalone witness-commitment theorems (PR#104) plus merkle tag domain-separation theorems showing txid tags (0x00/0x01) and witness-merkle tags (0x02/0x03) inhabit distinct SHA3 preimage domains.",
       "limitations": [
         "The semantic surface proves the canonical witness-commitment step over the current BlockBasicV1 model, not cryptographic collision resistance of SHA3-256.",
-        "Executable replay remains complementary evidence for concrete fixture coverage and regression checking."
+        "Executable replay remains complementary evidence for concrete fixture coverage and regression checking.",
+        "The merkle-tag theorems are structural domain-separation results only: cross-domain root equality would require a SHA3 collision."
       ]
     },
     {
