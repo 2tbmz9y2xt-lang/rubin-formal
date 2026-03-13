@@ -56,12 +56,51 @@ def witnessCommitmentStatement : Prop :=
     BlockBasicV1.merkleRootTxids pb.txids = .ok pb.header.merkleRoot →
     BlockBasicV1.validateBlockBasic blockBytes expectedPrevHash expectedTarget =
       BlockBasicV1.checkWitnessCommitment pb)
-/-- v2 (F-02 fix): sighash encoding size invariants over real `SighashV1.u64le`/`u32le`.
-    Fixed encoding sizes (8 and 4 bytes) are essential for preimage domain separation
-    in the sighash construction (`digestV1`). -/
+/-- v3 (D08-F04/D08-F10 fix): spec-level sighash commitment completeness.
+    (1) Fixed encoding sizes (8 and 4 bytes) remain canonical.
+    (2) Selector helpers for `ALL/NONE/SINGLE/ANYONECANPAY` choose the intended
+        input/output commitment scope over pre-hashed transaction components.
+    (3) Distinct declared transaction fields (`version`, `locktime`, input context,
+        output context including `sighash_type`) yield distinct preimage-frame parts.
+    This is a structural theorem surface over the hashed preimage builder; it does
+    not claim SHA3 collision resistance or full tx-level equivalence for every §12 path. -/
 def sighashV1Statement : Prop :=
   (∀ n : Nat, (SighashV1.u64le n).size = 8) ∧
-  (∀ n : Nat, (SighashV1.u32le n).size = 4)
+  (∀ n : Nat, (SighashV1.u32le n).size = 4) ∧
+  (∀ allInputs currentInput : Bytes,
+    SighashV1.selectHashPrevouts SighashV1.SIGHASH_ALL allInputs currentInput = some allInputs) ∧
+  (∀ allInputs currentInput : Bytes,
+    SighashV1.selectHashPrevouts SighashV1.SIGHASH_ALL_ANYONECANPAY allInputs currentInput = some currentInput) ∧
+  (∀ allInputs currentInput : Bytes,
+    SighashV1.selectHashSequences SighashV1.SIGHASH_NONE allInputs currentInput = some allInputs) ∧
+  (∀ allInputs currentInput : Bytes,
+    SighashV1.selectHashSequences SighashV1.SIGHASH_NONE_ANYONECANPAY allInputs currentInput = some currentInput) ∧
+  (∀ inputIndex outputCount : Nat, ∀ allOutputs selectedOutput emptyHash : Bytes,
+    SighashV1.selectHashOutputs SighashV1.SIGHASH_ALL inputIndex outputCount allOutputs selectedOutput emptyHash =
+      some allOutputs) ∧
+  (∀ inputIndex outputCount : Nat, ∀ allOutputs selectedOutput emptyHash : Bytes,
+    SighashV1.selectHashOutputs SighashV1.SIGHASH_NONE inputIndex outputCount allOutputs selectedOutput emptyHash =
+      some emptyHash) ∧
+  (∀ inputIndex outputCount : Nat, ∀ allOutputs selectedOutput emptyHash : Bytes,
+    inputIndex < outputCount →
+    SighashV1.selectHashOutputs SighashV1.SIGHASH_SINGLE inputIndex outputCount allOutputs selectedOutput emptyHash =
+      some selectedOutput) ∧
+  (∀ inputIndex outputCount : Nat, ∀ allOutputs selectedOutput emptyHash : Bytes,
+    ¬ inputIndex < outputCount →
+    SighashV1.selectHashOutputs SighashV1.SIGHASH_SINGLE inputIndex outputCount allOutputs selectedOutput emptyHash =
+      some emptyHash) ∧
+  (∀ a b : SighashV1.SighashPreimageFrame,
+    a.versionLE ≠ b.versionLE →
+    SighashV1.buildPreimageFrameParts a ≠ SighashV1.buildPreimageFrameParts b) ∧
+  (∀ a b : SighashV1.SighashPreimageFrame,
+    a.locktimeLE ≠ b.locktimeLE →
+    SighashV1.buildPreimageFrameParts a ≠ SighashV1.buildPreimageFrameParts b) ∧
+  (∀ a b : SighashV1.SighashPreimageFrame,
+    a.inputContextView ≠ b.inputContextView →
+    SighashV1.buildPreimageFrameParts a ≠ SighashV1.buildPreimageFrameParts b) ∧
+  (∀ a b : SighashV1.SighashPreimageFrame,
+    a.outputContextView ≠ b.outputContextView →
+    SighashV1.buildPreimageFrameParts a ≠ SighashV1.buildPreimageFrameParts b)
 def consensusErrorCodesStatement : Prop := ErrorCode.TxErrParse ≠ ErrorCode.TxErrSigInvalid
 def covenantRegistryStatement : Prop := CovenantType.P2PK ≠ CovenantType.HTLC
 def difficultyUpdateStatement : Prop :=
@@ -166,7 +205,31 @@ theorem witness_commitment_proved : witnessCommitmentStatement := by
       blockBytes expectedPrevHash expectedTarget pb hParse hPow hTarget hPrev hMerkle
 
 theorem sighash_v1_proved : sighashV1Statement := by
-  exact ⟨fun _ => rfl, fun _ => rfl⟩
+  refine ⟨fun _ => rfl, fun _ => rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro allInputs currentInput
+    exact SighashV1.selectHashPrevouts_all_commits_all_inputs allInputs currentInput
+  · intro allInputs currentInput
+    exact SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input allInputs currentInput
+  · intro allInputs currentInput
+    exact SighashV1.selectHashSequences_all_commits_all_inputs allInputs currentInput
+  · intro allInputs currentInput
+    exact SighashV1.selectHashSequences_anyonecanpay_commits_current_input allInputs currentInput
+  · intro inputIndex outputCount allOutputs selectedOutput emptyHash
+    exact SighashV1.selectHashOutputs_all_commits_all_outputs inputIndex outputCount allOutputs selectedOutput emptyHash
+  · intro inputIndex outputCount allOutputs selectedOutput emptyHash
+    exact SighashV1.selectHashOutputs_none_commits_no_outputs inputIndex outputCount allOutputs selectedOutput emptyHash
+  · intro inputIndex outputCount allOutputs selectedOutput emptyHash h
+    exact SighashV1.selectHashOutputs_single_commits_selected_output inputIndex outputCount allOutputs selectedOutput emptyHash h
+  · intro inputIndex outputCount allOutputs selectedOutput emptyHash h
+    exact SighashV1.selectHashOutputs_single_oob_commits_empty inputIndex outputCount allOutputs selectedOutput emptyHash h
+  · intro a b h
+    exact SighashV1.buildPreimageFrameParts_commits_version a b h
+  · intro a b h
+    exact SighashV1.buildPreimageFrameParts_commits_locktime a b h
+  · intro a b h
+    exact SighashV1.buildPreimageFrameParts_commits_input_context a b h
+  · intro a b h
+    exact SighashV1.buildPreimageFrameParts_commits_output_context a b h
 
 theorem consensus_error_codes_proved : consensusErrorCodesStatement := by
   simpa [consensusErrorCodesStatement] using error_codes_distinct
