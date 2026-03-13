@@ -292,4 +292,43 @@ theorem section25_order_complete
             by simp [hPrev, hPrevEq],
             hMr, hMrEq, hWmr, hGotCommit, hCommitEq⟩
 
+def section25AcceptWitness
+    (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes) : Prop :=
+  ∃ pb mr wmr gotCommit,
+    parseBlock blockBytes = .ok pb ∧
+    powCheck pb.header = .ok () ∧
+    (match expectedTarget with
+    | none => True
+    | some exp => pb.header.target = exp) ∧
+    (match expectedPrevHash with
+    | none => True
+    | some exp => pb.header.prevHash = exp) ∧
+    merkleRootTxids pb.txids = .ok mr ∧
+    mr = pb.header.merkleRoot ∧
+    witnessMerkleRootWtxids pb.wtxids = .ok wmr ∧
+    findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit ∧
+    gotCommit = witnessCommitmentHash wmr
+
+def section25ValidationTotalStatement : Prop :=
+  ∀ (blockBytes : Bytes) (expectedPrevHash expectedTarget : Option Bytes),
+    section25AcceptWitness blockBytes expectedPrevHash expectedTarget ∨
+      ∃ err, validateBlockBasic blockBytes expectedPrevHash expectedTarget = .error err
+
+theorem validateBlockBasic_accept_or_reject
+    (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes) :
+    section25AcceptWitness blockBytes expectedPrevHash expectedTarget ∨
+      ∃ err, validateBlockBasic blockBytes expectedPrevHash expectedTarget = .error err := by
+  cases hRes : validateBlockBasic blockBytes expectedPrevHash expectedTarget with
+  | ok u =>
+      cases u
+      exact Or.inl (section25_order_complete blockBytes expectedPrevHash expectedTarget hRes)
+  | error err =>
+      exact Or.inr ⟨err, rfl⟩
+
+theorem section25_validation_total_proved : section25ValidationTotalStatement := by
+  intro blockBytes expectedPrevHash expectedTarget
+  exact validateBlockBasic_accept_or_reject blockBytes expectedPrevHash expectedTarget
+
 end RubinFormal
