@@ -4,6 +4,7 @@ import RubinFormal.ArithmeticSafety
 import RubinFormal.CoreExtInvariants
 import RubinFormal.SighashV1
 import RubinFormal.CovenantGenesisV1
+import RubinFormal.WitnessCommitmentV1
 
 namespace RubinFormal
 
@@ -25,10 +26,36 @@ def transactionIdentifiersStatement : Prop :=
     coreEnd < tx.size → tx.extract 0 coreEnd ≠ tx
 def weightAccountingStatement : Prop :=
   ∀ base witness1 witness2 sigCost : Nat, witness1 ≤ witness2 → weight base witness1 sigCost ≤ weight base witness2 sigCost
-/-- v2 (F-03 fix): genesis height produces zero subsidy regardless of prior
-    accumulation. References real `SubsidyV1.blockSubsidy`. -/
+/-- v3 (D08-F02 fix): standalone witness-commitment semantics.
+    (1) Witness merkle construction zeroes the coinbase slot.
+    (2) The isolated witness-commitment step accepts iff the coinbase anchor
+        matches the prefixed witness-merkle commitment.
+    (3) Once parse/pow/target/linkage/merkle gates pass, `validateBlockBasic`
+        reduces exactly to this witness-commitment step. -/
 def witnessCommitmentStatement : Prop :=
-  ∀ (ag : Nat), SubsidyV1.blockSubsidy 0 ag = 0
+  (∀ (coinbaseWtxid : Bytes) (rest : List Bytes),
+    BlockBasicV1.witnessMerkleRootWtxids (coinbaseWtxid :: rest) =
+      BlockBasicV1.merkleRootTagged
+        (BlockBasicV1.coinbaseWitnessReservedValue :: rest) 0x02 0x03) ∧
+  (∀ (pb : BlockBasicV1.ParsedBlock) (witnessRoot gotCommit : Bytes),
+    BlockBasicV1.witnessMerkleRootWtxids pb.wtxids = .ok witnessRoot →
+    BlockBasicV1.findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit →
+    (BlockBasicV1.checkWitnessCommitment pb = .ok () ↔
+      gotCommit = BlockBasicV1.witnessCommitmentHash witnessRoot)) ∧
+  (∀ (blockBytes : Bytes)
+      (expectedPrevHash expectedTarget : Option Bytes)
+      (pb : BlockBasicV1.ParsedBlock),
+    BlockBasicV1.parseBlock blockBytes = .ok pb →
+    BlockBasicV1.powCheck pb.header = .ok () →
+    (match expectedTarget with
+    | none => True
+    | some exp => pb.header.target = exp) →
+    (match expectedPrevHash with
+    | none => True
+    | some exp => pb.header.prevHash = exp) →
+    BlockBasicV1.merkleRootTxids pb.txids = .ok pb.header.merkleRoot →
+    BlockBasicV1.validateBlockBasic blockBytes expectedPrevHash expectedTarget =
+      BlockBasicV1.checkWitnessCommitment pb)
 /-- v2 (F-02 fix): sighash encoding size invariants over real `SighashV1.u64le`/`u32le`.
     Fixed encoding sizes (8 and 4 bytes) are essential for preimage domain separation
     in the sighash construction (`digestV1`). -/
@@ -128,8 +155,15 @@ theorem weight_accounting_proved : weightAccountingStatement := by
   exact weight_monotone_witness base witness1 witness2 sigCost hw
 
 theorem witness_commitment_proved : witnessCommitmentStatement := by
-  intro ag
-  simp [SubsidyV1.blockSubsidy]
+  refine ⟨?_, ?_, ?_⟩
+  · intro coinbaseWtxid rest
+    exact WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot coinbaseWtxid rest
+  · intro pb witnessRoot gotCommit hRoot hCommit
+    exact WitnessCommitmentV1.checkWitnessCommitment_ok_iff
+      pb witnessRoot gotCommit hRoot hCommit
+  · intro blockBytes expectedPrevHash expectedTarget pb hParse hPow hTarget hPrev hMerkle
+    exact WitnessCommitmentV1.validateBlockBasic_witness_stage
+      blockBytes expectedPrevHash expectedTarget pb hParse hPow hTarget hPrev hMerkle
 
 theorem sighash_v1_proved : sighashV1Statement := by
   exact ⟨fun _ => rfl, fun _ => rfl⟩
