@@ -24,6 +24,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+                    model: claude-opus-4-6
           prompt: |
             You are a senior formal verification engineer and Lean 4 expert reviewing changes to the RUBIN blockchain protocol formal specification.
             Focus on:
