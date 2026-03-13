@@ -302,6 +302,7 @@
       "section_heading": "## 25. Block Validation Order (Normative)",
       "status": "proved",
       "theorems": [
+        "RubinFormal.section25_validation_total_proved",
         "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved",
         "RubinFormal.utxo_conservation_theorem",
         "RubinFormal.no_double_spend_theorem",
@@ -311,12 +312,14 @@
       ],
       "file": "rubin-formal/RubinFormal/SubsidyV1.lean",
       "theorem_files": {
+        "RubinFormal.section25_validation_total_proved": "rubin-formal/RubinFormal/BlockValidationOrder.lean",
         "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.prepareNonCoinbaseTxBasic_utxo_conserved": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.scanInputs_no_intra_tx_double_spend": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
-      }
+      },
+      "notes": "Section 25 coverage now includes a standalone totality theorem for the BlockValidationOrder model: every input either produces the ordered acceptance witness from section25_order_complete or rejects with an explicit error returned by validateBlockBasic."
     }
   ],
   "proof_level": "refinement",
