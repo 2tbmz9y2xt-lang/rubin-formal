@@ -19,6 +19,9 @@ def witnessPrefix : Bytes :=
     0x52,0x55,0x42,0x49,0x4e,0x2d,0x57,0x49,0x54,0x4e,0x45,0x53,0x53,0x2f
   ]
 
+def coinbaseWitnessReservedValue : Bytes :=
+  RubinFormal.bytes ((List.replicate 32 (UInt8.ofNat 0)).toArray)
+
 structure BlockHeader where
   version : Nat
   prevHash : Bytes
@@ -223,8 +226,7 @@ def witnessMerkleRootWtxids (wtxids : List Bytes) : Except String Bytes := do
   if wtxids.isEmpty then throw "BLOCK_ERR_PARSE"
   let mut ids := wtxids
   -- coinbase slot commits as zero bytes (CANONICAL §10.4.1)
-  let zero32 : Bytes := RubinFormal.bytes ((List.replicate 32 (UInt8.ofNat 0)).toArray)
-  ids := zero32 :: (ids.drop 1)
+  ids := coinbaseWitnessReservedValue :: (ids.drop 1)
   merkleRootTagged ids 0x02 0x03
 
 def witnessCommitmentHash (witnessRoot : Bytes) : Bytes :=
@@ -261,6 +263,14 @@ def findCoinbaseAnchorCommitment (coinbaseTx : Bytes) : Except String Bytes := d
       throw "BLOCK_ERR_WITNESS_COMMITMENT"
     pure anchorData
 
+def checkWitnessCommitment (pb : ParsedBlock) : Except String Unit := do
+  let witnessRoot ← witnessMerkleRootWtxids pb.wtxids
+  let expectedCommit := witnessCommitmentHash witnessRoot
+  let gotCommit ← findCoinbaseAnchorCommitment pb.coinbaseTx
+  if gotCommit != expectedCommit then
+    throw "BLOCK_ERR_WITNESS_COMMITMENT"
+  pure ()
+
 def validateBlockBasic
     (blockHex : Bytes)
     (expectedPrevHash : Option Bytes)
@@ -284,12 +294,7 @@ def validateBlockBasic
   if mr != pb.header.merkleRoot then
     throw "BLOCK_ERR_MERKLE_INVALID"
   -- witness commitment check
-  let wmr ← witnessMerkleRootWtxids pb.wtxids
-  let expectCommit := witnessCommitmentHash wmr
-  let gotCommit ← findCoinbaseAnchorCommitment pb.coinbaseTx
-  if gotCommit != expectCommit then
-    throw "BLOCK_ERR_WITNESS_COMMITMENT"
-  pure ()
+  checkWitnessCommitment pb
 
 -- F-AUDIT-04: Duplicate txid uniqueness.
 -- Go enforces nonce uniqueness in validateBlockTxSemantics (block_basic_txs.go:35-39)

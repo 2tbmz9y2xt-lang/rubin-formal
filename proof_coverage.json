@@ -70,15 +70,24 @@
     {
       "section_key": "witness_commitment",
       "section_heading": "### 10.4.1 Witness Commitment (Coinbase Anchor)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
+        "RubinFormal.witness_commitment_proved",
+        "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot",
+        "RubinFormal.WitnessCommitmentV1.checkWitnessCommitment_ok_iff",
+        "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage",
         "RubinFormal.Conformance.cv_block_basic_vectors_pass"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "notes": "Current registry entry is bounded to executable replay for witness-commitment enforcement in block-basic vectors.",
+      "theorem_files": {
+        "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
+        "RubinFormal.WitnessCommitmentV1.checkWitnessCommitment_ok_iff": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
+        "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean"
+      },
+      "notes": "Pinned section now has a standalone theorem surface for witness-merkle zeroing, isolated witness-step acceptance semantics, and reduction of validateBlockBasic to that step after earlier gates pass.",
       "limitations": [
-        "PinnedSections.bootstrap theorem for this section is intentionally too weak to count as a universal witness-commitment proof.",
-        "No standalone proof of full witness-commitment semantics is claimed here."
+        "The semantic surface proves the canonical witness-commitment step over the current BlockBasicV1 model, not cryptographic collision resistance of SHA3-256.",
+        "Executable replay remains complementary evidence for concrete fixture coverage and regression checking."
       ]
     },
     {

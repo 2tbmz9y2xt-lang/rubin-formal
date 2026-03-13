@@ -12,6 +12,7 @@ import RubinFormal.TxWeightV2
 import RubinFormal.UtxoBasicV1
 import RubinFormal.VaultStateMachine
 import RubinFormal.BlockBasicV1
+import RubinFormal.WitnessCommitmentV1
 import RubinFormal.BlockBasicCheckV1
 import RubinFormal.MerkleStructure
 import RubinFormal.SubsidyV1
