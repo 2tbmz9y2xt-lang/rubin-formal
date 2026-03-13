@@ -1,0 +1,36 @@
+name: "Claude Code Review"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  id-token: write
+
+jobs:
+  claude:
+    name: claude
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        id: review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are a senior formal verification engineer and Lean 4 expert reviewing changes to the RUBIN blockchain protocol formal specification.
+            Focus on:
+            - Correctness of Lean 4 proofs and theorem statements
+            - Logical consistency with the RUBIN protocol specification
+            - Missing edge cases or unprovable lemmas
+            - Type errors and universe inconsistencies
+            - Security-critical invariants that must be preserved
+            - Post-quantum cryptography assumptions and their formal encoding
+            Be precise and reference specific line numbers. Flag any proof that uses `sorry` or `admit`.
