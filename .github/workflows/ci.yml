@@ -15,9 +15,20 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      # Cache elan toolchain (~300MB) — lean-action only caches .lake/
+      - name: cache elan toolchain
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: ~/.elan
+          key: elan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lean-toolchain') }}
+
       - uses: leanprover/lean-action@c544e89643240c6b398f14a431bcdc6309e36b3e # v1
         with:
           build: true
+          build-args: "--quiet"
+          use-github-cache: true
+
       - name: publish legacy status context "build"
         if: ${{ always() }}
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
