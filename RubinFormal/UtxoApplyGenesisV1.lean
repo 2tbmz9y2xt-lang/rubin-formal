@@ -12,6 +12,8 @@ open RubinFormal
 open RubinFormal.UtxoBasicV1
 open RubinFormal.CovenantGenesisV1
 
+/- Pre-rotation suite constants (re-exported from CovenantGenesisV1).
+   Post-rotation (Q-FORMAL-ROTATION-02/04): use `Rotation.registryLookup`. -/
 def SUITE_ID_SENTINEL : Nat := CovenantGenesisV1.SUITE_ID_SENTINEL
 def SUITE_ID_ML_DSA_87 : Nat := CovenantGenesisV1.SUITE_ID_ML_DSA_87
 
@@ -36,6 +38,8 @@ def lockIdOfEntry (e : UtxoEntry) : Bytes :=
 def parseU16le (b0 b1 : UInt8) : Nat :=
   Wire.u16le? b0 b1
 
+/-- **Pre-rotation scope**: rejects any `suite ≠ ML_DSA_87`.
+    Post-rotation (Q-FORMAL-ROTATION-04): `suite ∉ NATIVE_SPEND_SUITES(h) → reject`. -/
 def validateP2PKSpendPreSig (entry : UtxoEntry) (w : WitnessItem) (_blockHeight : Nat) : Except String Unit := do
   let suite := w.suiteId
   if suite != SUITE_ID_ML_DSA_87 then
@@ -50,6 +54,8 @@ def validateP2PKSpendPreSig (entry : UtxoEntry) (w : WitnessItem) (_blockHeight 
   -- crypto verify omitted (out-of-scope for formal replay)
   pure ()
 
+/-- **Pre-rotation scope**: hardcoded ML-DSA-87 pubkey/sig bounds.
+    Post-rotation (Q-FORMAL-ROTATION-02): bounds from `Rotation.registryLookup`. -/
 def validateWitnessItemLengths (w : WitnessItem) (_blockHeight : Nat) : Except String Unit := do
   if w.suiteId == SUITE_ID_SENTINEL then
     if w.pubkey.size != 0 || w.signature.size != 0 then
@@ -62,6 +68,8 @@ def validateWitnessItemLengths (w : WitnessItem) (_blockHeight : Nat) : Except S
   else
     throw "TX_ERR_SIG_ALG_INVALID"
 
+/-- **Pre-rotation scope**: ML-DSA-87 is the only signing suite in threshold dispatch.
+    Post-rotation (Q-FORMAL-ROTATION-04): `suite ∉ NATIVE_SPEND_SUITES(h) → reject`. -/
 def validateThresholdSigSpendNoCrypto
     (keys : List Bytes)
     (threshold : Nat)
