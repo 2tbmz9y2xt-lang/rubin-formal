@@ -22,6 +22,7 @@ import RubinFormal.CovenantGenesisV1
 import RubinFormal.UtxoApplyGenesisV1
 import RubinFormal.FormalGap03
 import RubinFormal.RotationPrelude
+import RubinFormal.NativeSuiteRotation
 import RubinFormal.BlockValidationOrder
 import RubinFormal.RefinementBridgeV1
 import RubinFormal.Refinement.Index
