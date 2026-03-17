@@ -230,21 +230,36 @@ theorem fi_rot_02_phase_partition
 /-! ### Mutual exclusion (strengthening of FI-ROT-02)
 
   The phases are mutually exclusive by construction: the height conditions
-  in each constructor are contradictory pairwise.  This is self-evident
-  from the arithmetic (h < h1, h1 ≤ h < h2, h2 ≤ h, etc.) and the
-  well-formedness constraint h1 < h2 (< h4 when defined).
+  in each constructor are contradictory pairwise.  We prove all 10 pairs. -/
 
-  We state it as a separate theorem for documentation clarity. -/
+/-- Phase number assignment: deterministic function from height to phase index.
+    This is the computational witness that exactly one phase holds. -/
+def phaseNumber (d : RotationDeploymentDescriptor) (h : Nat) : Nat :=
+  if h < d.h1 then 1
+  else if h < d.h2 then 2
+  else match d.h4 with
+    | none => 3
+    | some h4val => if h4val ≤ h then 5 else 4
 
-/-- The five phases are pairwise mutually exclusive.
-    In phase 1, h < h1, which contradicts h1 ≤ h in phase 2, etc. -/
+/-- All 10 pairwise phase contradictions, proving the five height intervals
+    are mutually exclusive under well-formedness. -/
 theorem fi_rot_02_phases_exclusive
     (d : RotationDeploymentDescriptor)
-    (_hwf : wellFormedDescriptor d)
-    (h : Nat) :
-    -- Phase 1 ∧ Phase 2 is impossible
-    ¬ (h < d.h1 ∧ d.h1 ≤ h) := by
-  omega
+    (hwf : wellFormedDescriptor d) (h : Nat) :
+    -- Phase 1 vs Phase 2
+    ¬ (h < d.h1 ∧ d.h1 ≤ h) ∧
+    -- Phase 1 vs Phase 3/4/5 (h < h1 vs h2 ≤ h, using h1 < h2)
+    ¬ (h < d.h1 ∧ d.h2 ≤ h) ∧
+    -- Phase 2 vs Phase 3/4/5 (h < h2 vs h2 ≤ h)
+    ¬ (h < d.h2 ∧ d.h2 ≤ h) ∧
+    -- Phase 3 (h4=none) vs Phase 4/5 (h4=some)
+    ¬ (d.h4 = none ∧ ∃ v, d.h4 = some v) ∧
+    -- Phase 4 vs Phase 5 (h < h4val vs h4val ≤ h)
+    (∀ h4val, d.h4 = some h4val → ¬ (h < h4val ∧ h4val ≤ h)) := by
+  obtain ⟨_, hh12, _⟩ := hwf
+  refine ⟨by omega, by omega, by omega, ?_, ?_⟩
+  · rintro ⟨hnone, v, hsome⟩; rw [hnone] at hsome; exact Option.noConfusion hsome
+  · intro h4val _ ; omega
 
 end NativeSuiteRotation
 
