@@ -1,3 +1,13 @@
+/-
+  FormalGap03.lean — Pre-rotation scoped theorems.
+
+  All theorems in this file carry explicit `w.suiteId = SUITE_ID_ML_DSA_87`
+  hypotheses.  They remain valid as-is in the post-rotation world (they simply
+  prove properties of the ML-DSA-87 code path).
+
+  Post-rotation (Q-FORMAL-ROTATION-02/04): add per-suite variants that
+  generalise bounds and binding proofs to any suite in the registry.
+-/
 import RubinFormal.Conformance.CVValidationOrderReplay
 import RubinFormal.UtxoApplyGenesisV1
 
