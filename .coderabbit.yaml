@@ -1,0 +1,3 @@
+# Disable CodeRabbit AI reviews for this repository
+reviews:
+  enabled: false
