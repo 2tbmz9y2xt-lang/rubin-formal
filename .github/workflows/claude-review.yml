@@ -23,15 +23,15 @@ jobs:
 
       - name: Run Claude Code Review
         id: review
-        uses: anthropics/claude-code-action@v1
+        uses: grll/claude-code-action@beta
         with:
           use_oauth: true
           claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
           claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           secrets_admin_pat: ${{ secrets.SECRETS_ADMIN_PAT }}
-          anthropic_model: claude-sonnet-4-6
-          max_turns: 15
+          model: claude-sonnet-4-6
+          max_turns: "15"
           direct_prompt: |
             You are a senior formal verification engineer and Lean 4 expert reviewing
             code in the RUBIN blockchain formal verification repository.
