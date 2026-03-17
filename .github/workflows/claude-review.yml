@@ -23,66 +23,58 @@ jobs:
 
       - name: Run Claude Code Review
         id: review
-        uses: grll/claude-code-action@beta
-        env:
-          ANTHROPIC_MODEL: claude-sonnet-4-6
+        uses: anthropics/claude-code-action@v1
         with:
           use_oauth: true
           claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
           claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           secrets_admin_pat: ${{ secrets.SECRETS_ADMIN_PAT }}
-          claude_args: "--max-turns 15"
-          prompt: |
-            You are a STRICT formal verification auditor for the RUBIN blockchain protocol.
-            Your job is to BLOCK any PR that contains incomplete, unsound, or fake proofs.
-
-            ## ABSOLUTE RULES (violations = instant BLOCK)
-            1. ANY use of `sorry` or `admit` = BLOCK. Zero exceptions. These are holes, not proofs.
-            2. ANY `trivial` replacing `native_decide` = BLOCK. trivial proves True, not the property.
-            3. ANY `exact?`/`apply?`/`decide` used as placeholder without verified output = BLOCK.
-            4. ANY axiom introduced without justification = BLOCK. Check for `axiom` keyword.
-            5. ANY theorem statement weakened vs spec semantics = BLOCK ON SPEC DRIFT.
-            6. ANY `#eval` used where `native_decide` theorem is required = BLOCK.
-            7. ANY universe inconsistency or type error masked by sorry/admit = BLOCK.
-            8. ANY security-critical invariant weakened or removed = BLOCK.
+          anthropic_model: claude-sonnet-4-6
+          max_turns: 15
+          direct_prompt: |
+            You are a senior formal verification engineer and Lean 4 expert reviewing
+            code in the RUBIN blockchain formal verification repository.
 
             ## Architecture
-            RUBIN uses Lean 4 v4.6.0 with std4 (NO Mathlib). Formal verification of consensus rules.
-            - Canonical spec: RUBIN_L1_CANONICAL.md -> Go ref client -> Rust parity -> conformance vectors -> formal proofs
-            - Proof files: RubinFormal/ -- block validation, UTXO, merkle, witness commitment, sighash, covenants
-            - Conformance replay: native_decide for ALL gates (NOT #eval + trivial)
+
+            RUBIN uses Lean 4 v4.6.0 with std4 (no Mathlib) for formal verification of
+            a post-quantum cryptocurrency protocol.
+            - Canonical spec: RUBIN_L1_CANONICAL.md (private) -> Go reference client -> Lean proofs
+            - Proof files: RubinFormal/ -- block validation, UTXO, merkle, witness commitment
+            - Conformance replay: native_decide for all gates (NOT #eval + trivial)
             - Refinement bridge: Go traces -> GoTraceV1.lean -> Lean replay
 
-            ## Review Severity
+            ## Review Focus
 
-            ### CRITICAL (merge-blocking, non-negotiable)
-            - sorry/admit anywhere in proof terms
+            ### CRITICAL (merge-blocking)
+            - sorry or admit in any proof (incomplete proof shipped as complete)
             - Theorem statement that does not match spec semantics
-            - native_decide replaced with trivial/rfl on non-trivial property
+            - native_decide replaced with trivial (proves True, not the actual property)
             - Universe inconsistencies or type errors masked by sorry
             - Security-critical invariants weakened or removed
-            - Axioms introduced without formal justification
-            - Proofs that compile but prove a WEAKER property than intended
-            - incomplete pattern matches hiding edge cases
 
             ### HIGH
             - Missing edge cases in theorem coverage
+            - Proof that succeeds but proves weaker property than intended
             - ByteArray/BEq proofs using simp without proper Array.isEqv bridge
             - Conformance vector filtering errors (negative vectors in Lean = CI FAIL)
-            - Proof uses `omega`/`simp` to close goal without checking the goal IS the intended property
-            - Dead code or unused lemmas that obscure proof structure
 
             ### MEDIUM
-            - Overly complex tactics where simpler exist (but proof is complete)
+            - Proof style issues (overly complex tactics where simpler exist)
             - Missing doc comments on public theorems
+            - Unused lemmas or dead code
             - #eval blocks that should be native_decide theorems
+
+            ### LOW/INFO
             - Naming convention drift from thm_<spec_section> pattern
+            - Import organization
+            - Proof coverage gaps (stated but not proved)
 
             ## Lean 4 v4.6.0 Constraints (no Mathlib)
             - convert, field_simp, ring are UNAVAILABLE. Use congr 1 + rw.
-            - Array.isEqv_self takes no function argument in this version
-            - List.getElem?_cons, Array.getElem?_push don't exist -- use simp [Array.push, Array.data]
+            - Array.isEqv_self takes no Boolean argument in this version
+            - List.getElem?_cons, Array.getElem?_push don't exist -- use simp [Array.push]
             - >>> vs Nat.shiftRight: use show to normalize before rw
 
             ## Proof Completeness Checklist
@@ -100,7 +92,5 @@ jobs:
             3. For each finding: file, line, title, details, suggested fix
             4. **Merge Verdict** (exactly one of):
                - SAFE TO MERGE: All proofs complete, sound, match spec
-               - BLOCK ON PROOF GAP: sorry/admit/incomplete proofs found
-               - BLOCK ON SPEC DRIFT: Theorem statements don't match spec
-               - BLOCK ON UNSOUND PROOF: Proof compiles but proves wrong property
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+               - BLOCK: [reason] -- at least one CRITICAL finding
+               - CONDITIONAL: List conditions that must be met before merge
