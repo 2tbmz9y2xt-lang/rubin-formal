@@ -84,16 +84,58 @@ theorem fi_rot_03_params_unique
 
 /-! ### Connection to active suites and descriptors -/
 
+/-- NativeCreateSuites only contains oldSuiteId and/or newSuiteId. -/
+private theorem create_suites_subset
+    (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
+    (hmem : sid ∈ NativeCreateSuites h d) :
+    sid = d.oldSuiteId ∨ sid = d.newSuiteId := by
+  unfold NativeCreateSuites at hmem
+  split at hmem
+  · simp [List.mem_singleton] at hmem; exact Or.inl hmem
+  · split at hmem
+    · simp [List.mem_cons, List.mem_singleton] at hmem
+      rcases hmem with h1 | h2 <;> [exact Or.inl h1; exact Or.inr h2]
+    · simp [List.mem_singleton] at hmem; exact Or.inr hmem
+
+/-- NativeSpendSuites only contains oldSuiteId and/or newSuiteId. -/
+private theorem spend_suites_subset
+    (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
+    (hmem : sid ∈ NativeSpendSuites h d) :
+    sid = d.oldSuiteId ∨ sid = d.newSuiteId := by
+  unfold NativeSpendSuites at hmem
+  split at hmem
+  · simp [List.mem_singleton] at hmem; exact Or.inl hmem
+  · cases hh4 : d.h4 with
+    | none =>
+      simp [hh4] at hmem
+      rcases hmem with h1 | h2 <;> [exact Or.inl h1; exact Or.inr h2]
+    | some h4val =>
+      simp [hh4] at hmem
+      split at hmem
+      · simp [List.mem_singleton] at hmem; exact Or.inr hmem
+      · simp [List.mem_cons, List.mem_singleton] at hmem
+        rcases hmem with h1 | h2 <;> [exact Or.inl h1; exact Or.inr h2]
+
 /-- A well-formed descriptor's active suites are all registered.
-    This is the link between FI-ROT-02 (phase partition) and FI-ROT-03 (registry).
-    Axiomatised because enforcement is in the protocol activation rules:
-    a descriptor cannot activate unless both suites are in the registry. -/
-axiom descriptor_suites_registered :
-  ∀ (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat),
-    descriptorRegistryConsistent d reg →
-    wellFormedDescriptor d →
+    PROVED (not axiomatised): NativeCreateSuites/NativeSpendSuites only
+    return d.oldSuiteId or d.newSuiteId, both of which are registered
+    by the descriptorRegistryConsistent hypothesis. -/
+theorem descriptor_suites_registered
+    (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat)
+    (hcons : descriptorRegistryConsistent d reg)
+    (_hwf : wellFormedDescriptor d) :
     (∀ sid ∈ NativeCreateSuites h d, isRegistered reg sid) ∧
-    (∀ sid ∈ NativeSpendSuites h d, isRegistered reg sid)
+    (∀ sid ∈ NativeSpendSuites h d, isRegistered reg sid) := by
+  obtain ⟨hold, hnew⟩ := hcons
+  constructor
+  · intro sid hmem
+    rcases create_suites_subset d h sid hmem with rfl | rfl
+    · exact hold
+    · exact hnew
+  · intro sid hmem
+    rcases spend_suites_subset d h sid hmem with rfl | rfl
+    · exact hold
+    · exact hnew
 
 /-- Main theorem: for any active native spend suite at height h, registry
     resolution returns exactly one entry with determined parameters.
