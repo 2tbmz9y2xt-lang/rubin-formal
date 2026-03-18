@@ -25,6 +25,9 @@ import RubinFormal.RotationPrelude
 import RubinFormal.NativeSuiteRotation
 import RubinFormal.NativeRegistryResolution
 import RubinFormal.WeightSuiteAware
+import RubinFormal.NativeSpendCreateGate
+import RubinFormal.LegacySunset
+import RubinFormal.NativeExtIndependence
 import RubinFormal.BlockValidationOrder
 import RubinFormal.RefinementBridgeV1
 import RubinFormal.Refinement.Index
