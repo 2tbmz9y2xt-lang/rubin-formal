@@ -26,7 +26,8 @@ jobs:
 
             // Get diff of .lean files only
             const diff = execSync(
-              `gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }}`
+              `gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }}`,
+              { maxBuffer: 50 * 1024 * 1024 }
             ).toString();
 
             const leanSections = diff.split(/^diff --git /m).filter(s => s.includes('.lean'));
