@@ -1,6 +1,9 @@
 .DS_Store
 .lake/
--e 
+
+# Claude Code hooks (keep in private orchestration repo only)
+.claude/
+
 # Spec checkout (CI only)
 .spec/
 .spec-context.md
