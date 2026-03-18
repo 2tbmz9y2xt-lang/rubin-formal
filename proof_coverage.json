@@ -23,7 +23,7 @@
       },
       "notes": "Registry entry anchors selected consensus constants that already participate in executable replay or bounded arithmetic proofs.",
       "limitations": [
-        "No single universal theorem for every numeric constant in §4 is claimed here.",
+        "No single universal theorem for every numeric constant in \u00a74 is claimed here.",
         "Coverage scope is limited to constants exercised by the listed theorems."
       ]
     },
@@ -142,7 +142,7 @@
       },
       "notes": "Claim is limited to executable replay on the current CV-SIGHASH fixture subset plus a stronger spec-level theorem surface for the typed preimage-frame builder: selector helpers now cover `ALL/NONE/SINGLE/ANYONECANPAY`, and dedicated corollaries show that version, locktime, input context, and output context including `sighash_type` are all committed in the segmented fixed-width preimage parts.",
       "limitations": [
-        "The executable `digestV1` replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 `sighash_type` branch or invalid-type rejection path.",
+        "The executable `digestV1` replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every \u00a712 `sighash_type` branch or invalid-type rejection path.",
         "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
         "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried `sighash_type` extraction."
       ]
@@ -246,7 +246,7 @@
       },
       "notes": "Section claim is limited to structural UTXO/value invariants, a direct immature-coinbase reject boundary theorem, concrete tx-level vault predicate witnesses, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
       "limitations": [
-        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1↔L2 equivalence for all vault transactions."
+        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1\u2194L2 equivalence for all vault transactions."
       ]
     },
     {
@@ -351,6 +351,24 @@
         "RubinFormal.scanInputs_no_intra_tx_double_spend": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
       },
       "notes": "Section 25 coverage now includes a standalone totality theorem for the BlockValidationOrder model: every input either produces the ordered acceptance witness from section25_order_complete or rejects with an explicit error returned by validateBlockBasic."
+    },
+    {
+      "section_key": "parallel_validation_equivalence",
+      "section_heading": "## Parallel Validation \u2014 Sequential Equivalence (Q-PV-19)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.Refinement.ParallelEquivalence.cursor_determinism",
+        "RubinFormal.Refinement.ParallelEquivalence.cursor_pure",
+        "RubinFormal.Refinement.ParallelEquivalence.reducer_equivalence",
+        "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence",
+        "RubinFormal.Refinement.ParallelEquivalence.commit_equivalence_accept",
+        "RubinFormal.Refinement.ParallelEquivalence.commit_equivalence_reject",
+        "RubinFormal.Refinement.ParallelEquivalence.worker_purity",
+        "RubinFormal.Refinement.ParallelEquivalence.worker_deterministic",
+        "RubinFormal.Refinement.ParallelEquivalence.reducer_permutation_invariant",
+        "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
+      ],
+      "file": "RubinFormal/Refinement/ParallelEquivalence.lean"
     }
   ],
   "proof_level": "refinement",
