@@ -118,13 +118,29 @@ def hasDuplicateExtId : List DeploymentProfile → Bool
     if rest.any (fun q => q.extId == p.extId) then true
     else hasDuplicateExtId rest
 
-/-- Empty profile list has no duplicates. -/
+/-- Empty profile list has no duplicates (definitional). -/
 theorem no_duplicates_empty : hasDuplicateExtId [] = false := rfl
 
-/-- A single profile has no duplicates. -/
+/-- A single profile has no duplicates (definitional). -/
 theorem no_duplicates_singleton (p : DeploymentProfile) :
     hasDuplicateExtId [p] = false := by
   simp [hasDuplicateExtId, List.any]
+
+/-- Concrete 3-profile list with distinct ext_ids: no duplicates. -/
+theorem no_duplicates_three_distinct :
+    hasDuplicateExtId [
+      { extId := 1, activationHeight := 10 },
+      { extId := 2, activationHeight := 20 },
+      { extId := 3, activationHeight := 30 }
+    ] = false := by native_decide
+
+/-- Concrete 3-profile list with a duplicate: detected. -/
+theorem duplicate_in_three :
+    hasDuplicateExtId [
+      { extId := 1, activationHeight := 10 },
+      { extId := 2, activationHeight := 20 },
+      { extId := 1, activationHeight := 30 }
+    ] = true := by native_decide
 
 /-- Two profiles with the same ext_id are detected as duplicates. -/
 theorem duplicate_detected (p q : DeploymentProfile) (h : p.extId = q.extId) :
@@ -146,30 +162,57 @@ theorem no_duplicate_different_ids (p q : DeploymentProfile) (h : p.extId ≠ q.
 def suiteAllowed (suiteId : Nat) (allowedSuites : List Nat) : Bool :=
   allowedSuites.contains suiteId
 
-/-- Keyless sentinel (suite_id = 0) is always allowed regardless of set. -/
-theorem keyless_sentinel_allowed (_allowedSuites : List Nat) :
-    -- Sentinel suite_id=0 bypasses suite check (enforced at code level)
-    True := trivial
+/-- Keyless sentinel (suite_id = 0): when 0 is in the allowed list,
+    suiteAllowed returns true. Models the sentinel bypass rule. -/
+theorem keyless_sentinel_in_allowed :
+    suiteAllowed 0 [0, 1, 3] = true := by native_decide
 
-/-- Suite authorization is deterministic: same inputs → same result. -/
-theorem suite_auth_deterministic (s1 s2 : Nat) (allowed : List Nat)
-    (h : s1 = s2) :
-    suiteAllowed s1 allowed = suiteAllowed s2 allowed := by
-  rw [h]
+/-- When suite_id is NOT in the allowed list, suiteAllowed returns false. -/
+theorem suite_not_allowed_when_absent :
+    suiteAllowed 5 [1, 3] = false := by native_decide
+
+/-- Suite authorization is deterministic: same inputs produce same result. -/
+theorem suite_auth_deterministic (s : Nat) (allowed : List Nat) :
+    suiteAllowed s allowed = suiteAllowed s allowed := rfl
+
+/-- Concrete: suite 1 is allowed in [1, 3]. -/
+theorem suite_1_in_1_3 : suiteAllowed 1 [1, 3] = true := by native_decide
+
+/-- Concrete: suite 2 is NOT allowed in [1, 3]. -/
+theorem suite_2_not_in_1_3 : suiteAllowed 2 [1, 3] = false := by native_decide
+
+/-- Empty allowed list rejects everything. -/
+theorem suite_empty_rejects : suiteAllowed 1 [] = false := by native_decide
 
 -- ============================================================================
 -- Section 5: Pre-Activation Permissive Path
 -- ============================================================================
 
-/-- Pre-activation spend result: always accept (permissive). -/
-def preActivationSpend (_covenantData : Nat) (_suiteId : Nat) : Bool := true
+/-- Model CORE_EXT spend decision: if profile not active → permissive (true),
+    if active → check suite membership. -/
+def extSpendDecision (profileActive : Bool) (suiteId : Nat) (allowedSuites : List Nat) : Bool :=
+  if !profileActive then true
+  else suiteAllowed suiteId allowedSuites
 
-/-- Pre-activation is unconditionally permissive. -/
-theorem pre_activation_always_accepts (covData suiteId : Nat) :
-    preActivationSpend covData suiteId = true := rfl
+/-- Pre-activation (profileActive = false): unconditionally permissive
+    regardless of suite_id or allowed list contents. -/
+theorem pre_activation_always_accepts (suiteId : Nat) (allowed : List Nat) :
+    extSpendDecision false suiteId allowed = true := by
+  simp [extSpendDecision]
 
-/-- Pre-activation result is independent of suite_id. -/
-theorem pre_activation_suite_independent (covData s1 s2 : Nat) :
-    preActivationSpend covData s1 = preActivationSpend covData s2 := rfl
+/-- Pre-activation result is independent of suite_id: two different
+    suites get the same (accept) result when profile is inactive. -/
+theorem pre_activation_suite_independent (s1 s2 : Nat) (allowed : List Nat) :
+    extSpendDecision false s1 allowed = extSpendDecision false s2 allowed := by
+  simp [extSpendDecision]
+
+/-- Post-activation with disallowed suite → reject. This is the
+    non-trivial counterpart: enforcement actually rejects. -/
+theorem post_activation_disallowed_rejects :
+    extSpendDecision true 5 [1, 3] = false := by native_decide
+
+/-- Post-activation with allowed suite → accept. -/
+theorem post_activation_allowed_accepts :
+    extSpendDecision true 3 [1, 3] = true := by native_decide
 
 end RubinFormal.CoreExtRefinement
