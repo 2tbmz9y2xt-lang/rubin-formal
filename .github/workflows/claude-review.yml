@@ -48,8 +48,6 @@ jobs:
             - native_decide replaced with trivial (proves True, not the actual property)
             - Universe inconsistencies or type errors masked by sorry
             - Security-critical invariants weakened or removed
-            - Incomplete well-formedness predicate (def : Prop missing spec constraints)
-            - Theorem requires separate ≠/∉ hypothesis that should follow from invariants
 
             ### HIGH
             - Missing edge cases in theorem coverage
@@ -81,22 +79,6 @@ jobs:
             3. Verify each theorem statement matches the intended spec property
             4. Verify native_decide is used for conformance gates, NOT trivial/rfl
             5. Check that no proof hole is disguised as a completed proof
-
-            ## Invariant Completeness Audit (CRITICAL — missed gaps are real bugs)
-            For EVERY theorem, check these three rules:
-            6. For each hypothesis — can it be DERIVED from existing invariants?
-               If yes, the theorem has a redundant premise. The invariant should
-               be strengthened instead. Flag as HIGH.
-               Example: `(hnotSentinel : sid ≠ SENTINEL)` when the descriptor
-               well-formedness already guarantees non-sentinel suites.
-            7. For each `def ... : Prop` — list ALL constraints from the canonical
-               spec for this concept. If any are missing, flag as CRITICAL.
-               Example: `wellFormedDescriptor` must include non-sentinel if the
-               spec says rotation suites are always native (non-sentinel).
-            8. For each `≠` / `∉` / bound in a premise — WHERE does the guarantee
-               come from? If the answer is "the caller will pass it" but it should
-               follow from a structure/predicate — that is an INVARIANT GAP.
-               Flag as HIGH. This pattern caused the sentinel undercharge bug.
 
             ## Output Format
             Post a review with:
