@@ -1,0 +1,115 @@
+name: "Formal Proof Hygiene"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - '**/*.lean'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  premise-smell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for premise smells in Lean theorems
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Get diff of .lean files only
+            const diff = execSync(
+              `gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }}`
+            ).toString();
+
+            const leanSections = diff.split(/^diff --git /m).filter(s => s.includes('.lean'));
+            const addedLines = [];
+            for (const section of leanSections) {
+              const fileName = section.match(/b\/(.*\.lean)/)?.[1] || 'unknown';
+              for (const line of section.split('\n')) {
+                if (line.startsWith('+') && !line.startsWith('+++')) {
+                  addedLines.push({ file: fileName, content: line.slice(1) });
+                }
+              }
+            }
+
+            const warnings = [];
+
+            // Pattern 1: Standalone ≠ hypotheses that might belong in a well-formedness predicate
+            // e.g. (hnotSentinel : sid ≠ SUITE_ID_SENTINEL) as a separate theorem param
+            const neqPattern = /\(h\w*\s*:\s*\w+\s*≠\s*\w+\)/;
+            for (const {file, content} of addedLines) {
+              if (content.match(/^theorem\s/) || content.match(/^\s+\(/)) {
+                if (neqPattern.test(content)) {
+                  // Check if it looks like an "external" guard rather than structural
+                  const match = content.match(/\(h(\w*)\s*:\s*(\w+)\s*≠\s*(\w+)\)/);
+                  if (match) {
+                    warnings.push({
+                      file,
+                      line: content.trim(),
+                      smell: `Standalone ≠ hypothesis: \`${match[2]} ≠ ${match[3]}\`. Could this be derived from an existing invariant instead of passed as a separate premise?`
+                    });
+                  }
+                }
+              }
+            }
+
+            // Pattern 2: ∉ hypotheses
+            const notInPattern = /\(h\w*\s*:\s*\w+\s*∉\s*\w+\)/;
+            for (const {file, content} of addedLines) {
+              if (notInPattern.test(content)) {
+                const match = content.match(/\(h(\w*)\s*:\s*(\w+)\s*∉\s*(\w+)\)/);
+                if (match) {
+                  warnings.push({
+                    file,
+                    line: content.trim(),
+                    smell: `Standalone ∉ hypothesis: \`${match[2]} ∉ ${match[3]}\`. Should this be part of a well-formedness predicate?`
+                  });
+                }
+              }
+            }
+
+            // Pattern 3: axiom declarations (not in comments)
+            for (const {file, content} of addedLines) {
+              const stripped = content.replace(/--.*$/, '').trim();
+              if (/^axiom\s/.test(stripped)) {
+                warnings.push({
+                  file,
+                  line: content.trim(),
+                  smell: `New axiom declared. Axioms bypass formal verification. Can this be proved as a theorem instead?`
+                });
+              }
+            }
+
+            if (warnings.length > 0) {
+              let body = '### ⚠️ Formal Proof Hygiene — Premise Smell Detection\n\n';
+              body += 'The following patterns were detected in added Lean code. ';
+              body += 'These are **not blocking** but require manual review:\n\n';
+              for (const w of warnings) {
+                body += `**${w.file}**\n`;
+                body += `\`\`\`\n${w.line}\n\`\`\`\n`;
+                body += `> ${w.smell}\n\n`;
+              }
+              body += '---\n*This check does not block merge. Fix if the smell indicates a real invariant gap.*';
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+
+              // WARNING only, not failure — these are smells, not bugs
+              core.warning(`${warnings.length} premise smell(s) detected — see PR comment`);
+            } else {
+              core.info('No premise smells detected');
+            }
+        env:
+          GH_TOKEN: ${{ github.token }}
