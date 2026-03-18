@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "status": "partial-mechanized",
-  "notes": "Bridge map for model theorem -> executable conformance op evidence. The registry remains narrower than universal mechanized refinement, but `retarget_v1` is now backed by a machine-checked Go-trace contract instead of metadata-only baseline evidence.",
+  "status": "pv-refined",
+  "notes": "Bridge map for model theorem -> executable conformance op evidence. The registry remains narrower than universal mechanized refinement, but `retarget_v1` is now backed by a machine-checked Go-trace contract instead of metadata-only baseline evidence. PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
   "critical_ops": [
     {
       "op": "parse_tx",
