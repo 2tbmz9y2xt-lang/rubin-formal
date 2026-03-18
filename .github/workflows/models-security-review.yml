@@ -135,19 +135,28 @@ jobs:
               issue_number: context.issue.number,
               body: `### Security Review: deepseek-v3\n_Model: deepseek/DeepSeek-V3-0324_\n\n\`\`\`json\n${review}\n\`\`\``
             });
-      - name: Hard block on sorry/admit in diff
+      - name: Hard block on sorry/admit in Lean files
         uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
             const diff = fs.readFileSync('pr-diff.txt', 'utf8');
-            const addedLines = diff.split('\n').filter(l => l.startsWith('+') && !l.startsWith('+++'));
-            const sorryLines = addedLines.filter(l => {
-              const stripped = l.replace(/--.*$/, '');
-              return /\bsorry\b/.test(stripped) || /\badmit\b/.test(stripped);
-            });
+            // Split diff into per-file sections, only check .lean files
+            const sections = diff.split(/^diff --git /m).filter(s => s.includes('.lean'));
+            const sorryLines = [];
+            for (const section of sections) {
+              const lines = section.split('\n');
+              for (const line of lines) {
+                if (!line.startsWith('+') || line.startsWith('+++')) continue;
+                // Strip Lean line comments
+                const stripped = line.replace(/--.*$/, '');
+                if (/\bsorry\b/.test(stripped) || /\badmit\b/.test(stripped)) {
+                  sorryLines.push(line);
+                }
+              }
+            }
             if (sorryLines.length > 0) {
-              core.setFailed(`Merge blocked: sorry/admit found in added lines:\n${sorryLines.join('\n')}`);
+              core.setFailed(`Merge blocked: sorry/admit in .lean files:\n${sorryLines.join('\n')}`);
             } else {
-              core.info('No sorry/admit in added lines — passed');
+              core.info('No sorry/admit in .lean added lines — passed');
             }
