@@ -85,7 +85,7 @@ theorem fi_rot_03_params_unique
 /-! ### Connection to active suites and descriptors -/
 
 /-- NativeCreateSuites only contains oldSuiteId and/or newSuiteId. -/
-private theorem create_suites_subset
+theorem create_suites_subset
     (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
     (hmem : sid ∈ NativeCreateSuites h d) :
     sid = d.oldSuiteId ∨ sid = d.newSuiteId := by
@@ -98,7 +98,7 @@ private theorem create_suites_subset
     · simp [List.mem_singleton] at hmem; exact Or.inr hmem
 
 /-- NativeSpendSuites only contains oldSuiteId and/or newSuiteId. -/
-private theorem spend_suites_subset
+theorem spend_suites_subset
     (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
     (hmem : sid ∈ NativeSpendSuites h d) :
     sid = d.oldSuiteId ∨ sid = d.newSuiteId := by

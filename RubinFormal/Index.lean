@@ -24,6 +24,7 @@ import RubinFormal.FormalGap03
 import RubinFormal.RotationPrelude
 import RubinFormal.NativeSuiteRotation
 import RubinFormal.NativeRegistryResolution
+import RubinFormal.WeightSuiteAware
 import RubinFormal.BlockValidationOrder
 import RubinFormal.RefinementBridgeV1
 import RubinFormal.Refinement.Index
