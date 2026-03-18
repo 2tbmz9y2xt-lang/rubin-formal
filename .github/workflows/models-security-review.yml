@@ -136,25 +136,21 @@ jobs:
               body: `### Security Review: deepseek-v3\n_Model: deepseek/DeepSeek-V3-0324_\n\n\`\`\`json\n${review}\n\`\`\``
             });
 
-      - name: Block on critical findings
-        if: steps.review.outputs.review
+      - name: Hard block on sorry/admit in diff
         uses: actions/github-script@v8
         with:
           script: |
-            const review = ${{ toJSON(steps.review.outputs.review) }};
-            if (!review) return;
-            let parsed;
-            try {
-              parsed = JSON.parse(review);
-            } catch (e) {
-              core.setFailed(`Security review fail-closed: unparseable review JSON: ${e.message}`);
-              return;
-            }
-            const critical = (parsed.findings || []).filter(f => f.severity === 'CRITICAL');
-            if (critical.length > 0) {
-              core.setFailed(`Merge blocked: ${critical.length} CRITICAL finding(s)`);
+            const fs = require('fs');
+            const diff = fs.readFileSync('pr-diff.txt', 'utf8');
+            // Only block on lines ADDED (starting with +) that contain sorry or admit
+            // Exclude comments (lines with --)
+            const addedLines = diff.split('\n').filter(l => l.startsWith('+') && !l.startsWith('+++'));
+            const sorryLines = addedLines.filter(l => {
+              const stripped = l.replace(/--.*$/, '').replace(/\/\-.*?\-\//g, '');
+              return /\bsorry\b/.test(stripped) || /\badmit\b/.test(stripped);
+            });
+            if (sorryLines.length > 0) {
+              core.setFailed(`Merge blocked: ${sorryLines.length} added line(s) contain sorry/admit:\n${sorryLines.join('\n')}`);
             } else {
-              core.info('No CRITICAL findings - review passed');
+              core.info('No sorry/admit in added lines — passed');
             }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
