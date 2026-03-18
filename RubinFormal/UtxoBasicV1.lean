@@ -24,6 +24,8 @@ def COV_TYPE_DA_COMMIT : Nat := 0x0103
 def COV_TYPE_HTLC : Nat := 0x0100
 def COV_TYPE_MULTISIG : Nat := 0x0104
 
+/- Pre-rotation: only ML-DSA-87 for native P2PK spend.
+   Post-rotation (Q-FORMAL-ROTATION-04): `suite ∉ NATIVE_SPEND_SUITES(h)`. -/
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def clampU64Max : Nat := (Nat.pow 2 64) - 1
@@ -378,6 +380,8 @@ def scanSingleInputStep
   if e.covenantType == COV_TYPE_P2PK then
     if e.covenantData.size != MAX_P2PK_COVENANT_DATA then
       throw "TX_ERR_COVENANT_TYPE_INVALID"
+    -- Pre-rotation scope: only ML-DSA-87 allowed for P2PK spend.
+    -- Post-rotation (Q-FORMAL-ROTATION-04): suite ∉ NATIVE_SPEND_SUITES(h) → reject.
     let suite := (e.covenantData.get! 0).toNat
     if suite != SUITE_ID_ML_DSA_87 then
       throw "TX_ERR_COVENANT_TYPE_INVALID"

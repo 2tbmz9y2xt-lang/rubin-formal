@@ -16,6 +16,8 @@ def MAX_VAULT_KEYS : Nat := 12
 def MAX_VAULT_WHITELIST_ENTRIES : Nat := 1024
 def MAX_MULTISIG_KEYS : Nat := 12
 
+/- Pre-rotation suite constants.  Post-rotation (Q-FORMAL-ROTATION-04):
+   creation gate becomes `suiteId ∉ NATIVE_CREATE_SUITES(h) → reject`. -/
 def SUITE_ID_SENTINEL : Nat := 0x00
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
@@ -229,6 +231,8 @@ structure TxOut where
   covenantData : Bytes
 deriving Repr, DecidableEq
 
+/-- **Pre-rotation scope**: P2PK creation rejects any `suiteId ≠ ML_DSA_87`.
+    Post-rotation (Q-FORMAL-ROTATION-04): `suiteId ∉ NATIVE_CREATE_SUITES(h) → reject`. -/
 def validateOutGenesis (out : TxOut) (txKind : Nat) (_blockHeight : Nat) : Except String Unit := do
   if out.covenantType == COV_TYPE_P2PK then
     if out.value == 0 then throw "TX_ERR_COVENANT_TYPE_INVALID"

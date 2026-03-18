@@ -12,12 +12,16 @@ namespace TxWeightV2
 -- Constants from CANONICAL §§2/4/5/9 (subset required for weight accounting).
 def WITNESS_DISCOUNT_DIVISOR : Nat := 4
 
+/- Pre-rotation verification costs.  Post-rotation (Q-FORMAL-ROTATION-03):
+   `verifyCost` is looked up from `Rotation.SuiteRegistry` per suite. -/
 def VERIFY_COST_ML_DSA_87 : Nat := 8
 def VERIFY_COST_UNKNOWN_SUITE : Nat := 64
 
 def MAX_WITNESS_ITEMS : Nat := 1024
 def MAX_WITNESS_BYTES_PER_TX : Nat := 100000
 
+/- Pre-rotation suite ID constants.  See `RotationPrelude.lean` for
+   the registry-based model used by Q-FORMAL-ROTATION-01..06. -/
 def SUITE_ID_SENTINEL : Nat := 0x00
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
@@ -74,6 +78,9 @@ def parseOutputsForAnchor (c : Cursor) (n : Nat) : Option (Cursor × Nat) := do
 -- isML: true iff suite=ML_DSA_87 with canonical pubkey/sig lengths.
 -- isSigAlgInvalid: true for unknown suites (not sentinel, not ML_DSA_87).
 -- isSigNoncanonical: true for ML_DSA_87 with wrong pubkey/sig lengths.
+/-- **Pre-rotation scope**: two-branch dispatch (SENTINEL vs ML-DSA-87).
+    Post-rotation (Q-FORMAL-ROTATION-03): classify per registry entry;
+    `isML` becomes `isKnownSuite`, bounds from `SuiteEntry`. -/
 def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Bool × Bool) := do
   let (suite, c1) ← c.getU8?
   let suiteID := suite.toNat
@@ -117,6 +124,9 @@ def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Bool × B
     -- Unknown suite ID
     pure (c5, false, true, false)
 
+/-- **Pre-rotation scope**: `mlCount` counts ML-DSA-87 witnesses only.
+    Post-rotation (Q-FORMAL-ROTATION-03): replace with per-suite count map
+    `suiteCounts : List (Nat × Nat)` keyed by suite_id. -/
 -- Witness section results.  Callers choose which fields to consume:
 --   weight function: uses mlCount + unknownSuiteCount, ignores error flags
 --   block/tx validation: uses error flags, ignores unknownSuiteCount
@@ -158,6 +168,9 @@ def parseWitnessSectionForWeight (c : Cursor) : Option WitnessSectionResult := d
            mlCount := mlCount, unknownSuiteCount := unknownSuiteCount,
            anySigAlgInvalid := anySigAlgInvalid, anySigNoncanonical := anySigNoncanonical }
 
+/-- **Pre-rotation scope**: sigCost = mlCount * VERIFY_COST_ML_DSA_87 + unknownCount * 64.
+    Post-rotation (Q-FORMAL-ROTATION-03, `weight_suite_aware_correct`):
+    sigCost = Σ_suite (count(suite) * registry[suite].verifyCost). -/
 def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
   let c0 : Cursor := { bs := tx, off := 0 }
   let (_, c1) ←

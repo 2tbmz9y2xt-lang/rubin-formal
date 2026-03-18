@@ -21,24 +21,73 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout canonical spec (read-only)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: 2tbmz9y2xt-lang/rubin-spec
+          ssh-key: ${{ secrets.SPEC_DEPLOY_KEY }}
+          path: .spec
+          sparse-checkout: |
+            spec/RUBIN_L1_CANONICAL.md
+            spec/RUBIN_NATIVE_CRYPTO_ROTATION_SPEC_v1.md
+
+      - name: Extract spec sections for review context
+        run: |
+          python3 << 'PYEOF'
+          import re, os
+          sections = {}
+          rot_path = '.spec/spec/RUBIN_NATIVE_CRYPTO_ROTATION_SPEC_v1.md'
+          if os.path.exists(rot_path):
+              with open(rot_path) as f:
+                  sections['rotation_spec'] = f.read()
+          canon_path = '.spec/spec/RUBIN_L1_CANONICAL.md'
+          if os.path.exists(canon_path):
+              with open(canon_path) as f:
+                  content = f.read()
+              m = re.search(r'(## 4\.1\b.*?)(?=\n## \d)', content, re.DOTALL)
+              if m: sections['section_4_1'] = m.group(1)[:5000]
+              m = re.search(r'(## 9\b.*?)(?=\n## \d)', content, re.DOTALL)
+              if m: sections['section_9'] = m.group(1)[:5000]
+              m = re.search(r'(## 23\.2\b.*?)(?=\n## \d)', content, re.DOTALL)
+              if m: sections['section_23_2'] = m.group(1)[:3000]
+          with open('.spec-context.md', 'w') as f:
+              f.write("# Spec Context for Review\n\n")
+              for name, text in sections.items():
+                  f.write(f"## {name}\n\n{text}\n\n---\n\n")
+          total = sum(len(v) for v in sections.values())
+          print(f"Extracted {len(sections)} sections, {total} chars")
+          PYEOF
+
       - name: Run Claude Code Review
         id: review
         uses: anthropics/claude-code-action@v1
-        env:
-          ANTHROPIC_MODEL: claude-sonnet-4-6
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: "--max-turns 15"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          model: claude-sonnet-4-6
           prompt: |
-            You are a senior formal verification engineer and Lean 4 expert reviewing changes to the RUBIN blockchain protocol formal specification.
+            You are a senior formal verification engineer and Lean 4 expert reviewing
+            code in the RUBIN blockchain formal verification repository.
 
             ## Architecture
 
-            RUBIN uses Lean 4 v4.6.0 with std4 (no Mathlib) for formal verification of consensus rules.
-            - Canonical spec: RUBIN_L1_CANONICAL.md (private) -> Go reference client -> Rust parity client -> conformance vectors -> formal proofs
-            - Proof files: RubinFormal/ -- block validation, UTXO, merkle, witness commitment, sighash, covenants
+            RUBIN uses Lean 4 v4.6.0 with std4 (no Mathlib) for formal verification of
+            a post-quantum cryptocurrency protocol.
+            - Canonical spec: RUBIN_L1_CANONICAL.md (private) -> Go reference client -> Lean proofs
+            - Proof files: RubinFormal/ -- block validation, UTXO, merkle, witness commitment
             - Conformance replay: native_decide for all gates (NOT #eval + trivial)
             - Refinement bridge: Go traces -> GoTraceV1.lean -> Lean replay
+
+            ## SPEC CONTEXT (from canonical spec — use for rule 7 validation)
+
+            The file `.spec-context.md` in the repo root contains extracted spec sections:
+            - rotation_spec: full RUBIN_NATIVE_CRYPTO_ROTATION_SPEC_v1.md
+            - section_4_1: §4.1 Native Crypto Suite Registry from RUBIN_L1_CANONICAL.md
+            - section_9: §9 Transaction Weight from RUBIN_L1_CANONICAL.md
+            - section_23_2: §23.2 Descriptor Activation from RUBIN_L1_CANONICAL.md
+
+            READ `.spec-context.md` BEFORE reviewing any .lean file that touches
+            rotation, weight, registry, or descriptor definitions. Compare every
+            `def ... : Prop` against the spec constraints listed there.
 
             ## Review Focus
 
@@ -48,6 +97,8 @@ jobs:
             - native_decide replaced with trivial (proves True, not the actual property)
             - Universe inconsistencies or type errors masked by sorry
             - Security-critical invariants weakened or removed
+            - Incomplete well-formedness predicate (def : Prop missing spec constraints)
+            - Theorem requires separate ≠/∉ hypothesis that should follow from invariants
 
             ### HIGH
             - Missing edge cases in theorem coverage
@@ -66,17 +117,39 @@ jobs:
             - Import organization
             - Proof coverage gaps (stated but not proved)
 
-            ## Lean 4 v4.6.0 Gotchas
-            - No Mathlib: convert, field_simp, ring unavailable. Use congr 1 + rw.
-            - Array.isEqv_self takes no function argument in this version
-            - List.getElem?_cons, Array.getElem?_push don't exist -- use simp [Array.push, Array.data]
+            ## Lean 4 v4.6.0 Constraints (no Mathlib)
+            - convert, field_simp, ring are UNAVAILABLE. Use congr 1 + rw.
+            - Array.isEqv_self takes no Boolean argument in this version
+            - List.getElem?_cons, Array.getElem?_push don't exist -- use simp [Array.push]
             - >>> vs Nat.shiftRight: use show to normalize before rw
 
-            ## Output Format
+            ## Proof Completeness Checklist
+            For EVERY .lean file changed, you MUST:
+            1. grep for sorry/admit -- if found, BLOCK immediately
+            2. grep for axiom -- if found without justification, BLOCK
+            3. Verify each theorem statement matches the intended spec property
+            4. Verify native_decide is used for conformance gates, NOT trivial/rfl
+            5. Check that no proof hole is disguised as a completed proof
 
-            Post a review comment with:
-            1. Findings grouped by severity
-            2. For each: file, line, title, details, suggested fix
-            3. Proof completeness check: any sorry/admit?
-            4. Merge decision: SAFE TO MERGE / BLOCK ON PROOF GAP / BLOCK ON SPEC DRIFT
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+            ## Invariant Completeness Audit (CRITICAL — missed gaps are real bugs)
+            For EVERY theorem, check these three rules:
+            6. For each hypothesis — can it be DERIVED from existing invariants?
+               If yes, the theorem has a redundant premise. The invariant should
+               be strengthened instead. Flag as HIGH.
+            7. For each `def ... : Prop` — READ `.spec-context.md` and list ALL
+               constraints from the canonical spec for this concept. If any
+               are missing from the Lean definition, flag as CRITICAL.
+            8. For each `≠` / `∉` / bound in a premise — WHERE does the guarantee
+               come from? If the answer is "the caller will pass it" but it should
+               follow from a structure/predicate — that is an INVARIANT GAP.
+               Flag as HIGH. This pattern caused the sentinel undercharge bug.
+
+            ## Output Format
+            Post a review with:
+            1. **Proof Integrity Scan**: List every sorry/admit/axiom found (or "CLEAN")
+            2. **Findings by Severity**: CRITICAL first, then HIGH, MEDIUM
+            3. For each finding: file, line, title, details, suggested fix
+            4. **Merge Verdict** (exactly one of):
+               - SAFE TO MERGE: All proofs complete, sound, match spec
+               - BLOCK: [reason] -- at least one CRITICAL finding
+               - CONDITIONAL: List conditions that must be met before merge
