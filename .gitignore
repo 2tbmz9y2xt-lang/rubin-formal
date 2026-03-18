@@ -1,2 +1,6 @@
 .DS_Store
 .lake/
+-e 
+# Spec checkout (CI only)
+.spec/
+.spec-context.md
