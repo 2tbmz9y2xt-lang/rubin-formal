@@ -35,12 +35,18 @@ structure RotationDeploymentDescriptor where
   h4         : Option Nat  -- old suite spend-ineligible (sunset); None = never
   deriving Repr, DecidableEq
 
+/-- SUITE_ID_SENTINEL constant (0x00) — sentinel is never a valid active suite. -/
+def SUITE_ID_SENTINEL : Nat := 0x00
+
 /-- A descriptor is well-formed per CANONICAL §4.1.3:
     - old ≠ new
+    - neither old nor new is SENTINEL (0x00)
     - h1 < h2
     - if H4 defined, h2 < h4 -/
 def wellFormedDescriptor (d : RotationDeploymentDescriptor) : Prop :=
   d.oldSuiteId ≠ d.newSuiteId ∧
+  d.oldSuiteId ≠ SUITE_ID_SENTINEL ∧
+  d.newSuiteId ≠ SUITE_ID_SENTINEL ∧
   d.h1 < d.h2 ∧
   (∀ h4val, d.h4 = some h4val → d.h2 < h4val)
 
@@ -186,7 +192,7 @@ theorem fi_rot_02_phase_partition
     (hwf : wellFormedDescriptor d)
     (h : Nat) :
     RotationPhase d h := by
-  obtain ⟨_hneq, _hh12, hh24⟩ := hwf
+  obtain ⟨_hneq, _holdNotSen, _hnewNotSen, _hh12, hh24⟩ := hwf
   by_cases hlt1 : h < d.h1
   · -- Phase 1: h < h1
     exact RotationPhase.phase1 hlt1
@@ -256,7 +262,7 @@ theorem fi_rot_02_phases_exclusive
     ¬ (d.h4 = none ∧ ∃ v, d.h4 = some v) ∧
     -- Phase 4 vs Phase 5 (h < h4val vs h4val ≤ h)
     (∀ h4val, d.h4 = some h4val → ¬ (h < h4val ∧ h4val ≤ h)) := by
-  obtain ⟨_, hh12, _⟩ := hwf
+  obtain ⟨_, _, _, hh12, _⟩ := hwf
   refine ⟨by omega, by omega, by omega, ?_, ?_⟩
   · rintro ⟨hnone, v, hsome⟩; rw [hnone] at hsome; exact Option.noConfusion hsome
   · intro h4val _ ; omega
