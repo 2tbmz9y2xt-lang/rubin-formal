@@ -11,7 +11,7 @@
     {
       "section_key": "consensus_constants",
       "section_heading": "## 4. Consensus Constants (Wire-Level)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.sem001_mldsa_bounded_lengths_proved",
         "RubinFormal.subsidy_u128_safety_proved",
@@ -103,7 +103,7 @@
     {
       "section_key": "sighash_v1",
       "section_heading": "## 12. Sighash v1 (Normative)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_sighash_vectors_pass",
         "RubinFormal.digestV1_deterministic",
