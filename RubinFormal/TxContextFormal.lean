@@ -128,15 +128,99 @@ def sortAscending : List Nat → List Nat
   | [] => []
   | x :: xs => insertSorted x (sortAscending xs)
 
-/-- **extid_sort_deterministic** (§14): pure function, same input = same output.
-    This is the property SPEC-TXCTX-01 §14 requires: BuildTxContext uses a
-    deterministic sort on the ext_id list and the result is reproducible. -/
+/-- insertSorted produces a permutation: x :: ys ~ insertSorted x ys -/
+theorem insertSorted_perm (x : Nat) (ys : List Nat) :
+    List.Perm (x :: ys) (insertSorted x ys) := by
+  induction ys with
+  | nil => exact List.Perm.refl _
+  | cons y ys ih =>
+    simp only [insertSorted]
+    split
+    · exact List.Perm.refl _
+    · -- x > y: insertSorted x (y::ys) = y :: insertSorted x ys
+      -- Need: x :: y :: ys ~ y :: insertSorted x ys
+      -- swap gives: y :: x :: ys ~ x :: y :: ys
+      -- cons y ih gives: y :: x :: ys ~ y :: insertSorted x ys
+      -- We need: x :: y :: ys ~ y :: insertSorted x ys
+      exact (List.Perm.swap y x ys).trans (List.Perm.cons y ih)
+
+/-- sortAscending produces a permutation of the input. -/
+theorem sortAscending_perm (xs : List Nat) :
+    List.Perm xs (sortAscending xs) := by
+  induction xs with
+  | nil => exact List.Perm.refl _
+  | cons x xs ih =>
+    simp only [sortAscending]
+    exact (List.Perm.cons x ih).trans (insertSorted_perm x (sortAscending xs))
+
+/-- Membership lemma for insertSorted (used by sorted proof). -/
+private theorem insertSorted_mem (x : Nat) (ys : List Nat) (z : Nat) :
+    z ∈ insertSorted x ys ↔ z = x ∨ z ∈ ys := by
+  induction ys with
+  | nil => simp [insertSorted, List.mem_cons, List.mem_nil_iff]
+  | cons y ys ih =>
+    simp only [insertSorted]
+    split
+    · simp [List.mem_cons]
+    · simp only [List.mem_cons, ih]
+      constructor
+      · rintro (rfl | rfl | h)
+        · exact Or.inr (Or.inl rfl)
+        · exact Or.inl rfl
+        · exact Or.inr (Or.inr h)
+      · rintro (rfl | rfl | h)
+        · exact Or.inr (Or.inl rfl)
+        · exact Or.inl rfl
+        · exact Or.inr (Or.inr h)
+
+/-- sortAscending produces a sorted list (Pairwise ≤). -/
+theorem sortAscending_sorted_v2 (xs : List Nat) :
+    List.Pairwise (· ≤ ·) (sortAscending xs) := by
+  induction xs with
+  | nil => exact List.Pairwise.nil
+  | cons x xs ih =>
+    simp only [sortAscending]
+    exact insertSorted_sorted_v2 x (sortAscending xs) ih
+where
+  insertSorted_sorted_v2 (x : Nat) (ys : List Nat)
+      (h : List.Pairwise (· ≤ ·) ys) :
+      List.Pairwise (· ≤ ·) (insertSorted x ys) := by
+    induction ys with
+    | nil =>
+      simp [insertSorted]
+    | cons y ys ih_ys =>
+      simp only [insertSorted]
+      split
+      · -- x ≤ y
+        rename_i hle
+        exact List.pairwise_cons.mpr ⟨fun z hz => by
+          rw [List.mem_cons] at hz
+          match hz with
+          | Or.inl heq => exact heq ▸ hle
+          | Or.inr hmem => exact Nat.le_trans hle (List.rel_of_pairwise_cons h hmem),
+          h⟩
+      · -- x > y
+        rename_i hnle
+        have hyx : y < x := Nat.lt_of_not_le hnle
+        have hpw := List.pairwise_cons.mp h
+        have ih_result := ih_ys hpw.2
+        exact List.pairwise_cons.mpr ⟨fun z hz => by
+          rw [insertSorted_mem] at hz
+          match hz with
+          | Or.inl heq => exact heq ▸ Nat.le_of_lt hyx
+          | Or.inr hmem => exact hpw.1 z hmem,
+          ih_result⟩
+
+/-- **extid_sort_deterministic** (§14, strengthened):
+    sortAscending produces a sorted permutation of the input.
+    This is the substantive property: any two implementations that produce
+    a sorted permutation of the same input yield identical results. -/
 theorem extid_sort_deterministic (xs : List Nat) :
-    sortAscending xs = sortAscending xs :=
-  rfl
+    List.Perm xs (sortAscending xs) ∧ List.Pairwise (· ≤ ·) (sortAscending xs) :=
+  ⟨sortAscending_perm xs, sortAscending_sorted_v2 xs⟩
 
 /-- Concrete verification: descending input [3, 1, 2] produces [1, 2, 3].
-    This models CV-51/CV-84: ext_ids in descending wire order are still
+    Models CV-51/CV-84: ext_ids in descending wire order are still
     processed in ascending numeric order. -/
 theorem extid_sort_concrete_321 :
     sortAscending [3, 1, 2] = [1, 2, 3] := by
@@ -205,11 +289,31 @@ theorem vault_sum_ignored_when_no_vault (totalIn totalOut vis : Nat) :
 -- §14 Theorem 7: parallel_error_equivalence
 -- ============================================================================
 
-/-- **parallel_error_equivalence** (§14):
-    Sequential and parallel eval produce identical results (pure map). -/
-theorem parallel_error_equivalence (inputs : List α) (f : α → Bool) :
-    inputs.map f = inputs.map f :=
-  rfl
+/-- **parallel_error_equivalence** (§14, strengthened):
+    For any permutation of inputs, mapping a pure function f produces
+    a permutation of the original results. This is the real property:
+    reordering inputs (as happens in parallel scheduling) produces the
+    same multiset of results. -/
+theorem parallel_error_equivalence {inputs₁ inputs₂ : List α} (f : α → Bool)
+    (hperm : List.Perm inputs₁ inputs₂) :
+    List.Perm (inputs₁.map f) (inputs₂.map f) :=
+  hperm.map f
+
+/-- Corollary: if all results are true in one ordering, all are true in any other. -/
+theorem parallel_all_perm_invariant {inputs₁ inputs₂ : List α} (f : α → Bool)
+    (hperm : List.Perm inputs₁ inputs₂)
+    (hall : ∀ x ∈ inputs₁, f x = true) :
+    ∀ x ∈ inputs₂, f x = true := by
+  intro x hx
+  exact hall x (hperm.symm.mem_iff.mp hx)
+
+/-- Corollary: if any result is false in one ordering, it's false in any other. -/
+theorem parallel_any_fail_perm_invariant {inputs₁ inputs₂ : List α} (f : α → Bool)
+    (hperm : List.Perm inputs₁ inputs₂)
+    (hfail : ∃ x ∈ inputs₁, f x = false) :
+    ∃ x ∈ inputs₂, f x = false := by
+  obtain ⟨x, hx, hfx⟩ := hfail
+  exact ⟨x, hperm.mem_iff.mp hx, hfx⟩
 
 -- ============================================================================
 -- §14 Theorem 8: sighash_policy_complete
