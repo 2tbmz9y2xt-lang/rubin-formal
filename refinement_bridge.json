@@ -46,6 +46,19 @@
       "model_theorem": "RubinFormal.value_conservation_proved",
       "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "evidence_level": "baseline"
+    },
+    {
+      "op": "da_set_integrity",
+      "gate": "CV-DA",
+      "model_theorem": "RubinFormal.da_set_integrity_proved",
+      "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_file": "rubin-formal/RubinFormal/DaIntegrityV1.lean",
+      "evidence_level": "baseline",
+      "spec_section": "§21",
+      "go_function": "validateDASetIntegrity",
+      "limitations": [
+        "Proves non-emptiness invariant (empty chunk set is invalid). Does not cover the full DA validation pipeline including chunk hashing and manifest verification."
+      ]
     }
   ]
 }
