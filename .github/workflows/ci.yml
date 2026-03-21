@@ -16,6 +16,90 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - name: reject sorry/admit placeholders in committed Lean files
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          ROOT = Path("RubinFormal")
+          LEAN_FILES = sorted(ROOT.rglob("*.lean"))
+
+          SORRY_RE = re.compile(r"(?<![A-Za-z0-9_'])sorry(?![A-Za-z0-9_'])")
+          ADMIT_PATTERNS = (
+              re.compile(r"^\s*admit\s*$"),
+              re.compile(r"(?<![A-Za-z0-9_'])by\s+admit(?![A-Za-z0-9_'])"),
+              re.compile(r":=\s*admit\s*(?:$|[),\]}])"),
+              re.compile(r"(?<![A-Za-z0-9_'])(?:exact|refine)\s+admit(?![A-Za-z0-9_'])"),
+          )
+
+          def strip_comments_and_strings(text: str) -> str:
+              out: list[str] = []
+              i = 0
+              block_depth = 0
+              in_string = False
+              while i < len(text):
+                  ch = text[i]
+                  nxt = text[i + 1] if i + 1 < len(text) else ""
+                  if block_depth > 0:
+                      if ch == "/" and nxt == "-":
+                          block_depth += 1
+                          i += 2
+                          continue
+                      if ch == "-" and nxt == "/":
+                          block_depth -= 1
+                          i += 2
+                          continue
+                      if ch == "\n":
+                          out.append("\n")
+                      i += 1
+                      continue
+                  if in_string:
+                      if ch == "\\":
+                          i += 2
+                          continue
+                      if ch == '"':
+                          in_string = False
+                      elif ch == "\n":
+                          out.append("\n")
+                      i += 1
+                      continue
+                  if ch == "/" and nxt == "-":
+                      block_depth = 1
+                      i += 2
+                      continue
+                  if ch == "-" and nxt == "-":
+                      while i < len(text) and text[i] != "\n":
+                          i += 1
+                      continue
+                  if ch == '"':
+                      in_string = True
+                      i += 1
+                      continue
+                  out.append(ch)
+                  i += 1
+              return "".join(out)
+
+          findings: list[str] = []
+          for path in LEAN_FILES:
+              cleaned = strip_comments_and_strings(path.read_text(encoding="utf-8"))
+              for lineno, line in enumerate(cleaned.splitlines(), start=1):
+                  if SORRY_RE.search(line):
+                      findings.append(f"{path}:{lineno}: sorry placeholder")
+                      continue
+                  if any(pattern.search(line) for pattern in ADMIT_PATTERNS):
+                      findings.append(f"{path}:{lineno}: admit placeholder")
+
+          if findings:
+              print("Lean placeholder scan failed:")
+              for finding in findings:
+                  print(finding)
+              sys.exit(1)
+
+          print("Lean placeholder scan passed")
+          PY
+
       # Cache elan toolchain (~300MB) — lean-action only caches .lake/
       - name: cache elan toolchain
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v4
