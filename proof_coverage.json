@@ -377,6 +377,41 @@
         "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
       ],
       "file": "RubinFormal/Refinement/ParallelEquivalence.lean"
+    },
+    {
+      "section_key": "txcontext_formal",
+      "section_heading": "## SPEC-TXCTX-01 \u00a714. TxContext Pre-Activation Gates",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.TxContext.uint128GTE_correct",
+        "RubinFormal.TxContext.uint128GTE_native_equivalence",
+        "RubinFormal.TxContext.extid_sort_deterministic",
+        "RubinFormal.TxContext.extid_sort_concrete_321",
+        "RubinFormal.TxContext.extid_sort_cv51",
+        "RubinFormal.TxContext.ntotal_empty_v2_equivalence",
+        "RubinFormal.TxContext.k_overflow_discard_complete",
+        "RubinFormal.TxContext.vault_conservation_no_double_count",
+        "RubinFormal.TxContext.vault_sum_ignored_when_no_vault",
+        "RubinFormal.TxContext.parallel_error_equivalence",
+        "RubinFormal.TxContext.sighash_policy_complete",
+        "RubinFormal.TxContext.sighash_invalid_base_rejected"
+      ],
+      "file": "rubin-formal/RubinFormal/TxContextFormal.lean",
+      "theorem_files": {
+        "RubinFormal.TxContext.uint128GTE_correct": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.uint128GTE_native_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.extid_sort_deterministic": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.k_overflow_discard_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_conservation_no_double_count": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.parallel_error_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean"
+      },
+      "notes": "SPEC-TXCTX-01 \u00a714 pre-activation gate theorems. All eight required theorems proven: uint128GTE correctness and native equivalence, ext_id sort determinism, n_total empty v2, k-overflow discard completeness, vault conservation no double-count, parallel error equivalence, sighash policy completeness.",
+      "limitations": [
+        "extid_sort_deterministic proves functional determinism (same input = same output) and concrete CV-51/CV-84 regression vectors; full multiset permutation uniqueness deferred to Mathlib dependency.",
+        "parallel_error_equivalence relies on purity of evaluation function; does not model OS-level thread scheduling.",
+        "k_overflow_discard_complete is structural (ADT has no partial state on err); does not model implementation-level memory."
+      ]
     }
   ],
   "proof_level": "refinement",
