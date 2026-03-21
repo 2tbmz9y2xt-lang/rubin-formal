@@ -4,7 +4,7 @@
   "claim_level": "refined",
   "spec_source_file": "spec/RUBIN_L1_CANONICAL.md",
   "spec_section_hashes_file": "spec/SECTION_HASHES.json",
-  "spec_section_hashes_sha3_256": "f442b73983a7e6e2769c3f6d6c2f4a302720be5b505be4f48bac47a38093d594",
+  "spec_section_hashes_sha3_256": "e6f6daf93926eb0fb4a1e7db68dff7803f0796cb8af70f03e9238398fcd3c602",
   "lean_toolchain_file": "rubin-formal/lean-toolchain",
   "refinement_bridge_file": "rubin-formal/refinement_bridge.json",
   "coverage": [
@@ -140,22 +140,28 @@
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_output_context": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields": "rubin-formal/RubinFormal/SighashV1.lean"
       },
-      "notes": "Claim is limited to executable replay on the current CV-SIGHASH fixture subset plus a stronger spec-level theorem surface for the typed preimage-frame builder: selector helpers now cover `ALL/NONE/SINGLE/ANYONECANPAY`, and dedicated corollaries show that version, locktime, input context, and output context including `sighash_type` are all committed in the segmented fixed-width preimage parts.",
+      "notes": "Claim is limited to executable replay on the current CV-SIGHASH fixture subset plus a stronger spec-level theorem surface for the typed preimage-frame builder. TXCTX now broadens the pinned sighash surface through the TxContext-aware verify_sig_ext path and allowed_sighash_set policy, so this entry remains intentionally stated until the TXCTX-specific sighash proofs land.",
       "limitations": [
-        "The executable `digestV1` replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every \u00a712 `sighash_type` branch or invalid-type rejection path.",
+        "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every \u00a712 sighash_type branch or invalid-type rejection path.",
         "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
-        "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried `sighash_type` extraction."
+        "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried sighash_type extraction.",
+        "The TxContext-aware verify_sig_ext dispatch and allowed_sighash_set policy introduced by TXCTX are not yet covered by a dedicated section-level proof."
       ]
     },
     {
       "section_key": "consensus_error_codes",
       "section_heading": "## 13. Consensus Error Codes (Normative)",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
         "RubinFormal.det001_validation_order_proved"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "notes": "Validation-order theorems still cover the pre-existing short-circuit discipline, but TXCTX extends Section 13 with new companion-spec source mappings and TxContext-specific reject paths. Those added mappings are not yet closed by a dedicated formal proof surface.",
+      "limitations": [
+        "No theorem in the current registry proves the new SPEC-TXCTX-01 source mappings added to Section 13.1.",
+        "Current evidence does not yet prove the TxContext-specific error attribution paths for step 3c / \u00a77.x beyond fixture-level replay."
+      ]
     },
     {
       "section_key": "covenant_registry",
@@ -206,7 +212,7 @@
     {
       "section_key": "utxo_state_model",
       "section_heading": "## 2. UTXO State Model (Normative)",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
         "RubinFormal.UtxoBasicV1.validateCoinbaseMaturity_reject_iff",
@@ -244,8 +250,10 @@
         "RubinFormal.Conformance.vault_full_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean"
       },
-      "notes": "Section claim is limited to structural UTXO/value invariants, a direct immature-coinbase reject boundary theorem, concrete tx-level vault predicate witnesses, sequential connectBlock composition, and executable replay for the covered vault/vector families.",
+      "notes": "Section claim is now limited to the pre-TXCTX UTXO/value/vault invariants plus the existing replay witnesses. TXCTX extends the pinned UTXO-state surface with SpendTx step 3c TxContext construction, deterministic ext_id ordering, and rollback/discard semantics that are not yet proved in Lean.",
       "limitations": [
+        "No theorem in the current registry proves SpendTx step 3c TxContext construction or the exact bundle contents for TxContext-enabled CORE_EXT spends.",
+        "No theorem in the current registry proves the >K continuing-output reject / discard semantics or the ext_id ordering rule added by TXCTX.",
         "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1\u2194L2 equivalence for all vault transactions."
       ]
     },
