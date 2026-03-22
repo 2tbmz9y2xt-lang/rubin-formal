@@ -381,7 +381,7 @@
     {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 \u00a714. TxContext Pre-Activation Gates",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
         "RubinFormal.TxContext.uint128GTE_native_equivalence",
