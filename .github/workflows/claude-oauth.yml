@@ -8,7 +8,6 @@ on:
         required: false
 
 permissions:
-  actions: write
   contents: read
 
 jobs:
@@ -18,4 +17,3 @@ jobs:
       - uses: grll/claude-code-login@v1
         with:
           code: ${{ inputs.code }}
-          secrets_admin_pat: ${{ secrets.SECRETS_ADMIN_PAT }}
