@@ -274,13 +274,21 @@ theorem tx_parse_stage_ord_injective (s1 s2 : TxParseStage)
 
 /-! ## Live witness-check ordering (parseTxFromCursor lines 144-147)
 
-These theorems prove error priority on the actual `WitnessSectionResult`
-type from `TxWeightV2`, modeling the exact check sequence in the live parser.
+Proof-only decomposition of the witness-check tail from parseTxFromCursor.
+Uses the same pattern as merkle: do-version → explicit-bind version → rfl equivalence.
 -/
 
 open RubinFormal.TxWeightV2 in
-/-- Witness check sequence extracted from parseTxFromCursor.
-    Uses the live WitnessSectionResult — same fields as the parser. -/
+/-- Do-notation version matching parseTxFromCursor lines 144-147 verbatim. -/
+def parseTxWitnessChecks (witBytes : Nat) (ws : WitnessSectionResult) : Except String Unit := do
+  if witBytes > MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
+  if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
+  if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
+  if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+  pure ()
+
+open RubinFormal.TxWeightV2 in
+/-- Explicit-bind version (no join points, amenable to tactic proofs). -/
 def witnessCheckSequence (witBytes : Nat) (ws : WitnessSectionResult) : Except String Unit :=
   if witBytes > MAX_WITNESS_BYTES_PER_TX then
     Except.error "TX_ERR_WITNESS_OVERFLOW"
@@ -294,19 +302,29 @@ def witnessCheckSequence (witBytes : Nat) (ws : WitnessSectionResult) : Except S
     Except.ok ()
 
 open RubinFormal.TxWeightV2 in
+/-- Definitional equivalence: do version = explicit bind version. -/
+theorem parseTxWitnessChecks_eq_explicit
+    (witBytes : Nat) (ws : WitnessSectionResult) :
+    parseTxWitnessChecks witBytes ws = witnessCheckSequence witBytes ws := by
+  simp only [parseTxWitnessChecks, witnessCheckSequence, Except.bind]; rfl
+
+-- Ordering theorems on parseTxWitnessChecks (the do-version = live code)
+-- via equivalence with explicit version
+
+open RubinFormal.TxWeightV2 in
 theorem witness_bytes_overflow_priority
     (witBytes : Nat) (ws : WitnessSectionResult)
     (h : (witBytes > MAX_WITNESS_BYTES_PER_TX) = true) :
-    witnessCheckSequence witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
-  simp [witnessCheckSequence, h]
+    parseTxWitnessChecks witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, h]
 
 open RubinFormal.TxWeightV2 in
 theorem witness_count_overflow_priority
     (witBytes : Nat) (ws : WitnessSectionResult)
     (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
     (hOverflow : ws.isOverflow = true) :
-    witnessCheckSequence witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
-  simp [witnessCheckSequence, hBytes, hOverflow]
+    parseTxWitnessChecks witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hOverflow]
 
 open RubinFormal.TxWeightV2 in
 theorem sig_alg_priority_over_noncanonical
@@ -314,8 +332,8 @@ theorem sig_alg_priority_over_noncanonical
     (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
     (hNoOverflow : ws.isOverflow = false)
     (hSigAlg : ws.anySigAlgInvalid = true) :
-    witnessCheckSequence witBytes ws = .error "TX_ERR_SIG_ALG_INVALID" := by
-  simp [witnessCheckSequence, hBytes, hNoOverflow, hSigAlg]
+    parseTxWitnessChecks witBytes ws = .error "TX_ERR_SIG_ALG_INVALID" := by
+  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hNoOverflow, hSigAlg]
 
 open RubinFormal.TxWeightV2 in
 theorem sig_noncanonical_last_priority
@@ -324,8 +342,8 @@ theorem sig_noncanonical_last_priority
     (hNoOverflow : ws.isOverflow = false)
     (hNoSigAlg : ws.anySigAlgInvalid = false)
     (hNoncanon : ws.anySigNoncanonical = true) :
-    witnessCheckSequence witBytes ws = .error "TX_ERR_SIG_NONCANONICAL" := by
-  simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoncanon]
+    parseTxWitnessChecks witBytes ws = .error "TX_ERR_SIG_NONCANONICAL" := by
+  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoncanon]
 
 open RubinFormal.TxWeightV2 in
 theorem witness_check_all_pass
@@ -334,37 +352,41 @@ theorem witness_check_all_pass
     (hNoOverflow : ws.isOverflow = false)
     (hNoSigAlg : ws.anySigAlgInvalid = false)
     (hNoNoncanon : ws.anySigNoncanonical = false) :
-    witnessCheckSequence witBytes ws = .ok () := by
-  simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoNoncanon]
+    parseTxWitnessChecks witBytes ws = .ok () := by
+  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoNoncanon]
 
 open RubinFormal.TxWeightV2 in
 theorem witness_check_total (witBytes : Nat) (ws : WitnessSectionResult) :
-    (∃ err, witnessCheckSequence witBytes ws = .error err) ∨
-    witnessCheckSequence witBytes ws = .ok () := by
+    (∃ err, parseTxWitnessChecks witBytes ws = .error err) ∨
+    parseTxWitnessChecks witBytes ws = .ok () := by
+  rw [parseTxWitnessChecks_eq_explicit]
   unfold witnessCheckSequence
   split <;> simp_all
   split <;> simp_all
   split <;> simp_all
   split <;> simp_all
 
-/-! ## Semantic-level tx error ordering (post-parse)
+/-! ## Semantic tx error taxonomy (per-tx apply path)
 
-After parsing succeeds, semantic validation applies these checks in order:
-- nonce uniqueness (TX_ERR_NONCE_REPLAY)
-- suite authorization (TX_ERR_SIG_ALG_INVALID)
-- signature verification (TX_ERR_SIG_INVALID)
-- double-spend (TX_ERR_DOUBLE_SPEND)
+Enum model of the semantic validation stages in
+`UtxoApplyGenesisV1.applyNonCoinbaseTxBasicNoCrypto`.
+This is a MODEL — ordering is proved at the enum level,
+not directly on the live function (which is a 100+ line do block
+with a for-loop requiring explicit-bind refactoring to prove on).
+
+Live code ordering (UtxoApplyGenesisV1.lean:213-271):
+- duplicate inputs → TX_ERR_PARSE (line 215-216)
+- missing/spent UTXO → TX_ERR_MISSING_UTXO (line 218-223)
+- anchor/DA as missing → TX_ERR_MISSING_UTXO (line 224-225)
+- covenant structural → TX_ERR_COVENANT_TYPE_INVALID (line 271)
+- suite auth → TX_ERR_SIG_ALG_INVALID (via validateP2PKSpendPreSig)
+- sig verify → TX_ERR_SIG_INVALID (via validateP2PKSpendPreSig)
+
+Notes:
+- TX_ERR_NONCE_REPLAY lives in BlockBasicCheckV1.nonceReplayCheck
+  (block-level), NOT in per-tx semantic path.
+- TX_ERR_DOUBLE_SPEND does not exist in the current codebase.
 -/
-
-/-- Semantic tx validation stages (post-parse, per-tx).
-    Aligned with live code in UtxoApplyGenesisV1.lean:
-    - duplicate inputs → TX_ERR_PARSE (line 215-216)
-    - missing/spent UTXO → TX_ERR_MISSING_UTXO (line 218-223)
-    - suite authorization → TX_ERR_SIG_ALG_INVALID
-    - signature verification → TX_ERR_SIG_INVALID
-    Note: TX_ERR_NONCE_REPLAY lives in BlockBasicCheckV1.nonceReplayCheck
-    (block-level, after merkle/witness gates), NOT in per-tx semantic path.
-    TX_ERR_DOUBLE_SPEND does not exist in the current codebase. -/
 inductive TxSemanticStage where
   | duplicateInputs    -- TX_ERR_PARSE (duplicate input detection)
   | missingUtxo        -- TX_ERR_MISSING_UTXO (input not in UTXO set)
@@ -403,10 +425,11 @@ SPEC-TXCTX-01 adds error source mappings for the TxContext validation path.
 These are distinct from base error codes and follow the same priority model.
 -/
 
-/-- TXCTX-specific error code from SPEC-TXCTX-01 §13.1.
-    TX_ERR_COVENANT_TYPE_INVALID is emitted by the CORE_EXT covenant
-    validation path when the covenant type is invalid or malformed.
-    Note: TX_ERR_TXCTX_OVERFLOW was removed — no producer exists in codebase. -/
+/-- TX_ERR_COVENANT_TYPE_INVALID — live producers in the Lean model:
+    - UtxoApplyGenesisV1.lean:48,50 (P2PK covenant data validation)
+    - UtxoApplyGenesisV1.lean:271 (unsupported covenant type in apply path)
+    - CovenantGenesisV1.validateOutGenesis (output covenant validation)
+    Note: TX_ERR_TXCTX_OVERFLOW removed — no producer in codebase. -/
 def TX_ERR_COVENANT_TYPE_INVALID : String := "TX_ERR_COVENANT_TYPE_INVALID"
 
 /-- TXCTX error code is distinct from base codes. -/

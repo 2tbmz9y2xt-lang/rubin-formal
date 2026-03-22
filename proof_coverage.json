@@ -246,7 +246,8 @@
         "RubinFormal.err_ne_missing_sig",
         "RubinFormal.err_ne_dupinput_suite",
         "RubinFormal.err_ne_dupinput_sig",
-        "RubinFormal.err_ne_covenant_missing"
+        "RubinFormal.err_ne_covenant_missing",
+        "RubinFormal.parseTxWitnessChecks_eq_explicit"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -303,15 +304,16 @@
         "RubinFormal.err_ne_missing_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_dupinput_suite": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_dupinput_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_covenant_missing": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_covenant_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.parseTxWitnessChecks_eq_explicit": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation for all 6 stages. Tx parse: 9-stage TxParseStage models error-code switching points (not truncation branches which all return TX_ERR_PARSE). Witness-check ordering proved on live WitnessSectionResult. Tx semantic: 4-stage TxSemanticStage (dupInputs→missingUtxo→suiteAuth→sigVerify) aligned with live UtxoApplyGenesisV1. TX_ERR_NONCE_REPLAY is block-level (nonceReplayCheck), not per-tx semantic. TX_ERR_TXCTX_OVERFLOW removed — no producer in code. TXCTX: TX_ERR_COVENANT_TYPE_INVALID defined with distinctness proofs.",
+      "notes": "Block-level: direct error propagation for all 6 stages (parse→PoW→target→linkage→merkle→witness) proved on live validateBlockBasic functions. Merkle via explicit-bind equivalence with validateBlockBasicMerkleWitnessTail. Tx parse witness checks: parseTxWitnessChecks decomposition with rfl equivalence to explicit-bind, ordering proved via equivalence (OVERFLOW→SIG_ALG→NONCANONICAL). Tx parse/semantic stage enums model §7 ordering taxonomy; enum-level ordering is proved but NOT directly on the live parseTxFromCursor/applyNonCoinbaseTxBasicNoCrypto functions (100+ line do blocks). TX_ERR_COVENANT_TYPE_INVALID has 3 live producers in the Lean model. Status remains stated: tx-level function ordering requires explicit-bind decomposition of parseTxFromCursor (70 lines) and applyNonCoinbaseTxBasicNoCrypto (100+ lines).",
       "limitations": [
-        "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
+        "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck (stage 2) and target mismatch (stage 3).",
         "Merkle propagation at afterPow level via explicit-bind equivalence.",
-        "TxParseStage does not cover truncation branches (match none => throw) which all produce TX_ERR_PARSE.",
-        "Full parseTxFromCursor ordering not proved — requires explicit-bind refactoring of 70-line do block.",
-        "TXCTX §13.1 source mapping from SPEC-TXCTX-01 paths not machine-checked."
+        "Witness-check ordering: parseTxWitnessChecks decomposition with rfl equivalence, ordering proved. But the equivalence with parseTxFromCursor inner code is structural (same type + fields + constants), not a machine-checked rfl between parseTxWitnessChecks and parseTxFromCursor.",
+        "Tx parse/semantic enum models: ordinal injection + distinctness proved at enum level. NOT proved on live functions. Requires explicit-bind decomposition of monolithic do blocks.",
+        "TX_ERR_COVENANT_TYPE_INVALID: live producers identified in UtxoApplyGenesisV1. Distinctness proved. Source mapping from SPEC-TXCTX-01 §13.1 paths not machine-checked."
       ]
     },
     {
