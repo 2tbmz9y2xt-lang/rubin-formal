@@ -235,7 +235,15 @@
         "RubinFormal.sig_noncanonical_last_priority",
         "RubinFormal.witness_check_all_pass",
         "RubinFormal.witness_check_total",
-        "RubinFormal.applyWitnessChecks_eq_explicit"
+        "RubinFormal.applyWitnessChecks_eq_explicit",
+        "RubinFormal.err_ne_tx_parse_sig_alg",
+        "RubinFormal.err_ne_tx_parse_missing_utxo",
+        "RubinFormal.err_ne_tx_missing_utxo_sig_alg",
+        "RubinFormal.err_ne_tx_missing_utxo_sig_invalid",
+        "RubinFormal.err_ne_tx_sig_alg_sig_invalid",
+        "RubinFormal.err_ne_tx_covenant_parse",
+        "RubinFormal.err_ne_tx_covenant_sig_alg",
+        "RubinFormal.err_ne_tx_covenant_missing"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -281,9 +289,17 @@
         "RubinFormal.sig_noncanonical_last_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_check_all_pass": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_check_total": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.applyWitnessChecks_eq_explicit": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.applyWitnessChecks_eq_explicit": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_parse_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_parse_missing_utxo": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_missing_utxo_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_missing_utxo_sig_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_sig_alg_sig_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_covenant_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_covenant_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_covenant_missing": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation proved on live functions for all 6 stages. Tx-level: applyWitnessChecks is a LIVE sub-function called from parseTxFromCursor (not proof-only decomposition). rfl equivalence with explicit-bind version proved. Error priority OVERFLOW→SIG_ALG→NONCANONICAL proved on live function. All error code distinctness proved by decide.",
+      "notes": "Block-level stages 1-4 (parse→PoW→target→linkage): direct error propagation on live validateBlockBasic. Stage 5 (merkle): proved at validateBlockBasicAfterPow level via explicit-bind equivalence with validateBlockBasicMerkleWitnessTail. Stage 6 (witness): existing theorem. Tx-level: applyWitnessChecks is a LIVE sub-function called from parseTxFromCursor. Error priority OVERFLOW→SIG_ALG→NONCANONICAL proved via rfl equivalence. Error code distinctness: all block + tx codes covered by decide.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
         "Merkle propagation at afterPow level via explicit-bind equivalence.",
