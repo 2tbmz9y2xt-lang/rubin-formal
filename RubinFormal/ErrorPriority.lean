@@ -191,86 +191,41 @@ theorem validate_success_pow
     ∃ pb, parseBlock b = .ok pb ∧ powCheck pb.header = .ok () :=
   let ⟨pb, hp, hpow, _⟩ := validateBlockBasic_pow_passes b ph pt h; ⟨pb, hp, hpow⟩
 
-/-! ## Transaction-level parse error ordering model (§7)
+/-! ## Tx-level error code distinctness (§7/§13)
 
-Section 7 defines deterministic parse error mapping for transactions.
-The stages are ordered and the first applicable error code wins.
-This inductive type models the ordering contract.
+Pairwise inequality for tx error codes. These are ONLY distinctness proofs.
+No ordering enum is provided because full tx-level ordering requires
+explicit-bind decomposition of parseTxFromCursor (70-line do block)
+and applyNonCoinbaseTxBasicNoCrypto (100+ line do block).
+The witness-check sub-segment IS decomposed below with rfl equivalence.
 -/
 
-/-- Transaction parse stages from §7. Ordering: earlier stage wins.
-    Models the ERROR CODE switching points in parseTxFromCursor
-    (BlockBasicV1.lean:108-158). Does NOT cover the `match none => throw`
-    truncation branches which all return BLOCK_ERR_PARSE/TX_ERR_PARSE. -/
-inductive TxParseStage where
-  | compactSizeMinimality    -- §7 stage 1: TX_ERR_PARSE (compact size decode)
-  | txKindDaPayload          -- §7 stage 2: TX_ERR_PARSE (invalid tx_kind)
-  | inputOutputBounds        -- §7 stage 3: TX_ERR_PARSE (count limits)
-  | witnessCountBytes        -- §7 stage 4: TX_ERR_WITNESS_OVERFLOW
-  | witnessItemStructural    -- §7 stage 5a: TX_ERR_PARSE
-  | witnessSuiteDisallowed   -- §7 stage 5b-pre: TX_ERR_SIG_ALG_INVALID (live parser)
-  | witnessCanonicalLength   -- §7 stage 5b: TX_ERR_SIG_NONCANONICAL
-  | daLenMinimality          -- §7 stage 6: TX_ERR_PARSE (da_payload_len minimality)
-  | daLenBounds              -- §7 stage 7: TX_ERR_PARSE (da_payload_len per tx_kind)
-  deriving DecidableEq, Repr
-
-/-- The error code produced by each tx parse stage. -/
-def txParseStageError : TxParseStage → String
-  | .compactSizeMinimality  => "TX_ERR_PARSE"
-  | .txKindDaPayload        => "TX_ERR_PARSE"
-  | .inputOutputBounds      => "TX_ERR_PARSE"
-  | .witnessCountBytes      => "TX_ERR_WITNESS_OVERFLOW"
-  | .witnessItemStructural  => "TX_ERR_PARSE"
-  | .witnessSuiteDisallowed => "TX_ERR_SIG_ALG_INVALID"
-  | .witnessCanonicalLength => "TX_ERR_SIG_NONCANONICAL"
-  | .daLenMinimality        => "TX_ERR_PARSE"
-  | .daLenBounds            => "TX_ERR_PARSE"
-
-/-- Strict ordering on tx parse stages: earlier stage has priority. -/
-def txParseStageOrd : TxParseStage → Nat
-  | .compactSizeMinimality  => 0
-  | .txKindDaPayload        => 1
-  | .inputOutputBounds      => 2
-  | .witnessCountBytes      => 3
-  | .witnessItemStructural  => 4
-  | .witnessSuiteDisallowed => 5
-  | .witnessCanonicalLength => 6
-  | .daLenMinimality        => 7
-  | .daLenBounds            => 8
-
-/-- Earlier stage takes priority. -/
-theorem tx_parse_stage_priority (s1 s2 : TxParseStage)
-    (hLt : txParseStageOrd s1 < txParseStageOrd s2) :
-    txParseStageOrd s1 < txParseStageOrd s2 := hLt
-
-/-- Distinctness: TX_ERR_PARSE ≠ TX_ERR_WITNESS_OVERFLOW. -/
 theorem err_ne_tx_parse_witness_overflow :
     ("TX_ERR_PARSE" : String) ≠ "TX_ERR_WITNESS_OVERFLOW" := by decide
-
-/-- Distinctness: TX_ERR_PARSE ≠ TX_ERR_SIG_ALG_INVALID. -/
 theorem err_ne_tx_parse_sig_alg :
     ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
-
-/-- Distinctness: TX_ERR_PARSE ≠ TX_ERR_SIG_NONCANONICAL. -/
 theorem err_ne_tx_parse_sig_noncanonical :
     ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_NONCANONICAL" := by decide
-
-/-- Distinctness: TX_ERR_WITNESS_OVERFLOW ≠ TX_ERR_SIG_ALG_INVALID. -/
 theorem err_ne_tx_witness_overflow_sig_alg :
     ("TX_ERR_WITNESS_OVERFLOW" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
-
-/-- Distinctness: TX_ERR_WITNESS_OVERFLOW ≠ TX_ERR_SIG_NONCANONICAL. -/
 theorem err_ne_tx_witness_overflow_sig_noncanonical :
     ("TX_ERR_WITNESS_OVERFLOW" : String) ≠ "TX_ERR_SIG_NONCANONICAL" := by decide
-
-/-- Distinctness: TX_ERR_SIG_ALG_INVALID ≠ TX_ERR_SIG_NONCANONICAL. -/
 theorem err_ne_tx_sig_alg_sig_noncanonical :
     ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_SIG_NONCANONICAL" := by decide
-
-/-- The stage ordering is total: all stages have distinct ordinals. -/
-theorem tx_parse_stage_ord_injective (s1 s2 : TxParseStage)
-    (hEq : txParseStageOrd s1 = txParseStageOrd s2) : s1 = s2 := by
-  cases s1 <;> cases s2 <;> simp [txParseStageOrd] at hEq <;> rfl
+theorem err_ne_tx_parse_missing_utxo :
+    ("TX_ERR_PARSE" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
+theorem err_ne_tx_missing_utxo_sig_alg :
+    ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
+theorem err_ne_tx_missing_utxo_sig_invalid :
+    ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
+theorem err_ne_tx_sig_alg_sig_invalid :
+    ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
+theorem err_ne_tx_covenant_parse :
+    ("TX_ERR_COVENANT_TYPE_INVALID" : String) ≠ "TX_ERR_PARSE" := by decide
+theorem err_ne_tx_covenant_sig_alg :
+    ("TX_ERR_COVENANT_TYPE_INVALID" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
+theorem err_ne_tx_covenant_missing :
+    ("TX_ERR_COVENANT_TYPE_INVALID" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
 
 /-! ## Live witness-check ordering (parseTxFromCursor lines 144-147)
 
@@ -365,80 +320,6 @@ theorem witness_check_total (witBytes : Nat) (ws : WitnessSectionResult) :
   split <;> simp_all
   split <;> simp_all
   split <;> simp_all
-
-/-! ## Semantic tx error taxonomy (per-tx apply path)
-
-Enum model of the semantic validation stages in
-`UtxoApplyGenesisV1.applyNonCoinbaseTxBasicNoCrypto`.
-This is a MODEL — ordering is proved at the enum level,
-not directly on the live function (which is a 100+ line do block
-with a for-loop requiring explicit-bind refactoring to prove on).
-
-Live code ordering (UtxoApplyGenesisV1.lean:213-271):
-- duplicate inputs → TX_ERR_PARSE (line 215-216)
-- missing/spent UTXO → TX_ERR_MISSING_UTXO (line 218-223)
-- anchor/DA as missing → TX_ERR_MISSING_UTXO (line 224-225)
-- covenant structural → TX_ERR_COVENANT_TYPE_INVALID (line 271)
-- suite auth → TX_ERR_SIG_ALG_INVALID (via validateP2PKSpendPreSig)
-- sig verify → TX_ERR_SIG_INVALID (via validateP2PKSpendPreSig)
-
-Notes:
-- TX_ERR_NONCE_REPLAY lives in BlockBasicCheckV1.nonceReplayCheck
-  (block-level), NOT in per-tx semantic path.
-- TX_ERR_DOUBLE_SPEND does not exist in the current codebase.
--/
-inductive TxSemanticStage where
-  | duplicateInputs    -- TX_ERR_PARSE (duplicate input detection)
-  | missingUtxo        -- TX_ERR_MISSING_UTXO (input not in UTXO set)
-  | suiteAuthorization -- TX_ERR_SIG_ALG_INVALID
-  | signatureVerify    -- TX_ERR_SIG_INVALID
-  deriving DecidableEq, Repr
-
-def txSemanticStageError : TxSemanticStage → String
-  | .duplicateInputs    => "TX_ERR_PARSE"
-  | .missingUtxo        => "TX_ERR_MISSING_UTXO"
-  | .suiteAuthorization => "TX_ERR_SIG_ALG_INVALID"
-  | .signatureVerify    => "TX_ERR_SIG_INVALID"
-
-def txSemanticStageOrd : TxSemanticStage → Nat
-  | .duplicateInputs    => 0
-  | .missingUtxo        => 1
-  | .suiteAuthorization => 2
-  | .signatureVerify    => 3
-
-/-- All semantic error codes are pairwise distinct. -/
-theorem err_ne_dupinput_missing : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
-theorem err_ne_dupinput_suite : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
-theorem err_ne_dupinput_sig : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
-theorem err_ne_missing_suite : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
-theorem err_ne_missing_sig : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
-theorem err_ne_suite_sig : ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
-
-/-- Semantic stage ordering is total with distinct ordinals. -/
-theorem tx_semantic_stage_ord_injective (s1 s2 : TxSemanticStage)
-    (hEq : txSemanticStageOrd s1 = txSemanticStageOrd s2) : s1 = s2 := by
-  cases s1 <;> cases s2 <;> simp [txSemanticStageOrd] at hEq <;> rfl
-
-/-! ## TXCTX extension error codes (§13.1 / SPEC-TXCTX-01)
-
-SPEC-TXCTX-01 adds error source mappings for the TxContext validation path.
-These are distinct from base error codes and follow the same priority model.
--/
-
-/-- TX_ERR_COVENANT_TYPE_INVALID — live producers in the Lean model:
-    - UtxoApplyGenesisV1.lean:48,50 (P2PK covenant data validation)
-    - UtxoApplyGenesisV1.lean:271 (unsupported covenant type in apply path)
-    - CovenantGenesisV1.validateOutGenesis (output covenant validation)
-    Note: TX_ERR_TXCTX_OVERFLOW removed — no producer in codebase. -/
-def TX_ERR_COVENANT_TYPE_INVALID : String := "TX_ERR_COVENANT_TYPE_INVALID"
-
-/-- TXCTX error code is distinct from base codes. -/
-theorem err_ne_covenant_parse :
-    TX_ERR_COVENANT_TYPE_INVALID ≠ ("TX_ERR_PARSE" : String) := by decide
-theorem err_ne_covenant_sig :
-    TX_ERR_COVENANT_TYPE_INVALID ≠ ("TX_ERR_SIG_ALG_INVALID" : String) := by decide
-theorem err_ne_covenant_missing :
-    TX_ERR_COVENANT_TYPE_INVALID ≠ ("TX_ERR_MISSING_UTXO" : String) := by decide
 
 /-! ## Block-level error code distinctness (§13) -/
 
