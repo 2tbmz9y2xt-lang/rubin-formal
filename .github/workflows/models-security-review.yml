@@ -59,6 +59,7 @@ jobs:
           script: |
             const fs = require('fs');
             const { execSync } = require('child_process');
+            const rawOutputPath = 'deepseek-raw-output.txt';
             const diff = fs.readFileSync('pr-diff.txt', 'utf8').slice(0, 12000);
             const prTitle = context.payload.pull_request?.title ?? '';
             const prBody = (context.payload.pull_request?.body ?? '').slice(0, 4000);
@@ -133,6 +134,63 @@ jobs:
               'Каждый finding должен ссылаться на строку в текущем changed file. Если точную строку назвать нельзя — не добавляй finding.',
               'JSON: {"model":"","findings":[{"severity":"...","file":"","line":0,"title":"","details":"","suggestion":""}],"summary":""}'
             ].join('\n');
+            const stripOuterCodeFence = (text) => (
+              typeof text === 'string'
+                ? text.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim()
+                : ''
+            );
+            const extractFirstJSONObject = (text) => {
+              if (typeof text !== 'string') return null;
+              let start = -1;
+              let depth = 0;
+              let inString = false;
+              let escaped = false;
+              for (let i = 0; i < text.length; i += 1) {
+                const ch = text[i];
+                if (inString) {
+                  if (escaped) {
+                    escaped = false;
+                  } else if (ch === '\\\\') {
+                    escaped = true;
+                  } else if (ch === '"') {
+                    inString = false;
+                  }
+                  continue;
+                }
+                if (ch === '"') {
+                  inString = true;
+                  continue;
+                }
+                if (ch === '{') {
+                  if (depth === 0) start = i;
+                  depth += 1;
+                  continue;
+                }
+                if (ch === '}' && depth > 0) {
+                  depth -= 1;
+                  if (depth === 0 && start >= 0) {
+                    return text.slice(start, i + 1);
+                  }
+                }
+              }
+              return null;
+            };
+            const parseReviewPayload = (raw) => {
+              const normalized = stripOuterCodeFence(raw);
+              const candidates = [];
+              if (normalized) candidates.push(normalized);
+              const embedded = extractFirstJSONObject(normalized);
+              if (embedded && !candidates.includes(embedded)) candidates.push(embedded);
+              let lastErr = null;
+              for (const candidate of candidates) {
+                try {
+                  return { parsed: JSON.parse(candidate), candidate, normalized };
+                } catch (err) {
+                  lastErr = err;
+                }
+              }
+              return { parsed: null, candidate: normalized, normalized, error: lastErr };
+            };
             const modelId = 'deepseek/DeepSeek-V3-0324';
             let result = null;
             try {
@@ -175,12 +233,16 @@ jobs:
               core.setFailed(`Security review fail-closed: model ${modelId} error: ${err.message}`);
               return;
             }
-            result = result.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim();
-            let parsed;
-            try {
-              parsed = JSON.parse(result);
-            } catch (err) {
-              core.setFailed(`Security review fail-closed: invalid JSON from ${modelId}: ${err.message}`);
+            if (typeof result === 'string' && result.trim() !== '') {
+              fs.writeFileSync(rawOutputPath, result, 'utf8');
+            }
+            const parsedResult = parseReviewPayload(result);
+            let parsed = parsedResult.parsed;
+            if (!parsed) {
+              const preview = (parsedResult.normalized || String(result || ''))
+                .replace(/\s+/g, ' ')
+                .slice(0, 180);
+              core.setFailed(`Security review fail-closed: invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
               return;
             }
 
@@ -234,6 +296,14 @@ jobs:
             core.setOutput('review', JSON.stringify(parsed, null, 2));
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload raw review output artifact
+        if: always() && hashFiles('deepseek-raw-output.txt') != ''
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: deepseek-raw-review-output
+          path: deepseek-raw-output.txt
+          retention-days: 7
 
       - name: Post review comment
         if: steps.review.outputs.review
