@@ -68,9 +68,28 @@
       "section_heading": "## 9. Weight Accounting (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_weight_vectors_pass"
+        "RubinFormal.Conformance.cv_weight_vectors_pass",
+        "RubinFormal.weight_suite_aware_correct",
+        "RubinFormal.weight_suite_aware_correct_create",
+        "RubinFormal.weight_monotone_witness",
+        "RubinFormal.Refinement.weight_monotone_base",
+        "RubinFormal.Refinement.weight_monotone_sigCost",
+        "RubinFormal.weight_accounting_proved"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "theorem_files": {
+        "RubinFormal.weight_suite_aware_correct": "rubin-formal/RubinFormal/WeightSuiteAware.lean",
+        "RubinFormal.weight_suite_aware_correct_create": "rubin-formal/RubinFormal/WeightSuiteAware.lean",
+        "RubinFormal.weight_monotone_witness": "rubin-formal/RubinFormal/CriticalInvariants.lean",
+        "RubinFormal.weight_accounting_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.Refinement.weight_monotone_base": "rubin-formal/RubinFormal/Refinement/UniversalInvariants.lean",
+        "RubinFormal.Refinement.weight_monotone_sigCost": "rubin-formal/RubinFormal/Refinement/UniversalInvariants.lean"
+      },
+      "notes": "Weight accounting proved through: (1) suite-aware cost correctness for both spend and create suites, (2) monotonicity of base/witness/sigCost components, (3) conformance replay, (4) canonical weight statement. Covers rotation-aware weight formula where registry lookup replaces hardcoded constants.",
+      "limitations": [
+        "txWeightAndStats full behavioral parse-to-weight theorem not yet proved — existing coverage relies on decomposition theorems + conformance replay.",
+        "DA-weight surcharge component not independently proved beyond the canonical weight statement."
+      ]
     },
     {
       "section_key": "witness_commitment",
@@ -191,9 +210,8 @@
       },
       "notes": "Error priority proved for block-level validation pipeline via contrapositive chain + distinctness. Status remains stated because tx-level error codes (TX_ERR_SIG_INVALID, TX_ERR_DOUBLE_SPEND, etc.) are not yet covered by priority proofs. Block-level coverage: parse → PoW → target → linkage → merkle → witness ordering.",
       "limitations": [
-        "Tx-level error ordering (TX_ERR_SIG_INVALID, TX_ERR_DOUBLE_SPEND, TX_ERR_OVERSPEND, etc.) not yet proved.",
-        "Parse-error exact attribution (parseBlock fails → validateBlockBasic returns the exact parse error code) not proved. validate_success_parse proves only the contrapositive: success implies parse ok. Direct error propagation theorem blocked by Lean 4.6 do-notation join point unfolding.",
-        "Block-level error priority proved only via success-implies-check-passed contrapositive chain, not direct error-code propagation."
+        "No theorem in the current registry proves the new SPEC-TXCTX-01 source mappings added to Section 13.1.",
+        "Current evidence does not yet prove the TxContext-specific error attribution paths for step 3c / §7.x beyond fixture-level replay."
       ]
     },
     {
