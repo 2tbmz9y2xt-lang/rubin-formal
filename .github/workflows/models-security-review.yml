@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          fetch-depth: 0
       - name: Download diff artifact
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
@@ -56,23 +58,58 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const { execSync } = require('child_process');
             const diff = fs.readFileSync('pr-diff.txt', 'utf8').slice(0, 12000);
+            const prTitle = context.payload.pull_request?.title ?? '';
+            const prBody = (context.payload.pull_request?.body ?? '').slice(0, 4000);
+            const baseSha = '${{ github.event.pull_request.base.sha }}';
+            const headSha = '${{ github.event.pull_request.head.sha }}';
+            const changedLeanFiles = execSync(
+              `git diff --diff-filter=ACMR --name-only ${baseSha} ${headSha} -- '*.lean'`,
+              { maxBuffer: 20 * 1024 * 1024 }
+            )
+              .toString()
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+            const changedFilePayload = changedLeanFiles
+              .map((file) => {
+                const content = fs.readFileSync(file, 'utf8').slice(0, 5000);
+                return `FILE: ${file}\n${content}`;
+              })
+              .join('\n\n---\n\n')
+              .slice(0, 18000);
             const systemPrompt = [
               'Ты — ревьюер безопасности формальных доказательств Lean 4 для протокола RUBIN.',
               'Контекст: Lean 4 v4.6.0 + std4 (без Mathlib). Спека RUBIN_L1_CANONICAL.md → Go → Rust → conformance → Lean. Криптография: ML-DSA-87.',
               '',
-              'ЗАДАЧА: найти РЕАЛЬНЫЕ ДЕФЕКТЫ в доказательствах. Только баги которые делают доказательства НЕВЕРНЫМИ.',
+              'РЕЖИМ: FAIL-CLOSED. Ищи только реальные дефекты в ТЕКУЩЕМ diff и текущих изменённых Lean файлах.',
+              'Сравнивай не только proof body, но и PR title/body/docstring theorem against actual proposition.',
+              'ГЛАВНЫЙ ПРИОРИТЕТ: МИНИМУМ FALSE POSITIVES. Лучше пропустить сомнительный finding, чем оставить шумный.',
+              '',
+              'ЗАДАЧА: найти РЕАЛЬНЫЕ ДЕФЕКТЫ в formal PR. Не только unsound proofs, но и VACUOUS / OVERCLAIMED proofs, где заявлен behavioral/exhaustive/determinism/closure result, а theorem surface слабее.',
               '',
               'CRITICAL (блокирует мерж — ТОЛЬКО при 100% уверенности что код unsound):',
               '  (1) sorry или admit в доказательстве',
               '  (2) формулировка теоремы противоречит семантике спеки',
               '  (3) native_decide заменён на trivial/rfl для нетривиального свойства',
               '  (4) несогласованность юниверсов замаскированная sorry',
+              '  (5) theorem/module не может typecheck/import graph ломается из-за diff',
               '  Если есть хоть 1% сомнения — это НЕ CRITICAL.',
               '',
-              'HIGH: доказательство проходит но доказывает более слабое свойство чем спека.',
-              'MEDIUM: пропущенные edge cases, ошибки conformance vectors.',
-              'LOW: прочие реальные дефекты.',
+              'HIGH:',
+              '  - theorem vacuous / tautological: f x = f x, ∃ y, f x = y, True := trivial, premise returned unchanged',
+              '  - theorem claims behavioral/determinism/domain-separation/exhaustive/closure, but proof only shows helper lemma / constant equality / one concrete reject / all-fail branch',
+              '  - PR title/body or theorem docstring overclaims what proposition actually proves',
+              '  - proof can never catch regression in the named behavior',
+              '',
+              'MEDIUM:',
+              '  - exhaustive/distinctness theorem omits live cases/constants/branches present in the referenced module',
+              '  - theorem only covers error path while claim needs successful path, or vice versa',
+              '  - proof is materially narrower than lane/section claim but still locally meaningful',
+              '',
+              'LOW:',
+              '  - minor honest theorem quality issues that do not create overclaim by themselves',
               '',
               'ЗАПРЕЩЕНО включать в findings:',
               '  - Улучшения (axiom→theorem, добавление доказательств, удаление sorry)',
@@ -80,8 +117,20 @@ jobs:
               '  - Стиль: именование, import, private/public, unused параметры',
               '  - Всё что НЕ является дефектом в коде',
               '',
+              'ОСОБЫЕ ПРАВИЛА ДЛЯ FORMAL PR:',
+              '  - Если theorem intentionally narrow и PR/body/docstring честно говорят что theorem narrow/concrete/example-only, НЕ репорть это как баг.',
+              '  - Если theorem helper-level, а PR claims section closure / behavioral proof / exhaustive registry / replay-domain separation / determinism, это finding.',
+              '  - Проверяй текущий file content, а не старые версии PR. Не репорть удалённые theorem names.',
+              '  - Не дублируй одну и ту же мысль несколькими findings.',
+              '  - Не репорть "можно доказать сильнее" как дефект, если текущий theorem честно заявлен как concrete/example-only.',
+              '  - Не репорть missing branch/case, если этот branch вообще не входит в текущую proposition.',
+              '  - Не заявляй противоречие с implementation/spec без конкретного терма или редуцированного current-code counterexample из предоставленного контекста.',
+              '  - Не репорть theorem name, которого нет в текущем file content.',
+              '  - Для HIGH/CRITICAL ты должен видеть в текущем файле один из паттернов: tautology, stale overclaim, omitted live case, wrong compared inputs, or direct contradiction.',
+              '',
               'Если дефектов нет — верни ПУСТОЙ массив findings. Пустой = хорошо. НЕ выдумывай находки.',
-              'Проверяй ТОЛЬКО diff. НЕ выдумывай файлы или поведение вне diff.',
+              'Проверяй ТОЛЬКО provided PR title/body + diff + current contents of changed Lean files. НЕ выдумывай файлы или поведение вне этого контекста.',
+              'Каждый finding должен ссылаться на строку в текущем changed file. Если точную строку назвать нельзя — не добавляй finding.',
               'JSON: {"model":"","findings":[{"severity":"...","file":"","line":0,"title":"","details":"","suggestion":""}],"summary":""}'
             ].join('\n');
             const modelId = 'deepseek/DeepSeek-V3-0324';
@@ -100,9 +149,18 @@ jobs:
                     model: modelId,
                     messages: [
                       { role: 'system', content: systemPrompt },
-                      { role: 'user', content: `Review this PR diff:\n\n${diff}` }
+                      {
+                        role: 'user',
+                        content: [
+                          `PR title:\n${prTitle}`,
+                          `PR body:\n${prBody}`,
+                          `Changed Lean files:\n${changedLeanFiles.join('\n')}`,
+                          `Current changed Lean file contents:\n\n${changedFilePayload}`,
+                          `PR diff:\n\n${diff}`
+                        ].join('\n\n')
+                      }
                     ],
-                    temperature: 0.2
+                    temperature: 0
                   })
                 }
               );
@@ -118,7 +176,62 @@ jobs:
               return;
             }
             result = result.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim();
-            core.setOutput('review', result);
+            let parsed;
+            try {
+              parsed = JSON.parse(result);
+            } catch (err) {
+              core.setFailed(`Security review fail-closed: invalid JSON from ${modelId}: ${err.message}`);
+              return;
+            }
+
+            const changedSet = new Set(changedLeanFiles);
+            const fileContents = new Map(
+              changedLeanFiles.map((file) => [file, fs.readFileSync(file, 'utf8')])
+            );
+            const lineCounts = new Map(
+              changedLeanFiles.map((file) => [file, fileContents.get(file).split('\n').length])
+            );
+            const theoremRefsInText = (text) => {
+              const out = new Set();
+              const re = /`([A-Za-z0-9_.']+)`/g;
+              let m;
+              while ((m = re.exec(text || '')) !== null) {
+                out.add(m[1]);
+              }
+              return [...out];
+            };
+
+            const normalizedFindings = Array.isArray(parsed.findings) ? parsed.findings : [];
+            const filtered = [];
+            const seen = new Set();
+
+            for (const f of normalizedFindings) {
+              if (!f || typeof f !== 'object') continue;
+              if (!changedSet.has(f.file)) continue;
+              if (!Number.isInteger(f.line) || f.line <= 0) continue;
+              const maxLine = lineCounts.get(f.file) || 0;
+              if (f.line > maxLine) continue;
+
+              const content = fileContents.get(f.file) || '';
+              const refs = theoremRefsInText(`${f.title || ''}\n${f.details || ''}`);
+              if (refs.length > 0) {
+                const allMissing = refs.every((name) => !content.includes(name));
+                if (allMissing) continue;
+              }
+
+              const key = `${f.file}:${f.line}:${(f.title || '').trim().toLowerCase()}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+              filtered.push(f);
+            }
+
+            parsed.findings = filtered;
+            if (typeof parsed.summary !== 'string') {
+              parsed.summary = filtered.length === 0
+                ? 'No defects found after stale/dup filtering.'
+                : `Filtered findings: ${filtered.length}.`;
+            }
+            core.setOutput('review', JSON.stringify(parsed, null, 2));
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
