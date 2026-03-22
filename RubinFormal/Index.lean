@@ -46,3 +46,4 @@ import RubinFormal.TxIdBehavioral
 import RubinFormal.TransactionWireBehavioral
 import RubinFormal.SighashRefinementUpgrade
 import RubinFormal.ChainIdBehavioral
+import RubinFormal.CovenantRegistryExhaustive
