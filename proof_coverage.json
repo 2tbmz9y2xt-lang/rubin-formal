@@ -503,7 +503,7 @@
     {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
         "RubinFormal.TxContext.uint128GTE_native_equivalence",
@@ -527,18 +527,28 @@
       "theorem_files": {
         "RubinFormal.TxContext.uint128GTE_correct": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.uint128GTE_native_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.sortAscending_perm": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.sortAscending_sorted_v2": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.extid_sort_deterministic": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.extid_sort_concrete_321": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.extid_sort_cv51": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.extid_sort_idempotent_sorted": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.ntotal_empty_v2_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.k_overflow_discard_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_conservation_no_double_count": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_sum_ignored_when_no_vault": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.parallel_error_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean"
+        "RubinFormal.TxContext.parallel_all_perm_invariant": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.parallel_any_fail_perm_invariant": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.sighash_invalid_base_rejected": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "All 8 SPEC-TXCTX-01 §14 pre-activation gate theorems proved with zero sorry. Theorem surface covers: uint128 comparison correctness and native equivalence, ext_id sort (permutation + sorted + determinism + concrete CV vectors), n_total empty-v2 equivalence, k-overflow discard completeness, vault conservation no-double-count, parallel error/permutation invariance, sighash policy exhaustive coverage. 17 theorems total including supporting lemmas and corollaries.",
+      "notes": "SPEC-TXCTX-01 §14 pre-activation gate theorems. 17 theorems registered, zero sorry. Status STATED because 3 spec requirements are not fully closed: (1) extid sort uniqueness, (2) sighash 256x256 exhaustive coverage, (3) parallel error-index priority.",
       "limitations": [
-        "extid_sort_deterministic proves sorted permutation via insertionSort; full multiset uniqueness deferred to Mathlib.",
-        "parallel_error_equivalence relies on purity of evaluation function; does not model OS-level thread scheduling.",
-        "k_overflow_discard_complete is structural (ADT has no partial state on err); does not model implementation-level memory.",
-        "sighash_policy_complete covers the specific 0x87 allowed_sighash_set mask; other mask values not exhaustively checked."
+        "GAP 1 — extid_sort_deterministic: proves Perm+Sorted but NOT uniqueness. Spec requires unique deterministic permutation. Missing: ∀ xs ys, Perm xs ys → Sorted xs → Sorted ys → xs = ys.",
+        "GAP 2 — sighash_policy_complete: proves 0x87 mask accepts 6 valid combos. Spec requires exhaustive 256×256 validation. Additionally, sighashAllowed model has baseIdx saturation bug (baseType=0x00 → baseIdx=Nat.sub 0 1 = 0 → accepts). hasValidBaseType rejects separately but is not composed into policy function.",
+        "GAP 3 — parallel_error_equivalence: proves List.Perm.map f (permutation invariance). Spec requires lowest-index error attribution under parallel execution. Missing: error-index priority proof.",
+        "k_overflow_discard_complete is structural (ADT noConfusion); does not model implementation-level memory."
       ]
     }
   ],
