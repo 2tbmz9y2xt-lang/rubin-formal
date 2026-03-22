@@ -381,7 +381,7 @@
     {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 \u00a714. TxContext Pre-Activation Gates",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
         "RubinFormal.TxContext.uint128GTE_native_equivalence",
@@ -406,9 +406,9 @@
         "RubinFormal.TxContext.parallel_error_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "SPEC-TXCTX-01 \u00a714 pre-activation gate theorems. All eight required theorems proven: uint128GTE correctness and native equivalence, ext_id sort determinism, n_total empty v2, k-overflow discard completeness, vault conservation no double-count, parallel error equivalence, sighash policy completeness.",
+      "notes": "SPEC-TXCTX-01 \u00a714 pre-activation gate theorems. Several subclaims are mechanized, but the section is not counted as proved coverage because k_overflow_discard_complete remains a structural theorem over a simplified ADT rather than the concrete BuildTxContext model required for the activation gate.",
       "limitations": [
-        "extid_sort_deterministic proves functional determinism (same input = same output) and concrete CV-51/CV-84 regression vectors; full multiset permutation uniqueness deferred to Mathlib dependency.",
+        "extid_sort_deterministic now proves the output is a sorted permutation of the input, but the section remains non-gating until every required activation theorem is tied to the concrete model.",
         "parallel_error_equivalence relies on purity of evaluation function; does not model OS-level thread scheduling.",
         "k_overflow_discard_complete is structural (ADT has no partial state on err); does not model implementation-level memory."
       ]
