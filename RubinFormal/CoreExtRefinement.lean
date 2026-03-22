@@ -5,6 +5,7 @@
   transitions, deterministic error-priority mapping, and duplicate
   ACTIVE profile rejection. Maps back to CV-EXT-* fixture families.
 -/
+import RubinFormal.CoreExtInvariants
 import RubinFormal.CriticalInvariants
 
 namespace RubinFormal.CoreExtRefinement
@@ -158,14 +159,15 @@ theorem no_duplicate_different_ids (p q : DeploymentProfile) (h : p.extId ≠ q.
 -- Section 4: Suite Authorization
 -- ============================================================================
 
-/-- Check if a suite ID is in the allowed set. -/
+/-- Check if a suite ID is in the allowed set and is not the sentinel.
+    This matches the active CORE_EXT invariant: post-activation, suite_id = 0
+    must be rejected even if it appears in the configured list. -/
 def suiteAllowed (suiteId : Nat) (allowedSuites : List Nat) : Bool :=
-  allowedSuites.contains suiteId
+  allowedSuites.contains suiteId && suiteId != RubinFormal.SUITE_ID_SENTINEL
 
-/-- Keyless sentinel (suite_id = 0): when 0 is in the allowed list,
-    suiteAllowed returns true. Models the sentinel bypass rule. -/
-theorem keyless_sentinel_in_allowed :
-    suiteAllowed 0 [0, 1, 3] = true := by native_decide
+/-- Post-activation, the sentinel suite_id = 0 is rejected even if listed. -/
+theorem sentinel_rejected_even_if_listed :
+    suiteAllowed 0 [0, 1, 3] = false := by native_decide
 
 /-- When suite_id is NOT in the allowed list, suiteAllowed returns false. -/
 theorem suite_not_allowed_when_absent :
