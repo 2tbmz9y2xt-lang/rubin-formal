@@ -52,3 +52,4 @@ import RubinFormal.CoinbaseSubsidyBehavioral
 import RubinFormal.DaIntegrityBehavioral
 import RubinFormal.WitnessCommitmentPregate
 import RubinFormal.BlockTimestampBehavioral
+import RubinFormal.BlockValidationOrderBehavioral
