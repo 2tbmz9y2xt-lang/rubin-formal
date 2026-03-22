@@ -229,12 +229,28 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_pow_vectors_pass",
-        "RubinFormal.retargetV1_clamp_bounded"
+        "RubinFormal.retargetV1_clamp_bounded",
+        "RubinFormal.retarget_identity",
+        "RubinFormal.retarget_zero_tActual",
+        "RubinFormal.retarget_lo_positive",
+        "RubinFormal.retarget_hi_bounded",
+        "RubinFormal.retarget_clamped_in_range",
+        "RubinFormal.retargetV1_clamp_positive"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.retargetV1_clamp_bounded": "rubin-formal/RubinFormal/PowV1.lean"
-      }
+        "RubinFormal.retargetV1_clamp_bounded": "rubin-formal/RubinFormal/PowV1.lean",
+        "RubinFormal.retarget_identity": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retarget_zero_tActual": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retarget_lo_positive": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retarget_hi_bounded": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retarget_clamped_in_range": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retargetV1_clamp_positive": "rubin-formal/RubinFormal/PowV1.lean"
+      },
+      "notes": "Full retarget algorithm behavior: identity case (tActual=tExpected), zero tActual, lo/hi bounds, clamped-in-range, clamp bounded+positive. Covers the three-way clamp path completely.",
+      "limitations": [
+        "Full retargetV1 end-to-end parse-to-output theorem not yet proved due to do-notation unfolding complexity."
+      ]
     },
     {
       "section_key": "transaction_structural_rules",
