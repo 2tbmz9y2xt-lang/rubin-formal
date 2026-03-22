@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Upload diff artifact
         if: steps.diff.outputs.skip != 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: pr-diff
           path: pr-diff.txt
@@ -47,12 +47,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Download diff artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: pr-diff
       - name: Run security review
         id: review
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
@@ -124,7 +124,7 @@ jobs:
 
       - name: Post review comment
         if: steps.review.outputs.review
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const review = ${{ toJSON(steps.review.outputs.review) }};
@@ -136,20 +136,84 @@ jobs:
               body: `### Security Review: deepseek-v3\n_Model: deepseek/DeepSeek-V3-0324_\n\n\`\`\`json\n${review}\n\`\`\``
             });
       - name: Hard block on sorry/admit in Lean files
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
             const diff = fs.readFileSync('pr-diff.txt', 'utf8');
-            // Split diff into per-file sections, only check .lean files
-            const sections = diff.split(/^diff --git /m).filter(s => s.includes('.lean'));
+            const isLeanDiffSection = (section) => {
+              const header = section.split('\n', 1)[0] ?? '';
+              return header.includes('.lean');
+            };
+            const startsLeanCharLiteral = (line, idx) => {
+              const prev = idx > 0 ? line[idx - 1] : '';
+              if (/[A-Za-z0-9_]/.test(prev)) {
+                return false;
+              }
+              const next = line[idx + 1];
+              if (next === undefined || next === ' ' || next === '\t') {
+                return false;
+              }
+              let endIdx = idx + 1;
+              if (line[endIdx] === '\\') {
+                endIdx += 2;
+              } else {
+                endIdx += 1;
+              }
+              return line[endIdx] === "'";
+            };
+            const stripLeanLineComment = (line) => {
+              let inString = false;
+              let inChar = false;
+              let escaped = false;
+              for (let i = 0; i < line.length; i += 1) {
+                const ch = line[i];
+                if (escaped) {
+                  escaped = false;
+                  continue;
+                }
+                if (inString) {
+                  if (ch === '\\') {
+                    escaped = true;
+                    continue;
+                  }
+                  if (ch === '"') {
+                    inString = false;
+                  }
+                  continue;
+                }
+                if (inChar) {
+                  if (ch === '\\') {
+                    escaped = true;
+                    continue;
+                  }
+                  if (ch === "'") {
+                    inChar = false;
+                  }
+                  continue;
+                }
+                if (ch === '"') {
+                  inString = true;
+                  continue;
+                }
+                if (ch === "'" && startsLeanCharLiteral(line, i)) {
+                  inChar = true;
+                  continue;
+                }
+                if (ch === '-' && line[i + 1] === '-') {
+                  return line.slice(0, i);
+                }
+              }
+              return line;
+            };
+            // Split diff into per-file sections, only check true .lean file sections
+            const sections = diff.split(/^diff --git /m).filter(isLeanDiffSection);
             const sorryLines = [];
             for (const section of sections) {
               const lines = section.split('\n');
               for (const line of lines) {
                 if (!line.startsWith('+') || line.startsWith('+++')) continue;
-                // Strip Lean line comments
-                const stripped = line.replace(/--.*$/, '');
+                const stripped = stripLeanLineComment(line);
                 if (/\bsorry\b/.test(stripped) || /\badmit\b/.test(stripped)) {
                   sorryLines.push(line);
                 }
