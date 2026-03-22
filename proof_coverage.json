@@ -195,6 +195,10 @@
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
         "RubinFormal.det001_validation_order_proved",
+        "RubinFormal.error_priority_parse",
+        "RubinFormal.error_priority_pow",
+        "RubinFormal.error_priority_target",
+        "RubinFormal.error_priority_linkage",
         "RubinFormal.except_error_bind",
         "RubinFormal.validate_success_parse",
         "RubinFormal.validate_success_pow",
@@ -213,6 +217,12 @@
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.Conformance.cv_validation_order_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVValidationOrderReplay.lean",
+        "RubinFormal.det001_validation_order_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.error_priority_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_pow": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_target": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_linkage": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.except_error_bind": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.validate_success_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.validate_success_pow": "rubin-formal/RubinFormal/ErrorPriority.lean",
@@ -229,10 +239,12 @@
         "RubinFormal.err_ne_ts_old_future": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Error priority proved for block-level validation pipeline via contrapositive chain + distinctness. Status remains stated because tx-level error codes (TX_ERR_SIG_INVALID, TX_ERR_DOUBLE_SPEND, etc.) are not yet covered by priority proofs. Block-level coverage: parse → PoW → target → linkage → merkle → witness ordering.",
+      "notes": "Direct error propagation proved for stages 1-4 (parse→PoW→target→linkage). Each theorem proves: if stage N fails, validateBlockBasic returns EXACTLY stage N error code. Combined with §25 totality + ordering + error code distinctness.",
       "limitations": [
-        "No theorem in the current registry proves the new SPEC-TXCTX-01 source mappings added to Section 13.1.",
-        "Current evidence does not yet prove the TxContext-specific error attribution paths for step 3c / §7.x beyond fixture-level replay."
+        "UNCOVERED: merkle error propagation (stage 5) — requires merkleRootTxids failure threading through do block.",
+        "UNCOVERED: witness commitment error propagation (stage 6) — requires checkWitnessCommitment failure threading.",
+        "UNCOVERED: tx-level error ordering (TX_ERR_SIG_INVALID, TX_ERR_DOUBLE_SPEND, etc.) — requires applyNonCoinbaseTxBasic error priority proof.",
+        "UNCOVERED: TXCTX-era error source mappings (Section 13.1 extensions)."
       ]
     },
     {
