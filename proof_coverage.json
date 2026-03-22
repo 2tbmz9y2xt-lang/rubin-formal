@@ -503,18 +503,23 @@
     {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
         "RubinFormal.TxContext.uint128GTE_native_equivalence",
+        "RubinFormal.TxContext.sortAscending_perm",
+        "RubinFormal.TxContext.sortAscending_sorted_v2",
         "RubinFormal.TxContext.extid_sort_deterministic",
         "RubinFormal.TxContext.extid_sort_concrete_321",
         "RubinFormal.TxContext.extid_sort_cv51",
+        "RubinFormal.TxContext.extid_sort_idempotent_sorted",
         "RubinFormal.TxContext.ntotal_empty_v2_equivalence",
         "RubinFormal.TxContext.k_overflow_discard_complete",
         "RubinFormal.TxContext.vault_conservation_no_double_count",
         "RubinFormal.TxContext.vault_sum_ignored_when_no_vault",
         "RubinFormal.TxContext.parallel_error_equivalence",
+        "RubinFormal.TxContext.parallel_all_perm_invariant",
+        "RubinFormal.TxContext.parallel_any_fail_perm_invariant",
         "RubinFormal.TxContext.sighash_policy_complete",
         "RubinFormal.TxContext.sighash_invalid_base_rejected"
       ],
@@ -528,11 +533,12 @@
         "RubinFormal.TxContext.parallel_error_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "SPEC-TXCTX-01 §14 pre-activation gate theorems. All eight required theorems proven: uint128GTE correctness and native equivalence, ext_id sort determinism, n_total empty v2, k-overflow discard completeness, vault conservation no double-count, parallel error equivalence, sighash policy completeness.",
+      "notes": "All 8 SPEC-TXCTX-01 §14 pre-activation gate theorems proved with zero sorry. Theorem surface covers: uint128 comparison correctness and native equivalence, ext_id sort (permutation + sorted + determinism + concrete CV vectors), n_total empty-v2 equivalence, k-overflow discard completeness, vault conservation no-double-count, parallel error/permutation invariance, sighash policy exhaustive coverage. 17 theorems total including supporting lemmas and corollaries.",
       "limitations": [
-        "extid_sort_deterministic proves functional determinism (same input = same output) and concrete CV-51/CV-84 regression vectors; full multiset permutation uniqueness deferred to Mathlib dependency.",
+        "extid_sort_deterministic proves sorted permutation via insertionSort; full multiset uniqueness deferred to Mathlib.",
         "parallel_error_equivalence relies on purity of evaluation function; does not model OS-level thread scheduling.",
-        "k_overflow_discard_complete is structural (ADT has no partial state on err); does not model implementation-level memory."
+        "k_overflow_discard_complete is structural (ADT has no partial state on err); does not model implementation-level memory.",
+        "sighash_policy_complete covers the specific 0x87 allowed_sighash_set mask; other mask values not exhaustively checked."
       ]
     }
   ],
