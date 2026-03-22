@@ -230,7 +230,11 @@
         "RubinFormal.vault_sweep_and_policy_independent_checks",
         "RubinFormal.Conformance.cv_vault_with_lifecycle_pass",
         "RubinFormal.Conformance.vault_full_lifecycle_valid",
-        "RubinFormal.Conformance.vault_cancel_lifecycle_valid"
+        "RubinFormal.Conformance.vault_cancel_lifecycle_valid",
+        "RubinFormal.utxo_conservation_theorem",
+        "RubinFormal.no_double_spend_theorem",
+        "RubinFormal.chainConsistency_inductive",
+        "RubinFormal.spendTx_end_to_end"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -248,13 +252,18 @@
         "RubinFormal.vault_sweep_and_policy_independent_checks": "rubin-formal/RubinFormal/VaultStateMachine.lean",
         "RubinFormal.Conformance.cv_vault_with_lifecycle_pass": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
         "RubinFormal.Conformance.vault_full_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
-        "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean"
+        "RubinFormal.Conformance.vault_cancel_lifecycle_valid": "rubin-formal/RubinFormal/Conformance/CVVaultLifecycleReplay.lean",
+        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.chainConsistency_inductive": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.spendTx_end_to_end": "rubin-formal/RubinFormal/SpendTxEndToEnd.lean"
       },
-      "notes": "Section claim is now limited to the pre-TXCTX UTXO/value/vault invariants plus the existing replay witnesses. TXCTX extends the pinned UTXO-state surface with SpendTx step 3c TxContext construction, deterministic ext_id ordering, and rollback/discard semantics that are not yet proved in Lean.",
+      "notes": "Section now includes the substantive behavioral theorem surfaces from ConnectBlockStrong.lean and SpendTxEndToEnd.lean. These prove UTXO conservation (sum_in >= sum_out + fee), no intra-tx double spend, inductive chain consistency, and end-to-end SpendTx correctness over the real prepareNonCoinbaseTxBasic function. Status remains 'stated' because the broader UTXO state model (TXCTX construction, ext_id ordering, rollback/discard) is not yet fully proved.",
       "limitations": [
         "No theorem in the current registry proves SpendTx step 3c TxContext construction or the exact bundle contents for TxContext-enabled CORE_EXT spends.",
         "No theorem in the current registry proves the >K continuing-output reject / discard semantics or the ext_id ordering rule added by TXCTX.",
-        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1\u2194L2 equivalence for all vault transactions."
+        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1\u2194L2 equivalence for all vault transactions.",
+        "ConnectBlockStrong theorems cover pre-TXCTX non-coinbase tx path only; coinbase and TXCTX-enabled paths require separate proof surfaces."
       ]
     },
     {
