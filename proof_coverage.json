@@ -267,7 +267,9 @@
         "RubinFormal.utxo_conservation_theorem",
         "RubinFormal.no_double_spend_theorem",
         "RubinFormal.chainConsistency_inductive",
-        "RubinFormal.spendTx_end_to_end"
+        "RubinFormal.spendTx_end_to_end",
+        "RubinFormal.spendTx_behavioral",
+        "RubinFormal.connectBlockTxs_behavioral"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -289,9 +291,11 @@
         "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.no_double_spend_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.chainConsistency_inductive": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
-        "RubinFormal.spendTx_end_to_end": "rubin-formal/RubinFormal/SpendTxEndToEnd.lean"
+        "RubinFormal.spendTx_end_to_end": "rubin-formal/RubinFormal/SpendTxEndToEnd.lean",
+        "RubinFormal.spendTx_behavioral": "rubin-formal/RubinFormal/UtxoSpendTxBehavioral.lean",
+        "RubinFormal.connectBlockTxs_behavioral": "rubin-formal/RubinFormal/UtxoSpendTxBehavioral.lean"
       },
-      "notes": "Section now includes the substantive behavioral theorem surfaces from ConnectBlockStrong.lean and SpendTxEndToEnd.lean. These prove UTXO conservation (sum_in >= sum_out + fee), no intra-tx double spend, inductive chain consistency, and end-to-end SpendTx correctness over the real prepareNonCoinbaseTxBasic function. Status remains 'stated' because the broader UTXO state model (TXCTX construction, ext_id ordering, rollback/discard) is not yet fully proved.",
+      "notes": "Section now includes single-tx behavioral proof (spendTx_behavioral: inputs_available + no_double_spend + conservation + deterministic nextUtxoMap) and block-level composition (connectBlockTxs_behavioral: conservation + no_double_spend across all txs). Status remains stated because TXCTX/coinbase/vault paths not fully proved.",
       "limitations": [
         "No theorem in the current registry proves SpendTx step 3c TxContext construction or the exact bundle contents for TxContext-enabled CORE_EXT spends.",
         "No theorem in the current registry proves the >K continuing-output reject / discard semantics or the ext_id ordering rule added by TXCTX.",
