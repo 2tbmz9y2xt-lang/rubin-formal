@@ -264,9 +264,9 @@ theorem buildPreimageFrameParts_injective (a b : SighashPreimageFrame)
     (hEq : buildPreimageFrameParts a = buildPreimageFrameParts b) :
     a = b := by
   cases a with
-  | mk aChainId aVersionLE aTxKind aTxNonceLE aHashDA aHashPrevouts aHashSeq aInputIndexLE aPrevTxid aPrevVoutLE aInputValueLE aSequenceLE aHashOutputs aLocktimeLE =>
+  | mk aChainId aVersionLE aTxKind aTxNonceLE aHashDA aHashPrevouts aHashSeq aInputIndexLE aPrevTxid aPrevVoutLE aInputValueLE aSequenceLE aHashOutputs aLocktimeLE aSighashType =>
     cases b with
-    | mk bChainId bVersionLE bTxKind bTxNonceLE bHashDA bHashPrevouts bHashSeq bInputIndexLE bPrevTxid bPrevVoutLE bInputValueLE bSequenceLE bHashOutputs bLocktimeLE =>
+    | mk bChainId bVersionLE bTxKind bTxNonceLE bHashDA bHashPrevouts bHashSeq bInputIndexLE bPrevTxid bPrevVoutLE bInputValueLE bSequenceLE bHashOutputs bLocktimeLE bSighashType =>
       simp [buildPreimageFrameParts, RubinFormal.bytes] at hEq ⊢
       simpa using hEq
 
