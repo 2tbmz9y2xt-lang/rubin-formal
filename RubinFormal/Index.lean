@@ -39,3 +39,4 @@ import RubinFormal.UtxoSpendTxBehavioral
 import RubinFormal.WeightBehavioral
 import RubinFormal.RetargetBehavioral
 import RubinFormal.StructuralRulesBehavioral
+import RubinFormal.ValueConservationBehavioral

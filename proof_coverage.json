@@ -369,12 +369,17 @@
       "theorems": [
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass",
         "RubinFormal.Conformance.cv_subsidy_vectors_pass",
-        "RubinFormal.utxo_conservation_theorem"
+        "RubinFormal.utxo_conservation_theorem",
+        "RubinFormal.value_conservation_single_tx",
+        "RubinFormal.value_conservation_block_txs"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
-      }
+        "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
+        "RubinFormal.value_conservation_single_tx": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean",
+        "RubinFormal.value_conservation_block_txs": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean"
+      },
+      "notes": "Value conservation proved at single-tx level (sum_in = sum_out + fee via scanInputs/sumOutputs) and block level (connectBlockTxs preserves conservation across all txs). Real UTXO-map model, not abstract."
     },
     {
       "section_key": "da_set_integrity",
