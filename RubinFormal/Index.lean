@@ -35,3 +35,4 @@ import RubinFormal.CoreExtRefinement
 import RubinFormal.TxContextFormal
 import RubinFormal.ForkChoiceTiebreak
 import RubinFormal.ErrorPriority
+import RubinFormal.UtxoSpendTxBehavioral
