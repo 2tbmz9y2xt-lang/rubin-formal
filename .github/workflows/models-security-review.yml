@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          fetch-depth: 0
       - name: Download diff artifact
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
@@ -63,7 +65,7 @@ jobs:
             const baseSha = '${{ github.event.pull_request.base.sha }}';
             const headSha = '${{ github.event.pull_request.head.sha }}';
             const changedLeanFiles = execSync(
-              `git diff --name-only ${baseSha} ${headSha} -- '*.lean'`,
+              `git diff --diff-filter=ACMR --name-only ${baseSha} ${headSha} -- '*.lean'`,
               { maxBuffer: 20 * 1024 * 1024 }
             )
               .toString()
