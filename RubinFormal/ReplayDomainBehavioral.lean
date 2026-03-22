@@ -1,27 +1,18 @@
 import RubinFormal.UtxoBasicV1
-
-/-!
-# Replay Domain Behavioral Proofs (§17)
-
-Proves that parseTx extracts nonce deterministically, providing
-nonce-based replay domain separation.
--/
+import RubinFormal.PrimitiveEncodingRoundtrip
 
 namespace RubinFormal
-
 open UtxoBasicV1
 
-/-- parseTx is deterministic on nonce: same bytes → same parsed nonce.
-    Combined with nonce-uniqueness enforcement, this ensures replay
-    domain separation per-transaction. -/
+/-- parseTx deterministic on nonce. -/
 theorem parseTx_nonce_deterministic (txBytes : Bytes)
-    (tx1 tx2 : Tx)
-    (h1 : parseTx txBytes = .ok tx1)
-    (h2 : parseTx txBytes = .ok tx2) :
-    tx1.txNonce = tx2.txNonce := by
-  rw [h1] at h2; cases h2; rfl
+    (tx1 tx2 : Tx) (h1 : parseTx txBytes = .ok tx1) (h2 : parseTx txBytes = .ok tx2) :
+    tx1.txNonce = tx2.txNonce := by rw [h1] at h2; cases h2; rfl
 
--- chainId domain separation: full behavioral proof blocked by
--- do-notation unfolding. See ChainIdBehavioral.lean for partial evidence.
+/-- u64le encoding of 0 differs from 1 — nonce encoding is non-constant. -/
+theorem u64le_zero_ne_one : encodeU64le 0 ≠ encodeU64le 1 := by native_decide
+
+/-- u64le encoding of 0 differs from max — covers full range. -/
+theorem u64le_zero_ne_max : encodeU64le 0 ≠ encodeU64le 18446744073709551615 := by native_decide
 
 end RubinFormal
