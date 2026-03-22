@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Upload diff artifact
         if: steps.diff.outputs.skip != 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: pr-diff
           path: pr-diff.txt
@@ -47,12 +47,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Download diff artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: pr-diff
       - name: Run security review
         id: review
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
@@ -117,7 +117,7 @@ jobs:
 
       - name: Post review comment
         if: steps.review.outputs.review
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const review = ${{ toJSON(steps.review.outputs.review) }};
@@ -131,7 +131,7 @@ jobs:
 
       - name: Block on critical findings
         if: steps.review.outputs.review
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const review = ${{ toJSON(steps.review.outputs.review) }};
