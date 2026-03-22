@@ -49,3 +49,4 @@ import RubinFormal.ChainIdBehavioral
 import RubinFormal.CovenantRegistryExhaustive
 import RubinFormal.ReplayDomainBehavioral
 import RubinFormal.CoinbaseSubsidyBehavioral
+import RubinFormal.DaIntegrityBehavioral
