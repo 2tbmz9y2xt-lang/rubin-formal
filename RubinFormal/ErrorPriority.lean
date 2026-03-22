@@ -1,4 +1,5 @@
 import RubinFormal.BlockValidationOrder
+import RubinFormal.UtxoApplyGenesisV1
 
 /-!
 # Error Priority Ordering (§7 / §13 / §25)
@@ -306,6 +307,96 @@ theorem witness_check_total (ws : WitnessSectionResult) :
   split <;> simp_all
   split <;> simp_all
   split <;> simp_all
+
+/-! ## Top-level merkle error propagation on validateBlockBasic -/
+
+theorem error_priority_merkle_top_nn
+    (blockBytes : Bytes) (pb : ParsedBlock) (mr : Bytes)
+    (hParse : parseBlock blockBytes = .ok pb)
+    (hPow : powCheck pb.header = .ok ())
+    (hMerkle : merkleRootTxids pb.txids = .ok mr)
+    (hMismatch : (mr != pb.header.merkleRoot) = true) :
+    validateBlockBasic blockBytes none none = .error "BLOCK_ERR_MERKLE_INVALID" := by
+  unfold validateBlockBasic; rw [hParse]
+  show (do powCheck pb.header; _) = _; rw [hPow]
+  exact error_priority_merkle_afterpow_nn pb mr hMerkle hMismatch
+
+theorem error_priority_merkle_top_sn
+    (blockBytes : Bytes) (pb : ParsedBlock) (mr expTarget : Bytes)
+    (hParse : parseBlock blockBytes = .ok pb)
+    (hPow : powCheck pb.header = .ok ())
+    (hTargetOk : (pb.header.target != expTarget) = false)
+    (hMerkle : merkleRootTxids pb.txids = .ok mr)
+    (hMismatch : (mr != pb.header.merkleRoot) = true) :
+    validateBlockBasic blockBytes none (some expTarget) = .error "BLOCK_ERR_MERKLE_INVALID" := by
+  unfold validateBlockBasic; rw [hParse]
+  show (do powCheck pb.header; _) = _; rw [hPow]
+  simp only [hTargetOk, ite_false]
+  exact error_priority_merkle_afterpow_nn pb mr hMerkle hMismatch
+
+theorem error_priority_merkle_top_ns
+    (blockBytes : Bytes) (pb : ParsedBlock) (mr expPrev : Bytes)
+    (hParse : parseBlock blockBytes = .ok pb)
+    (hPow : powCheck pb.header = .ok ())
+    (hLinkOk : (pb.header.prevHash != expPrev) = false)
+    (hMerkle : merkleRootTxids pb.txids = .ok mr)
+    (hMismatch : (mr != pb.header.merkleRoot) = true) :
+    validateBlockBasic blockBytes (some expPrev) none = .error "BLOCK_ERR_MERKLE_INVALID" := by
+  unfold validateBlockBasic; rw [hParse]
+  show (do powCheck pb.header; _) = _; rw [hPow]
+  simp only [hLinkOk, ite_false]
+  exact error_priority_merkle_afterpow_nn pb mr hMerkle hMismatch
+
+theorem error_priority_merkle_top_ss
+    (blockBytes : Bytes) (pb : ParsedBlock) (mr expTarget expPrev : Bytes)
+    (hParse : parseBlock blockBytes = .ok pb)
+    (hPow : powCheck pb.header = .ok ())
+    (hTargetOk : (pb.header.target != expTarget) = false)
+    (hLinkOk : (pb.header.prevHash != expPrev) = false)
+    (hMerkle : merkleRootTxids pb.txids = .ok mr)
+    (hMismatch : (mr != pb.header.merkleRoot) = true) :
+    validateBlockBasic blockBytes (some expPrev) (some expTarget) = .error "BLOCK_ERR_MERKLE_INVALID" := by
+  unfold validateBlockBasic; rw [hParse]
+  show (do powCheck pb.header; _) = _; rw [hPow]
+  simp only [hTargetOk, ite_false, hLinkOk]
+  exact error_priority_merkle_afterpow_nn pb mr hMerkle hMismatch
+
+/-! ## Live semantic tx pre-input ordering (applyTxPreInputChecks)
+
+`applyTxPreInputChecks` is a LIVE sub-function called from
+`applyNonCoinbaseTxBasicNoCrypto`. Ordering proved by unfold+rw
+on the top checks of the do-block.
+-/
+
+open UtxoApplyGenesisV1 in
+theorem preinput_empty_inputs_priority
+    (tx : UtxoBasicV1.Tx) (height : Nat)
+    (h : (tx.inputs.length == 0) = true) :
+    applyTxPreInputChecks tx height = .error "TX_ERR_PARSE" := by
+  unfold applyTxPreInputChecks; rw [h]; rfl
+
+open UtxoApplyGenesisV1 in
+theorem preinput_nonce_zero_priority
+    (tx : UtxoBasicV1.Tx) (height : Nat)
+    (hInputs : (tx.inputs.length == 0) = false)
+    (hNonce : (tx.txNonce == 0) = true) :
+    applyTxPreInputChecks tx height = .error "TX_ERR_TX_NONCE_INVALID" := by
+  unfold applyTxPreInputChecks
+  rw [show (tx.inputs.length == 0) = false from hInputs]
+  simp only [hNonce, ite_true]; rfl
+
+/-! ## Live DA-len checks ordering (applyDaLenChecks)
+
+`applyDaLenChecks` is a LIVE sub-function called from `parseTxFromCursor`.
+All checks produce TX_ERR_PARSE.
+-/
+
+open BlockBasicV1 in
+theorem dalen_minimality_priority
+    (tk daLen : Nat) (minDa : Bool)
+    (h : minDa = false) :
+    applyDaLenChecks tk daLen minDa = .error "TX_ERR_PARSE" := by
+  unfold applyDaLenChecks; rw [h]; rfl
 
 /-! ## Block-level error code distinctness (§13) -/
 

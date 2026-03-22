@@ -104,6 +104,18 @@ def powCheck (h : BlockHeader) : Except String Unit := do
     if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
     pure ()
 
+  /-- DA-payload length checks from parseTxFromCursor (lines 158-164).
+      LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def applyDaLenChecks (tk : Nat) (daLen : Nat) (minDa : Bool) : Except String Unit := do
+    if !minDa then throw "TX_ERR_PARSE"
+    if tk == 0x00 then
+      if daLen != 0 then throw "TX_ERR_PARSE"
+    else if tk == 0x01 then
+      if daLen > DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX then throw "TX_ERR_PARSE"
+    else
+      if daLen < 1 || daLen > DaCoreV1.CHUNK_BYTES then throw "TX_ERR_PARSE"
+    pure ()
+
   def parseTxFromCursor (c : Cursor) : Except String (Nat × Bytes × Bytes × Bytes × Cursor) := do
   let start := c.off
   let (ver, c1) ←
@@ -155,13 +167,7 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       match ws.cursor.getCompactSize? with
       | none => throw "BLOCK_ERR_PARSE"
       | some x => pure x
-    if !minDa then throw "TX_ERR_PARSE"
-    if tk == 0x00 then
-      if daLen != 0 then throw "TX_ERR_PARSE"
-    else if tk == 0x01 then
-      if daLen > RubinFormal.DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX then throw "TX_ERR_PARSE"
-    else
-      if daLen < 1 || daLen > RubinFormal.DaCoreV1.CHUNK_BYTES then throw "TX_ERR_PARSE"
+    applyDaLenChecks tk daLen minDa
     let (_, c11) ←
       match c10.getBytes? daLen with
       | none => throw "BLOCK_ERR_PARSE"

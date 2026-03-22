@@ -168,6 +168,20 @@ def vaultSpendOutputsAllowed
     (outs : List UtxoBasicV1.TxOut) : Bool :=
   outs.all (vaultSpendOutputAllowed whitelist)
 
+/-- Pre-input semantic checks: parse, nonce, output covenants.
+    LIVE sub-function: applyNonCoinbaseTxBasicNoCrypto calls it directly.
+    Ordering: TX_ERR_PARSE (empty inputs) → TX_ERR_TX_NONCE_INVALID →
+    TX_ERR_COVENANT_TYPE_INVALID (output validation) → per-input checks. -/
+def applyTxPreInputChecks
+    (tx : UtxoBasicV1.Tx)
+    (height : Nat) : Except String Unit := do
+  if tx.inputs.length == 0 then throw "TX_ERR_PARSE"
+  if tx.txNonce == 0 then throw "TX_ERR_TX_NONCE_INVALID"
+  for o in tx.outputs do
+    CovenantGenesisV1.validateOutGenesis
+      { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData }
+      tx.txKind height
+
 def applyNonCoinbaseTxBasicNoCrypto
     (txBytes : Bytes)
     (utxos : List (Outpoint × UtxoEntry))
@@ -178,14 +192,7 @@ def applyNonCoinbaseTxBasicNoCrypto
   let _ := chainId
   let tx ← UtxoBasicV1.parseTx txBytes
 
-  if tx.inputs.length == 0 then throw "TX_ERR_PARSE"
-  if tx.txNonce == 0 then throw "TX_ERR_TX_NONCE_INVALID"
-
-  -- output covenant validity
-  for o in tx.outputs do
-    CovenantGenesisV1.validateOutGenesis
-      { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData }
-      tx.txKind height
+  applyTxPreInputChecks tx height
 
   -- build lookup
   let utxoMap := UtxoBasicV1.buildUtxoMap utxos

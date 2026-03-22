@@ -243,7 +243,14 @@
         "RubinFormal.err_ne_tx_sig_alg_sig_invalid",
         "RubinFormal.err_ne_tx_covenant_parse",
         "RubinFormal.err_ne_tx_covenant_sig_alg",
-        "RubinFormal.err_ne_tx_covenant_missing"
+        "RubinFormal.err_ne_tx_covenant_missing",
+        "RubinFormal.error_priority_merkle_top_nn",
+        "RubinFormal.error_priority_merkle_top_sn",
+        "RubinFormal.error_priority_merkle_top_ns",
+        "RubinFormal.error_priority_merkle_top_ss",
+        "RubinFormal.preinput_empty_inputs_priority",
+        "RubinFormal.preinput_nonce_zero_priority",
+        "RubinFormal.dalen_minimality_priority"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -297,14 +304,19 @@
         "RubinFormal.err_ne_tx_sig_alg_sig_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_covenant_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_covenant_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_tx_covenant_missing": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_tx_covenant_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_merkle_top_nn": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_merkle_top_sn": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_merkle_top_ns": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_merkle_top_ss": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.preinput_empty_inputs_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.preinput_nonce_zero_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.dalen_minimality_priority": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level stages 1-4 (parse→PoW→target→linkage): direct error propagation on live validateBlockBasic. Stage 5 (merkle): proved at validateBlockBasicAfterPow level via explicit-bind equivalence with validateBlockBasicMerkleWitnessTail. Stage 6 (witness): existing theorem. Tx-level: applyWitnessChecks is a LIVE sub-function called from parseTxFromCursor. Error priority OVERFLOW→SIG_ALG→NONCANONICAL proved via rfl equivalence. Error code distinctness: all block + tx codes covered by decide.",
+      "notes": "Block-level: direct error propagation on live validateBlockBasic for ALL 6 stages including merkle at top-level (4 target/linkage combos). Tx parse: applyWitnessChecks (LIVE, called from parseTxFromCursor) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence. applyDaLenChecks (LIVE, called from parseTxFromCursor) — all TX_ERR_PARSE. Tx semantic: applyTxPreInputChecks (LIVE, called from applyNonCoinbaseTxBasicNoCrypto) — empty inputs → TX_ERR_PARSE, zero nonce → TX_ERR_TX_NONCE_INVALID, then output covenant loop → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths), not proof-only.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
-        "Merkle propagation at afterPow level via explicit-bind equivalence.",
-        "Tx-level: only witness-check sub-function (applyWitnessChecks) is live-extracted. Full parseTxFromCursor header/bounds/DA ordering not decomposed.",
-        "Tx semantic ordering (applyNonCoinbaseTxBasicNoCrypto) not decomposed — 100+ line for-loop do block."
+        "Per-input semantic loop (duplicate→missing→covenant→suite→sig) ordering not decomposed — for-loop in do block."
       ]
     },
     {
