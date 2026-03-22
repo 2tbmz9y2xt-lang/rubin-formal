@@ -26,8 +26,7 @@ theorem chainId_affects_digest :
   right
   exact ⟨_, _, rfl, rfl⟩
 
-/-- Zero-length chainId still produces a parse result (does not panic). -/
-theorem digestV1_empty_chainId_no_panic :
-    ∃ r, digestV1 ByteArray.empty ByteArray.empty 0 0 = r := ⟨_, rfl⟩
+-- digestV1_empty_chainId_no_panic removed: ∃ r, f x = r is tautological.
+-- chainId_affects_digest limitation: only error case proved, not different-digest case.
 
 end RubinFormal
