@@ -72,8 +72,8 @@
         "RubinFormal.weight_suite_aware_correct",
         "RubinFormal.weight_suite_aware_correct_create",
         "RubinFormal.weight_monotone_witness",
-        "RubinFormal.weight_monotone_base",
-        "RubinFormal.weight_monotone_sigCost",
+        "RubinFormal.Refinement.weight_monotone_base",
+        "RubinFormal.Refinement.weight_monotone_sigCost",
         "RubinFormal.weight_accounting_proved"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
@@ -81,9 +81,9 @@
         "RubinFormal.weight_suite_aware_correct": "rubin-formal/RubinFormal/WeightSuiteAware.lean",
         "RubinFormal.weight_suite_aware_correct_create": "rubin-formal/RubinFormal/WeightSuiteAware.lean",
         "RubinFormal.weight_monotone_witness": "rubin-formal/RubinFormal/CriticalInvariants.lean",
-        "RubinFormal.weight_monotone_base": "rubin-formal/RubinFormal/Refinement/UniversalInvariants.lean",
-        "RubinFormal.weight_monotone_sigCost": "rubin-formal/RubinFormal/Refinement/UniversalInvariants.lean",
-        "RubinFormal.weight_accounting_proved": "rubin-formal/RubinFormal/PinnedSections.lean"
+        "RubinFormal.weight_accounting_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.Refinement.weight_monotone_base": "rubin-formal/RubinFormal/Refinement/UniversalInvariants.lean",
+        "RubinFormal.Refinement.weight_monotone_sigCost": "rubin-formal/RubinFormal/Refinement/UniversalInvariants.lean"
       },
       "notes": "Weight accounting proved through: (1) suite-aware cost correctness for both spend and create suites, (2) monotonicity of base/witness/sigCost components, (3) conformance replay, (4) canonical weight statement. Covers rotation-aware weight formula where registry lookup replaces hardcoded constants.",
       "limitations": [
