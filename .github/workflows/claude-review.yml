@@ -7,8 +7,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  checks: write
-  id-token: write
 
 jobs:
   claude:
@@ -21,7 +19,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@8f2c1e8a4b0f6f7a2a9fdc5a6f3a1b4c9d7e6f52
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
                     model: claude-opus-4-6
