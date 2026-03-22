@@ -199,8 +199,9 @@ This inductive type models the ordering contract.
 -/
 
 /-- Transaction parse stages from §7. Ordering: earlier stage wins.
-    Covers the full parseTxFromCursor path including DA-length checks
-    (BlockBasicV1.lean:108-158). -/
+    Models the ERROR CODE switching points in parseTxFromCursor
+    (BlockBasicV1.lean:108-158). Does NOT cover the `match none => throw`
+    truncation branches which all return BLOCK_ERR_PARSE/TX_ERR_PARSE. -/
 inductive TxParseStage where
   | compactSizeMinimality    -- §7 stage 1: TX_ERR_PARSE (compact size decode)
   | txKindDaPayload          -- §7 stage 2: TX_ERR_PARSE (invalid tx_kind)
@@ -355,18 +356,18 @@ After parsing succeeds, semantic validation applies these checks in order:
 - double-spend (TX_ERR_DOUBLE_SPEND)
 -/
 
-/-- Semantic tx validation stages (post-parse).
+/-- Semantic tx validation stages (post-parse, per-tx).
     Aligned with live code in UtxoApplyGenesisV1.lean:
     - duplicate inputs → TX_ERR_PARSE (line 215-216)
     - missing/spent UTXO → TX_ERR_MISSING_UTXO (line 218-223)
-    - nonce replay → TX_ERR_NONCE_REPLAY
     - suite authorization → TX_ERR_SIG_ALG_INVALID
     - signature verification → TX_ERR_SIG_INVALID
-    Note: TX_ERR_DOUBLE_SPEND does not exist in the current codebase. -/
+    Note: TX_ERR_NONCE_REPLAY lives in BlockBasicCheckV1.nonceReplayCheck
+    (block-level, after merkle/witness gates), NOT in per-tx semantic path.
+    TX_ERR_DOUBLE_SPEND does not exist in the current codebase. -/
 inductive TxSemanticStage where
   | duplicateInputs    -- TX_ERR_PARSE (duplicate input detection)
   | missingUtxo        -- TX_ERR_MISSING_UTXO (input not in UTXO set)
-  | nonceUniqueness    -- TX_ERR_NONCE_REPLAY
   | suiteAuthorization -- TX_ERR_SIG_ALG_INVALID
   | signatureVerify    -- TX_ERR_SIG_INVALID
   deriving DecidableEq, Repr
@@ -374,25 +375,21 @@ inductive TxSemanticStage where
 def txSemanticStageError : TxSemanticStage → String
   | .duplicateInputs    => "TX_ERR_PARSE"
   | .missingUtxo        => "TX_ERR_MISSING_UTXO"
-  | .nonceUniqueness    => "TX_ERR_NONCE_REPLAY"
   | .suiteAuthorization => "TX_ERR_SIG_ALG_INVALID"
   | .signatureVerify    => "TX_ERR_SIG_INVALID"
 
 def txSemanticStageOrd : TxSemanticStage → Nat
   | .duplicateInputs    => 0
   | .missingUtxo        => 1
-  | .nonceUniqueness    => 2
-  | .suiteAuthorization => 3
-  | .signatureVerify    => 4
+  | .suiteAuthorization => 2
+  | .signatureVerify    => 3
 
 /-- All semantic error codes are pairwise distinct. -/
 theorem err_ne_dupinput_missing : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
-theorem err_ne_dupinput_nonce : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_NONCE_REPLAY" := by decide
-theorem err_ne_missing_nonce : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_NONCE_REPLAY" := by decide
+theorem err_ne_dupinput_suite : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
+theorem err_ne_dupinput_sig : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
 theorem err_ne_missing_suite : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
 theorem err_ne_missing_sig : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
-theorem err_ne_nonce_suite : ("TX_ERR_NONCE_REPLAY" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
-theorem err_ne_nonce_sig : ("TX_ERR_NONCE_REPLAY" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
 theorem err_ne_suite_sig : ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
 
 /-- Semantic stage ordering is total with distinct ordinals. -/
@@ -406,19 +403,19 @@ SPEC-TXCTX-01 adds error source mappings for the TxContext validation path.
 These are distinct from base error codes and follow the same priority model.
 -/
 
-/-- TXCTX-specific error codes from SPEC-TXCTX-01 §13.1. -/
+/-- TXCTX-specific error code from SPEC-TXCTX-01 §13.1.
+    TX_ERR_COVENANT_TYPE_INVALID is emitted by the CORE_EXT covenant
+    validation path when the covenant type is invalid or malformed.
+    Note: TX_ERR_TXCTX_OVERFLOW was removed — no producer exists in codebase. -/
 def TX_ERR_COVENANT_TYPE_INVALID : String := "TX_ERR_COVENANT_TYPE_INVALID"
-def TX_ERR_TXCTX_OVERFLOW : String := "TX_ERR_TXCTX_OVERFLOW"
 
-/-- TXCTX error codes are distinct from each other and from base codes. -/
-theorem err_ne_covenant_txctx :
-    TX_ERR_COVENANT_TYPE_INVALID ≠ TX_ERR_TXCTX_OVERFLOW := by decide
+/-- TXCTX error code is distinct from base codes. -/
 theorem err_ne_covenant_parse :
     TX_ERR_COVENANT_TYPE_INVALID ≠ ("TX_ERR_PARSE" : String) := by decide
-theorem err_ne_txctx_parse :
-    TX_ERR_TXCTX_OVERFLOW ≠ ("TX_ERR_PARSE" : String) := by decide
 theorem err_ne_covenant_sig :
     TX_ERR_COVENANT_TYPE_INVALID ≠ ("TX_ERR_SIG_ALG_INVALID" : String) := by decide
+theorem err_ne_covenant_missing :
+    TX_ERR_COVENANT_TYPE_INVALID ≠ ("TX_ERR_MISSING_UTXO" : String) := by decide
 
 /-! ## Block-level error code distinctness (§13) -/
 

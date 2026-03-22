@@ -228,13 +228,9 @@
         "RubinFormal.err_ne_tx_parse_sig_noncanonical",
         "RubinFormal.err_ne_tx_witness_overflow_sig_noncanonical",
         "RubinFormal.tx_semantic_stage_ord_injective",
-        "RubinFormal.err_ne_nonce_suite",
-        "RubinFormal.err_ne_nonce_sig",
         "RubinFormal.err_ne_suite_sig",
         "RubinFormal.err_ne_tx_parse_nonce",
-        "RubinFormal.err_ne_covenant_txctx",
         "RubinFormal.err_ne_covenant_parse",
-        "RubinFormal.err_ne_txctx_parse",
         "RubinFormal.err_ne_covenant_sig",
         "RubinFormal.err_ne_tx_parse_sig_alg",
         "RubinFormal.err_ne_tx_witness_overflow_sig_alg",
@@ -246,10 +242,11 @@
         "RubinFormal.witness_check_all_pass",
         "RubinFormal.witness_check_total",
         "RubinFormal.err_ne_dupinput_missing",
-        "RubinFormal.err_ne_dupinput_nonce",
-        "RubinFormal.err_ne_missing_nonce",
         "RubinFormal.err_ne_missing_suite",
-        "RubinFormal.err_ne_missing_sig"
+        "RubinFormal.err_ne_missing_sig",
+        "RubinFormal.err_ne_dupinput_suite",
+        "RubinFormal.err_ne_dupinput_sig",
+        "RubinFormal.err_ne_covenant_missing"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -288,13 +285,9 @@
         "RubinFormal.err_ne_tx_parse_sig_noncanonical": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_witness_overflow_sig_noncanonical": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.tx_semantic_stage_ord_injective": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_nonce_suite": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_nonce_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_suite_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_covenant_txctx": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_covenant_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_txctx_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_covenant_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_witness_overflow_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
@@ -306,17 +299,19 @@
         "RubinFormal.witness_check_all_pass": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_check_total": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_dupinput_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_dupinput_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_missing_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_missing_suite": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_missing_sig": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_missing_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_dupinput_suite": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_dupinput_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_covenant_missing": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation for all 6 stages. Tx parse: 9-stage TxParseStage enum covers full parseTxFromCursor path including DA-length checks. Witness-check ordering proved on live WitnessSectionResult. Tx semantic: 5-stage TxSemanticStage aligned with live code (duplicateInputs→missingUtxo→nonceReplay→suiteAuth→sigVerify). TX_ERR_DOUBLE_SPEND removed — does not exist in codebase. TXCTX §13.1: error codes + distinctness.",
+      "notes": "Block-level: direct error propagation for all 6 stages. Tx parse: 9-stage TxParseStage models error-code switching points (not truncation branches which all return TX_ERR_PARSE). Witness-check ordering proved on live WitnessSectionResult. Tx semantic: 4-stage TxSemanticStage (dupInputs→missingUtxo→suiteAuth→sigVerify) aligned with live UtxoApplyGenesisV1. TX_ERR_NONCE_REPLAY is block-level (nonceReplayCheck), not per-tx semantic. TX_ERR_TXCTX_OVERFLOW removed — no producer in code. TXCTX: TX_ERR_COVENANT_TYPE_INVALID defined with distinctness proofs.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
         "Merkle propagation at afterPow level via explicit-bind equivalence.",
-        "Witness-check ordering on extracted witnessCheckSequence. Full parseTxFromCursor ordering needs explicit-bind refactoring of 70-line do block.",
-        "TXCTX §13.1 source mapping not machine-checked on live paths."
+        "TxParseStage does not cover truncation branches (match none => throw) which all produce TX_ERR_PARSE.",
+        "Full parseTxFromCursor ordering not proved — requires explicit-bind refactoring of 70-line do block.",
+        "TXCTX §13.1 source mapping from SPEC-TXCTX-01 paths not machine-checked."
       ]
     },
     {
