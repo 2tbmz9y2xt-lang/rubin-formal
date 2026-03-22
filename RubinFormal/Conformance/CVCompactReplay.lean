@@ -273,11 +273,11 @@ def evalCompact (v : CVCompactVector) : (Bool × Option String) :=
   else if v.op == "compact_orphan_limits" then
     match v.currentPeerBytes, v.currentDaIdBytes, v.currentGlobalBytes, v.incomingChunkBytes, v.expectAdmit with
     | some peerB, some daB, some globB, some inB, some expAdmit =>
-        let admit :=
+        let admitted :=
           orphanAdmit peerB inB 4194304 &&
           orphanAdmit daB inB 8388608 &&
           orphanAdmit globB inB 67108864
-        let ok := admit == expAdmit
+        let ok := admitted == expAdmit
         (ok, if ok then none else some "TX_ERR_PARSE")
     | _, _, _, _, _ => (false, some "TX_ERR_PARSE")
   else if v.op == "compact_sendcmpct_modes" then
@@ -340,9 +340,9 @@ def evalCompact (v : CVCompactVector) : (Bool × Option String) :=
     | some cur, some lim, some _inc, some hasCommit, some rsr, some mins, some expStorm, some expAdmit, some expRb =>
         let fillPct := (cur * 100) / lim
         let storm := fillPct >= 90
-        let admit := (!storm) || hasCommit
+        let admitted := (!storm) || hasCommit
         let rollback := storm && hasCommit && (rsr < 95) && (mins >= 10)
-        let ok := (storm == expStorm) && (admit == expAdmit) && (rollback == expRb)
+        let ok := (storm == expStorm) && (admitted == expAdmit) && (rollback == expRb)
         (ok, if ok then none else some "TX_ERR_PARSE")
     | _, _, _, _, _, _, _, _, _ => (false, some "TX_ERR_PARSE")
   else if v.op == "compact_eviction_tiebreak" then
@@ -386,8 +386,8 @@ def evalCompact (v : CVCompactVector) : (Bool × Option String) :=
           v.expectCountedBytes, v.expectIgnoredOverheadBytes, v.expectAdmit with
     | some cap, some cur, some incPayload, some incOver, some expCounted, some expIgnored, some expAdmit =>
         let counted := cur + incPayload
-        let admit := counted <= cap
-        let ok := (counted == expCounted) && (incOver == expIgnored) && (admit == expAdmit)
+        let admitted := counted <= cap
+        let ok := (counted == expCounted) && (incOver == expIgnored) && (admitted == expAdmit)
         (ok, if ok then none else some "TX_ERR_PARSE")
     | _, _, _, _, _, _, _ => (false, some "TX_ERR_PARSE")
   else if v.op == "compact_storm_commit_bearing" then
@@ -397,8 +397,8 @@ def evalCompact (v : CVCompactVector) : (Bool × Option String) :=
         let storm := stormMode fill trig
         let cb := isCommitBearing c1 c2 c3
         let prio := storm && cb
-        let admit := (!storm) || cb
-        let ok := storm == expStorm && cb == expCb && prio == expPrio && admit == expAdmit
+        let admitted := (!storm) || cb
+        let ok := storm == expStorm && cb == expCb && prio == expPrio && admitted == expAdmit
         (ok, if ok then none else some "TX_ERR_PARSE")
     | _, _, _, _, _, _, _, _, _ => (false, some "TX_ERR_PARSE")
   else if v.op == "compact_chunk_count_cap" then
