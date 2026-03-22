@@ -47,3 +47,4 @@ import RubinFormal.TransactionWireBehavioral
 import RubinFormal.SighashRefinementUpgrade
 import RubinFormal.ChainIdBehavioral
 import RubinFormal.CovenantRegistryExhaustive
+import RubinFormal.ReplayDomainBehavioral
