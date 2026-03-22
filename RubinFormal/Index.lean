@@ -42,3 +42,4 @@ import RubinFormal.StructuralRulesBehavioral
 import RubinFormal.ValueConservationBehavioral
 import RubinFormal.PrimitiveEncodingRoundtrip
 import RubinFormal.BlockHeaderRoundtrip
+import RubinFormal.TxIdBehavioral
