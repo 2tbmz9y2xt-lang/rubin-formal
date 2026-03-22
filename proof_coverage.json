@@ -38,7 +38,16 @@
         "RubinFormal.Wire.compactSize_roundtrip",
         "RubinFormal.Wire.compactSize_overflow_safety",
         "RubinFormal.Wire.compactSize_encode_roundtrip",
-        "RubinFormal.Wire.compactSize_encode_cursor_advances"
+        "RubinFormal.Wire.compactSize_encode_cursor_advances",
+        "RubinFormal.encodeU16le_length",
+        "RubinFormal.u16le_roundtrip_0",
+        "RubinFormal.u16le_roundtrip_max",
+        "RubinFormal.encodeU32le_length",
+        "RubinFormal.u32le_roundtrip_0",
+        "RubinFormal.u32le_roundtrip_max",
+        "RubinFormal.encodeU64le_length",
+        "RubinFormal.u64le_roundtrip_0",
+        "RubinFormal.u64le_roundtrip_1M"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -46,11 +55,19 @@
         "RubinFormal.Wire.compactSize_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
         "RubinFormal.Wire.compactSize_overflow_safety": "rubin-formal/RubinFormal/ByteWireV2.lean",
         "RubinFormal.Wire.compactSize_encode_roundtrip": "rubin-formal/RubinFormal/ByteWireV2.lean",
-        "RubinFormal.Wire.compactSize_encode_cursor_advances": "rubin-formal/RubinFormal/ByteWireV2.lean"
+        "RubinFormal.Wire.compactSize_encode_cursor_advances": "rubin-formal/RubinFormal/ByteWireV2.lean",
+        "RubinFormal.encodeU16le_length": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u16le_roundtrip_0": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u16le_roundtrip_max": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.encodeU32le_length": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u32le_roundtrip_0": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u32le_roundtrip_max": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.encodeU64le_length": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u64le_roundtrip_0": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u64le_roundtrip_1M": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean"
       },
       "limitations": [
-        "The deprecated shim ByteWire.lean is not a proof surface; the toy bootstrap model lives in ByteWireLegacy.lean.",
-        "Byte-accurate claim is limited to the listed replay and ByteWireV2 framing theorems; no full transaction parse-serialize roundtrip is claimed."
+        "Full transaction parse-serialize roundtrip not claimed — coverage limited to CompactSize + primitive LE encoding roundtrips."
       ]
     },
     {
