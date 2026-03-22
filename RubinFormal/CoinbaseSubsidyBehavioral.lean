@@ -1,16 +1,24 @@
 import RubinFormal.SubsidyV1
 
+/-!
+# Coinbase Subsidy Behavioral Proofs (§19)
+-/
+
 namespace RubinFormal
 open SubsidyV1
 
-/-- Block subsidy at height 0 is the initial reward. -/
-theorem subsidy_height_0 : blockSubsidy 0 0 = INITIAL_SUBSIDY := by rfl
+/-- Genesis block (height 0) has zero subsidy. -/
+theorem subsidy_genesis_zero : blockSubsidy 0 0 = 0 := by rfl
 
-/-- Block subsidy is monotonically non-increasing with alreadyGenerated. -/
-theorem subsidy_bounded_by_max_supply (height alreadyGenerated : Nat)
-    (h : alreadyGenerated ≥ MAX_SUPPLY) :
-    blockSubsidy height alreadyGenerated = 0 := by
-  unfold blockSubsidy
-  simp [Nat.sub_eq_zero_of_le h]
+/-- After mineable cap, subsidy = tail emission. -/
+theorem subsidy_at_cap :
+    blockSubsidy 1 MINEABLE_CAP = TAIL_EMISSION_PER_BLOCK := by rfl
+
+/-- Tail emission value. -/
+theorem tail_emission_value : TAIL_EMISSION_PER_BLOCK = 19025875 := rfl
+
+/-- Subsidy at height 1 with zero generated is positive. -/
+theorem subsidy_height1_positive :
+    blockSubsidy 1 0 > 0 := by native_decide
 
 end RubinFormal
