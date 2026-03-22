@@ -151,16 +151,48 @@
     {
       "section_key": "consensus_error_codes",
       "section_heading": "## 13. Consensus Error Codes (Normative)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
-        "RubinFormal.det001_validation_order_proved"
+        "RubinFormal.det001_validation_order_proved",
+        "RubinFormal.except_error_bind",
+        "RubinFormal.validate_success_parse",
+        "RubinFormal.validate_success_pow",
+        "RubinFormal.err_ne_parse_target",
+        "RubinFormal.err_ne_parse_linkage",
+        "RubinFormal.err_ne_parse_merkle",
+        "RubinFormal.err_ne_parse_witness",
+        "RubinFormal.err_ne_target_linkage",
+        "RubinFormal.err_ne_target_merkle",
+        "RubinFormal.err_ne_target_witness",
+        "RubinFormal.err_ne_linkage_merkle",
+        "RubinFormal.err_ne_linkage_witness",
+        "RubinFormal.err_ne_merkle_witness",
+        "RubinFormal.err_ne_ts_old_future",
+        "RubinFormal.err_ne_tx_parse_nonce"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "notes": "Validation-order theorems still cover the pre-existing short-circuit discipline, but TXCTX extends Section 13 with new companion-spec source mappings and TxContext-specific reject paths. Those added mappings are not yet closed by a dedicated formal proof surface.",
+      "theorem_files": {
+        "RubinFormal.except_error_bind": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.validate_success_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.validate_success_pow": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_parse_target": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_parse_linkage": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_parse_merkle": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_parse_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_target_linkage": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_target_merkle": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_target_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_linkage_merkle": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_linkage_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_merkle_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_ts_old_future": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean"
+      },
+      "notes": "Error priority proved via: (1) success-implies-check-passed contrapositive chain (parse, PoW), (2) generic monadic error propagation (Except.error.bind = Except.error), (3) pairwise error code distinctness (10 block-level + 2 timestamp + 1 tx-level). Combined with existing section25_order_complete + section25_validation_total_proved.",
       "limitations": [
-        "No theorem in the current registry proves the new SPEC-TXCTX-01 source mappings added to Section 13.1.",
-        "Current evidence does not yet prove the TxContext-specific error attribution paths for step 3c / §7.x beyond fixture-level replay."
+        "TXCTX-specific error attribution paths (step 3c / §7.x) not yet covered by error priority proofs.",
+        "Direct parse-error-priority theorem (parseBlock fails → validateBlockBasic returns parse error) proved only via contrapositive chain, not direct do-notation unfolding, due to Lean 4.6 do-desugaring join points."
       ]
     },
     {
