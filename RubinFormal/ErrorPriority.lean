@@ -265,6 +265,81 @@ theorem tx_parse_stage_ord_injective (s1 s2 : TxParseStage)
     (hEq : txParseStageOrd s1 = txParseStageOrd s2) : s1 = s2 := by
   cases s1 <;> cases s2 <;> simp [txParseStageOrd] at hEq <;> rfl
 
+/-! ## Live witness-check ordering (parseTxFromCursor lines 144-147)
+
+These theorems prove error priority on the actual `WitnessSectionResult`
+type from `TxWeightV2`, modeling the exact check sequence in the live parser.
+-/
+
+open RubinFormal.TxWeightV2 in
+/-- Witness check sequence extracted from parseTxFromCursor.
+    Uses the live WitnessSectionResult — same fields as the parser. -/
+def witnessCheckSequence (witBytes : Nat) (ws : WitnessSectionResult) : Except String Unit :=
+  if witBytes > MAX_WITNESS_BYTES_PER_TX then
+    Except.error "TX_ERR_WITNESS_OVERFLOW"
+  else if ws.isOverflow then
+    Except.error "TX_ERR_WITNESS_OVERFLOW"
+  else if ws.anySigAlgInvalid then
+    Except.error "TX_ERR_SIG_ALG_INVALID"
+  else if ws.anySigNoncanonical then
+    Except.error "TX_ERR_SIG_NONCANONICAL"
+  else
+    Except.ok ()
+
+open RubinFormal.TxWeightV2 in
+theorem witness_bytes_overflow_priority
+    (witBytes : Nat) (ws : WitnessSectionResult)
+    (h : (witBytes > MAX_WITNESS_BYTES_PER_TX) = true) :
+    witnessCheckSequence witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  simp [witnessCheckSequence, h]
+
+open RubinFormal.TxWeightV2 in
+theorem witness_count_overflow_priority
+    (witBytes : Nat) (ws : WitnessSectionResult)
+    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+    (hOverflow : ws.isOverflow = true) :
+    witnessCheckSequence witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  simp [witnessCheckSequence, hBytes, hOverflow]
+
+open RubinFormal.TxWeightV2 in
+theorem sig_alg_priority_over_noncanonical
+    (witBytes : Nat) (ws : WitnessSectionResult)
+    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+    (hNoOverflow : ws.isOverflow = false)
+    (hSigAlg : ws.anySigAlgInvalid = true) :
+    witnessCheckSequence witBytes ws = .error "TX_ERR_SIG_ALG_INVALID" := by
+  simp [witnessCheckSequence, hBytes, hNoOverflow, hSigAlg]
+
+open RubinFormal.TxWeightV2 in
+theorem sig_noncanonical_last_priority
+    (witBytes : Nat) (ws : WitnessSectionResult)
+    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+    (hNoOverflow : ws.isOverflow = false)
+    (hNoSigAlg : ws.anySigAlgInvalid = false)
+    (hNoncanon : ws.anySigNoncanonical = true) :
+    witnessCheckSequence witBytes ws = .error "TX_ERR_SIG_NONCANONICAL" := by
+  simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoncanon]
+
+open RubinFormal.TxWeightV2 in
+theorem witness_check_all_pass
+    (witBytes : Nat) (ws : WitnessSectionResult)
+    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+    (hNoOverflow : ws.isOverflow = false)
+    (hNoSigAlg : ws.anySigAlgInvalid = false)
+    (hNoNoncanon : ws.anySigNoncanonical = false) :
+    witnessCheckSequence witBytes ws = .ok () := by
+  simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoNoncanon]
+
+open RubinFormal.TxWeightV2 in
+theorem witness_check_total (witBytes : Nat) (ws : WitnessSectionResult) :
+    (∃ err, witnessCheckSequence witBytes ws = .error err) ∨
+    witnessCheckSequence witBytes ws = .ok () := by
+  unfold witnessCheckSequence
+  split <;> simp_all
+  split <;> simp_all
+  split <;> simp_all
+  split <;> simp_all
+
 /-! ## Semantic-level tx error ordering (post-parse)
 
 After parsing succeeds, semantic validation applies these checks in order:

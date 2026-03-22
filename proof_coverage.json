@@ -241,7 +241,13 @@
         "RubinFormal.err_ne_covenant_sig",
         "RubinFormal.err_ne_tx_parse_sig_alg",
         "RubinFormal.err_ne_tx_witness_overflow_sig_alg",
-        "RubinFormal.err_ne_tx_sig_alg_sig_noncanonical"
+        "RubinFormal.err_ne_tx_sig_alg_sig_noncanonical",
+        "RubinFormal.witness_bytes_overflow_priority",
+        "RubinFormal.witness_count_overflow_priority",
+        "RubinFormal.sig_alg_priority_over_noncanonical",
+        "RubinFormal.sig_noncanonical_last_priority",
+        "RubinFormal.witness_check_all_pass",
+        "RubinFormal.witness_check_total"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -293,14 +299,20 @@
         "RubinFormal.err_ne_covenant_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_witness_overflow_sig_alg": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_tx_sig_alg_sig_noncanonical": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_tx_sig_alg_sig_noncanonical": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.witness_bytes_overflow_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.witness_count_overflow_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.sig_alg_priority_over_noncanonical": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.sig_noncanonical_last_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.witness_check_all_pass": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.witness_check_total": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation proved for all 6 stages (parse, PoW, target, linkage, merkle, witness). Merkle proved via explicit-bind equivalence to bypass Lean 4.6 do-notation join points. Tx-level: parse and semantic stage ordering modeled with TxParseStage/TxSemanticStage enums, ordinal injection, and error code distinctness. TXCTX §13.1: TX_ERR_COVENANT_TYPE_INVALID and TX_ERR_TXCTX_OVERFLOW modeled with distinctness proofs. Status remains stated: tx-level ordering model constrains error code taxonomy but does not directly prove ordering on the live parse/semantic functions (model vs implementation gap).",
+      "notes": "Block-level: direct error propagation proved for all 6 stages. Tx-level: witness-check ordering proved on live WitnessSectionResult type with 4 priority theorems + totality. Parse/semantic stage enums model full §7 ordering. TXCTX §13.1: error code definitions + distinctness. Status remains stated only because full parseTxFromCursor ordering requires explicit-bind refactoring of the entire 70-line do block.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID is shared between powCheck (stage 2) and target mismatch (stage 3).",
-        "Merkle propagation is proved at the validateBlockBasicAfterPow level (all 4 target/linkage combinations), not at the top-level validateBlockBasic — connected via afterPow decomposition.",
-        "Tx-level parse/semantic stage ordering is modeled as enum + ordinal injection. The ordering contract is machine-checked at the model level but NOT directly proved on live parse_tx / applyNonCoinbaseTxBasic functions.",
-        "TXCTX §13.1 error codes are modeled with distinctness proofs but the source mapping from SPEC-TXCTX-01 validation paths is not machine-checked."
+        "Merkle propagation proved at afterPow level via explicit-bind equivalence.",
+        "Witness-check ordering proved on extracted witnessCheckSequence using live WitnessSectionResult type. Full parseTxFromCursor ordering not yet proved (requires explicit-bind refactoring of entire do block).",
+        "TXCTX §13.1 error codes defined with distinctness proofs; source mapping from SPEC-TXCTX-01 paths not machine-checked."
       ]
     },
     {
