@@ -198,13 +198,16 @@ The stages are ordered and the first applicable error code wins.
 This inductive type models the ordering contract.
 -/
 
-/-- Transaction parse stages from §7. Ordering: earlier stage wins. -/
+/-- Transaction parse stages from §7. Ordering: earlier stage wins.
+    Includes the SIG_ALG_INVALID branch from the live parser
+    (BlockBasicV1.lean:143-147, between witness overflow and sig noncanonical). -/
 inductive TxParseStage where
   | compactSizeMinimality    -- §7 stage 1: TX_ERR_PARSE
   | txKindDaPayload          -- §7 stage 2: TX_ERR_PARSE
   | inputOutputBounds        -- §7 stage 3: TX_ERR_PARSE
   | witnessCountBytes        -- §7 stage 4: TX_ERR_WITNESS_OVERFLOW
   | witnessItemStructural    -- §7 stage 5a: TX_ERR_PARSE
+  | witnessSuiteDisallowed   -- §7 stage 5b-pre: TX_ERR_SIG_ALG_INVALID (live parser branch)
   | witnessCanonicalLength   -- §7 stage 5b: TX_ERR_SIG_NONCANONICAL
   deriving DecidableEq, Repr
 
@@ -215,6 +218,7 @@ def txParseStageError : TxParseStage → String
   | .inputOutputBounds      => "TX_ERR_PARSE"
   | .witnessCountBytes      => "TX_ERR_WITNESS_OVERFLOW"
   | .witnessItemStructural  => "TX_ERR_PARSE"
+  | .witnessSuiteDisallowed => "TX_ERR_SIG_ALG_INVALID"
   | .witnessCanonicalLength => "TX_ERR_SIG_NONCANONICAL"
 
 /-- Strict ordering on tx parse stages: earlier stage has priority. -/
@@ -224,7 +228,8 @@ def txParseStageOrd : TxParseStage → Nat
   | .inputOutputBounds      => 2
   | .witnessCountBytes      => 3
   | .witnessItemStructural  => 4
-  | .witnessCanonicalLength => 5
+  | .witnessSuiteDisallowed => 5
+  | .witnessCanonicalLength => 6
 
 /-- Earlier stage takes priority. -/
 theorem tx_parse_stage_priority (s1 s2 : TxParseStage)
@@ -235,13 +240,25 @@ theorem tx_parse_stage_priority (s1 s2 : TxParseStage)
 theorem err_ne_tx_parse_witness_overflow :
     ("TX_ERR_PARSE" : String) ≠ "TX_ERR_WITNESS_OVERFLOW" := by decide
 
+/-- Distinctness: TX_ERR_PARSE ≠ TX_ERR_SIG_ALG_INVALID. -/
+theorem err_ne_tx_parse_sig_alg :
+    ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
+
 /-- Distinctness: TX_ERR_PARSE ≠ TX_ERR_SIG_NONCANONICAL. -/
 theorem err_ne_tx_parse_sig_noncanonical :
     ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SIG_NONCANONICAL" := by decide
 
+/-- Distinctness: TX_ERR_WITNESS_OVERFLOW ≠ TX_ERR_SIG_ALG_INVALID. -/
+theorem err_ne_tx_witness_overflow_sig_alg :
+    ("TX_ERR_WITNESS_OVERFLOW" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
+
 /-- Distinctness: TX_ERR_WITNESS_OVERFLOW ≠ TX_ERR_SIG_NONCANONICAL. -/
 theorem err_ne_tx_witness_overflow_sig_noncanonical :
     ("TX_ERR_WITNESS_OVERFLOW" : String) ≠ "TX_ERR_SIG_NONCANONICAL" := by decide
+
+/-- Distinctness: TX_ERR_SIG_ALG_INVALID ≠ TX_ERR_SIG_NONCANONICAL. -/
+theorem err_ne_tx_sig_alg_sig_noncanonical :
+    ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_SIG_NONCANONICAL" := by decide
 
 /-- The stage ordering is total: all stages have distinct ordinals. -/
 theorem tx_parse_stage_ord_injective (s1 s2 : TxParseStage)
