@@ -9,8 +9,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  checks: write
-  id-token: write
 
 jobs:
   claude:
@@ -21,46 +19,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Checkout canonical spec (read-only)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          repository: 2tbmz9y2xt-lang/rubin-spec
-          ssh-key: ${{ secrets.SPEC_DEPLOY_KEY }}
-          path: .spec
-          sparse-checkout: |
-            spec/RUBIN_L1_CANONICAL.md
-            spec/RUBIN_NATIVE_CRYPTO_ROTATION_SPEC_v1.md
-
-      - name: Extract spec sections for review context
-        run: |
-          python3 << 'PYEOF'
-          import re, os
-          sections = {}
-          rot_path = '.spec/spec/RUBIN_NATIVE_CRYPTO_ROTATION_SPEC_v1.md'
-          if os.path.exists(rot_path):
-              with open(rot_path) as f:
-                  sections['rotation_spec'] = f.read()
-          canon_path = '.spec/spec/RUBIN_L1_CANONICAL.md'
-          if os.path.exists(canon_path):
-              with open(canon_path) as f:
-                  content = f.read()
-              m = re.search(r'(## 4\.1\b.*?)(?=\n## \d)', content, re.DOTALL)
-              if m: sections['section_4_1'] = m.group(1)[:5000]
-              m = re.search(r'(## 9\b.*?)(?=\n## \d)', content, re.DOTALL)
-              if m: sections['section_9'] = m.group(1)[:5000]
-              m = re.search(r'(## 23\.2\b.*?)(?=\n## \d)', content, re.DOTALL)
-              if m: sections['section_23_2'] = m.group(1)[:3000]
-          with open('.spec-context.md', 'w') as f:
-              f.write("# Spec Context for Review\n\n")
-              for name, text in sections.items():
-                  f.write(f"## {name}\n\n{text}\n\n---\n\n")
-          total = sum(len(v) for v in sections.values())
-          print(f"Extracted {len(sections)} sections, {total} chars")
-          PYEOF
-
       - name: Run Claude Code Review
         id: review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@8f2c1e8a4b0f6f7a2a9fdc5a6f3a1b4c9d7e6f52
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           model: claude-sonnet-4-6
@@ -77,17 +38,11 @@ jobs:
             - Conformance replay: native_decide for all gates (NOT #eval + trivial)
             - Refinement bridge: Go traces -> GoTraceV1.lean -> Lean replay
 
-            ## SPEC CONTEXT (from canonical spec — use for rule 7 validation)
+            ## SPEC CONTEXT
 
-            The file `.spec-context.md` in the repo root contains extracted spec sections:
-            - rotation_spec: full RUBIN_NATIVE_CRYPTO_ROTATION_SPEC_v1.md
-            - section_4_1: §4.1 Native Crypto Suite Registry from RUBIN_L1_CANONICAL.md
-            - section_9: §9 Transaction Weight from RUBIN_L1_CANONICAL.md
-            - section_23_2: §23.2 Descriptor Activation from RUBIN_L1_CANONICAL.md
-
-            READ `.spec-context.md` BEFORE reviewing any .lean file that touches
-            rotation, weight, registry, or descriptor definitions. Compare every
-            `def ... : Prop` against the spec constraints listed there.
+            Use only the files present in this repository checkout for review.
+            Do not rely on external private repositories, workspace artifacts, or
+            hidden workflow context when evaluating pull requests.
 
             ## Review Focus
 
@@ -136,9 +91,9 @@ jobs:
             6. For each hypothesis — can it be DERIVED from existing invariants?
                If yes, the theorem has a redundant premise. The invariant should
                be strengthened instead. Flag as HIGH.
-            7. For each `def ... : Prop` — READ `.spec-context.md` and list ALL
-               constraints from the canonical spec for this concept. If any
-               are missing from the Lean definition, flag as CRITICAL.
+            7. For each `def ... : Prop` — compare it against the relevant
+               specification material available in this repository. If required
+               constraints are missing from the Lean definition, flag as CRITICAL.
             8. For each `≠` / `∉` / bound in a premise — WHERE does the guarantee
                come from? If the answer is "the caller will pass it" but it should
                follow from a structure/predicate — that is an INVARIANT GAP.
