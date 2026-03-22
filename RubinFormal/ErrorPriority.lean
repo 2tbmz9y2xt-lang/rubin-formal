@@ -199,16 +199,18 @@ This inductive type models the ordering contract.
 -/
 
 /-- Transaction parse stages from §7. Ordering: earlier stage wins.
-    Includes the SIG_ALG_INVALID branch from the live parser
-    (BlockBasicV1.lean:143-147, between witness overflow and sig noncanonical). -/
+    Covers the full parseTxFromCursor path including DA-length checks
+    (BlockBasicV1.lean:108-158). -/
 inductive TxParseStage where
-  | compactSizeMinimality    -- §7 stage 1: TX_ERR_PARSE
-  | txKindDaPayload          -- §7 stage 2: TX_ERR_PARSE
-  | inputOutputBounds        -- §7 stage 3: TX_ERR_PARSE
+  | compactSizeMinimality    -- §7 stage 1: TX_ERR_PARSE (compact size decode)
+  | txKindDaPayload          -- §7 stage 2: TX_ERR_PARSE (invalid tx_kind)
+  | inputOutputBounds        -- §7 stage 3: TX_ERR_PARSE (count limits)
   | witnessCountBytes        -- §7 stage 4: TX_ERR_WITNESS_OVERFLOW
   | witnessItemStructural    -- §7 stage 5a: TX_ERR_PARSE
-  | witnessSuiteDisallowed   -- §7 stage 5b-pre: TX_ERR_SIG_ALG_INVALID (live parser branch)
+  | witnessSuiteDisallowed   -- §7 stage 5b-pre: TX_ERR_SIG_ALG_INVALID (live parser)
   | witnessCanonicalLength   -- §7 stage 5b: TX_ERR_SIG_NONCANONICAL
+  | daLenMinimality          -- §7 stage 6: TX_ERR_PARSE (da_payload_len minimality)
+  | daLenBounds              -- §7 stage 7: TX_ERR_PARSE (da_payload_len per tx_kind)
   deriving DecidableEq, Repr
 
 /-- The error code produced by each tx parse stage. -/
@@ -220,6 +222,8 @@ def txParseStageError : TxParseStage → String
   | .witnessItemStructural  => "TX_ERR_PARSE"
   | .witnessSuiteDisallowed => "TX_ERR_SIG_ALG_INVALID"
   | .witnessCanonicalLength => "TX_ERR_SIG_NONCANONICAL"
+  | .daLenMinimality        => "TX_ERR_PARSE"
+  | .daLenBounds            => "TX_ERR_PARSE"
 
 /-- Strict ordering on tx parse stages: earlier stage has priority. -/
 def txParseStageOrd : TxParseStage → Nat
@@ -230,6 +234,8 @@ def txParseStageOrd : TxParseStage → Nat
   | .witnessItemStructural  => 4
   | .witnessSuiteDisallowed => 5
   | .witnessCanonicalLength => 6
+  | .daLenMinimality        => 7
+  | .daLenBounds            => 8
 
 /-- Earlier stage takes priority. -/
 theorem tx_parse_stage_priority (s1 s2 : TxParseStage)
@@ -349,33 +355,45 @@ After parsing succeeds, semantic validation applies these checks in order:
 - double-spend (TX_ERR_DOUBLE_SPEND)
 -/
 
-/-- Semantic tx validation stages (post-parse). -/
+/-- Semantic tx validation stages (post-parse).
+    Aligned with live code in UtxoApplyGenesisV1.lean:
+    - duplicate inputs → TX_ERR_PARSE (line 215-216)
+    - missing/spent UTXO → TX_ERR_MISSING_UTXO (line 218-223)
+    - nonce replay → TX_ERR_NONCE_REPLAY
+    - suite authorization → TX_ERR_SIG_ALG_INVALID
+    - signature verification → TX_ERR_SIG_INVALID
+    Note: TX_ERR_DOUBLE_SPEND does not exist in the current codebase. -/
 inductive TxSemanticStage where
+  | duplicateInputs    -- TX_ERR_PARSE (duplicate input detection)
+  | missingUtxo        -- TX_ERR_MISSING_UTXO (input not in UTXO set)
   | nonceUniqueness    -- TX_ERR_NONCE_REPLAY
   | suiteAuthorization -- TX_ERR_SIG_ALG_INVALID
   | signatureVerify    -- TX_ERR_SIG_INVALID
-  | doubleSpend        -- TX_ERR_DOUBLE_SPEND
   deriving DecidableEq, Repr
 
 def txSemanticStageError : TxSemanticStage → String
+  | .duplicateInputs    => "TX_ERR_PARSE"
+  | .missingUtxo        => "TX_ERR_MISSING_UTXO"
   | .nonceUniqueness    => "TX_ERR_NONCE_REPLAY"
   | .suiteAuthorization => "TX_ERR_SIG_ALG_INVALID"
   | .signatureVerify    => "TX_ERR_SIG_INVALID"
-  | .doubleSpend        => "TX_ERR_DOUBLE_SPEND"
 
 def txSemanticStageOrd : TxSemanticStage → Nat
-  | .nonceUniqueness    => 0
-  | .suiteAuthorization => 1
-  | .signatureVerify    => 2
-  | .doubleSpend        => 3
+  | .duplicateInputs    => 0
+  | .missingUtxo        => 1
+  | .nonceUniqueness    => 2
+  | .suiteAuthorization => 3
+  | .signatureVerify    => 4
 
 /-- All semantic error codes are pairwise distinct. -/
+theorem err_ne_dupinput_missing : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
+theorem err_ne_dupinput_nonce : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_NONCE_REPLAY" := by decide
+theorem err_ne_missing_nonce : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_NONCE_REPLAY" := by decide
+theorem err_ne_missing_suite : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
+theorem err_ne_missing_sig : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
 theorem err_ne_nonce_suite : ("TX_ERR_NONCE_REPLAY" : String) ≠ "TX_ERR_SIG_ALG_INVALID" := by decide
 theorem err_ne_nonce_sig : ("TX_ERR_NONCE_REPLAY" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
-theorem err_ne_nonce_doublespend : ("TX_ERR_NONCE_REPLAY" : String) ≠ "TX_ERR_DOUBLE_SPEND" := by decide
 theorem err_ne_suite_sig : ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_SIG_INVALID" := by decide
-theorem err_ne_suite_doublespend : ("TX_ERR_SIG_ALG_INVALID" : String) ≠ "TX_ERR_DOUBLE_SPEND" := by decide
-theorem err_ne_sig_doublespend : ("TX_ERR_SIG_INVALID" : String) ≠ "TX_ERR_DOUBLE_SPEND" := by decide
 
 /-- Semantic stage ordering is total with distinct ordinals. -/
 theorem tx_semantic_stage_ord_injective (s1 s2 : TxSemanticStage)

@@ -230,10 +230,7 @@
         "RubinFormal.tx_semantic_stage_ord_injective",
         "RubinFormal.err_ne_nonce_suite",
         "RubinFormal.err_ne_nonce_sig",
-        "RubinFormal.err_ne_nonce_doublespend",
         "RubinFormal.err_ne_suite_sig",
-        "RubinFormal.err_ne_suite_doublespend",
-        "RubinFormal.err_ne_sig_doublespend",
         "RubinFormal.err_ne_tx_parse_nonce",
         "RubinFormal.err_ne_covenant_txctx",
         "RubinFormal.err_ne_covenant_parse",
@@ -247,7 +244,12 @@
         "RubinFormal.sig_alg_priority_over_noncanonical",
         "RubinFormal.sig_noncanonical_last_priority",
         "RubinFormal.witness_check_all_pass",
-        "RubinFormal.witness_check_total"
+        "RubinFormal.witness_check_total",
+        "RubinFormal.err_ne_dupinput_missing",
+        "RubinFormal.err_ne_dupinput_nonce",
+        "RubinFormal.err_ne_missing_nonce",
+        "RubinFormal.err_ne_missing_suite",
+        "RubinFormal.err_ne_missing_sig"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -288,10 +290,7 @@
         "RubinFormal.tx_semantic_stage_ord_injective": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_nonce_suite": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_nonce_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_nonce_doublespend": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_suite_sig": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_suite_doublespend": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_sig_doublespend": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_covenant_txctx": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_covenant_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
@@ -305,14 +304,19 @@
         "RubinFormal.sig_alg_priority_over_noncanonical": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.sig_noncanonical_last_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_check_all_pass": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.witness_check_total": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.witness_check_total": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_dupinput_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_dupinput_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_missing_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_missing_suite": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_missing_sig": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation proved for all 6 stages. Tx-level: witness-check ordering proved on live WitnessSectionResult type with 4 priority theorems + totality. Parse/semantic stage enums model full §7 ordering. TXCTX §13.1: error code definitions + distinctness. Status remains stated only because full parseTxFromCursor ordering requires explicit-bind refactoring of the entire 70-line do block.",
+      "notes": "Block-level: direct error propagation for all 6 stages. Tx parse: 9-stage TxParseStage enum covers full parseTxFromCursor path including DA-length checks. Witness-check ordering proved on live WitnessSectionResult. Tx semantic: 5-stage TxSemanticStage aligned with live code (duplicateInputs→missingUtxo→nonceReplay→suiteAuth→sigVerify). TX_ERR_DOUBLE_SPEND removed — does not exist in codebase. TXCTX §13.1: error codes + distinctness.",
       "limitations": [
-        "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID is shared between powCheck (stage 2) and target mismatch (stage 3).",
-        "Merkle propagation proved at afterPow level via explicit-bind equivalence.",
-        "Witness-check ordering proved on extracted witnessCheckSequence using live WitnessSectionResult type. Full parseTxFromCursor ordering not yet proved (requires explicit-bind refactoring of entire do block).",
-        "TXCTX §13.1 error codes defined with distinctness proofs; source mapping from SPEC-TXCTX-01 paths not machine-checked."
+        "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
+        "Merkle propagation at afterPow level via explicit-bind equivalence.",
+        "Witness-check ordering on extracted witnessCheckSequence. Full parseTxFromCursor ordering needs explicit-bind refactoring of 70-line do block.",
+        "TXCTX §13.1 source mapping not machine-checked on live paths."
       ]
     },
     {
