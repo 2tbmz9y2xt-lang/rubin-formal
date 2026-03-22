@@ -23,7 +23,7 @@
       },
       "notes": "Registry entry anchors selected consensus constants that already participate in executable replay or bounded arithmetic proofs.",
       "limitations": [
-        "No single universal theorem for every numeric constant in \u00a74 is claimed here.",
+        "No single universal theorem for every numeric constant in §4 is claimed here.",
         "Coverage scope is limited to constants exercised by the listed theorems."
       ]
     },
@@ -142,7 +142,7 @@
       },
       "notes": "Claim is limited to executable replay on the current CV-SIGHASH fixture subset plus a stronger spec-level theorem surface for the typed preimage-frame builder. TXCTX now broadens the pinned sighash surface through the TxContext-aware verify_sig_ext path and allowed_sighash_set policy, so this entry remains intentionally stated until the TXCTX-specific sighash proofs land.",
       "limitations": [
-        "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every \u00a712 sighash_type branch or invalid-type rejection path.",
+        "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
         "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
         "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried sighash_type extraction.",
         "The TxContext-aware verify_sig_ext dispatch and allowed_sighash_set policy introduced by TXCTX are not yet covered by a dedicated section-level proof."
@@ -160,7 +160,7 @@
       "notes": "Validation-order theorems still cover the pre-existing short-circuit discipline, but TXCTX extends Section 13 with new companion-spec source mappings and TxContext-specific reject paths. Those added mappings are not yet closed by a dedicated formal proof surface.",
       "limitations": [
         "No theorem in the current registry proves the new SPEC-TXCTX-01 source mappings added to Section 13.1.",
-        "Current evidence does not yet prove the TxContext-specific error attribution paths for step 3c / \u00a77.x beyond fixture-level replay."
+        "Current evidence does not yet prove the TxContext-specific error attribution paths for step 3c / §7.x beyond fixture-level replay."
       ]
     },
     {
@@ -262,7 +262,7 @@
       "limitations": [
         "No theorem in the current registry proves SpendTx step 3c TxContext construction or the exact bundle contents for TxContext-enabled CORE_EXT spends.",
         "No theorem in the current registry proves the >K continuing-output reject / discard semantics or the ext_id ordering rule added by TXCTX.",
-        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1\u2194L2 equivalence for all vault transactions.",
+        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1↔L2 equivalence for all vault transactions.",
         "ConnectBlockStrong theorems cover pre-TXCTX non-coinbase tx path only; coinbase and TXCTX-enabled paths require separate proof surfaces."
       ]
     },
@@ -326,23 +326,28 @@
     {
       "section_key": "fork_choice",
       "section_heading": "## 23. Fork-Choice Rule (Non-Validation Procedure)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_fork_choice_vectors_pass",
         "RubinFormal.ForkChoiceV1.emptyChain_loses",
         "RubinFormal.ForkChoiceV1.heavierChain_wins",
         "RubinFormal.ForkChoiceV1.zeroTarget_rejected",
-        "RubinFormal.ForkChoiceV1.overLimitTarget_rejected"
+        "RubinFormal.ForkChoiceV1.overLimitTarget_rejected",
+        "RubinFormal.bytesLT_irrefl",
+        "RubinFormal.bytesLT_total_of_ne",
+        "RubinFormal.fork_choice_tiebreak_deterministic"
       ],
       "file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
       "theorem_files": {
-        "RubinFormal.Conformance.cv_fork_choice_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVForkChoiceReplay.lean"
+        "RubinFormal.Conformance.cv_fork_choice_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVForkChoiceReplay.lean",
+        "RubinFormal.bytesLT_irrefl": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
+        "RubinFormal.bytesLT_total_of_ne": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
+        "RubinFormal.fork_choice_tiebreak_deterministic": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean"
       },
-      "notes": "Section claim is limited to executable replay on the current fork-choice conformance fixtures plus a narrowed theorem surface for valid-target guards, empty-chain ordering, strict heavier-chain selection, and the byte-level tie-break comparator. This remains a non-validation procedure and does not claim universal equivalence with Go runtime selection for every possible input.",
+      "notes": "bytesLT proved irreflexive and total on same-length lists, giving deterministic tie-break for equal-chainwork fork choice. Combined with existing heavierChain_wins for strict chainwork ordering.",
       "limitations": [
-        "Tie-break behavior is covered only by executable replay over the parsed byte-list comparator used in CVForkChoiceReplay.",
-        "No machine-checked bridge is claimed for fork_choice_select beyond baseline registry linkage and current fixture replay.",
-        "The registry entry is intentionally stated rather than proved until the full refinement contract is widened beyond the covered fixture families."
+        "Tie-break proof covers bytesLT comparator on arbitrary same-length byte lists. Runtime fork-choice selector composition (chainwork comparison + tie-break fallback) not proved as a single end-to-end theorem.",
+        "No machine-checked bridge for fork_choice_select beyond baseline registry linkage."
       ]
     },
     {
@@ -371,7 +376,7 @@
     },
     {
       "section_key": "parallel_validation_equivalence",
-      "section_heading": "## Parallel Validation \u2014 Sequential Equivalence (Q-PV-19)",
+      "section_heading": "## Parallel Validation — Sequential Equivalence (Q-PV-19)",
       "status": "proved",
       "theorems": [
         "RubinFormal.Refinement.ParallelEquivalence.cursor_determinism",
@@ -389,7 +394,7 @@
     },
     {
       "section_key": "txcontext_formal",
-      "section_heading": "## SPEC-TXCTX-01 \u00a714. TxContext Pre-Activation Gates",
+      "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
       "status": "stated",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
@@ -415,7 +420,7 @@
         "RubinFormal.TxContext.parallel_error_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "SPEC-TXCTX-01 \u00a714 pre-activation gate theorems. All eight required theorems proven: uint128GTE correctness and native equivalence, ext_id sort determinism, n_total empty v2, k-overflow discard completeness, vault conservation no double-count, parallel error equivalence, sighash policy completeness.",
+      "notes": "SPEC-TXCTX-01 §14 pre-activation gate theorems. All eight required theorems proven: uint128GTE correctness and native equivalence, ext_id sort determinism, n_total empty v2, k-overflow discard completeness, vault conservation no double-count, parallel error equivalence, sighash policy completeness.",
       "limitations": [
         "extid_sort_deterministic proves functional determinism (same input = same output) and concrete CV-51/CV-84 regression vectors; full multiset permutation uniqueness deferred to Mathlib dependency.",
         "parallel_error_equivalence relies on purity of evaluation function; does not model OS-level thread scheduling.",
@@ -427,7 +432,7 @@
   "claims": {
     "allowed": [
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; this is not a universal proof of CANONICAL semantics",
-      "Go(reference) \u2192 Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
+      "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
       "The pinned-section registry covers all 17 hash-pinned section keys, but some entries are intentionally stated or explicitly scope-limited via notes/limitations",
       "formal claims are bounded by explicit forbidden claims below"
     ],
