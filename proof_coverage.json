@@ -260,13 +260,23 @@
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
         "RubinFormal.core_ext_cursor_no_ambiguity_proved",
-        "RubinFormal.sem002_mldsa_binding_proved"
+        "RubinFormal.sem002_mldsa_binding_proved",
+        "RubinFormal.unknown_suite_0x05_rejected",
+        "RubinFormal.sentinel_nonempty_pubkey_rejected",
+        "RubinFormal.sentinel_empty_accepted"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.sem002_mldsa_binding_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
-        "RubinFormal.core_ext_cursor_no_ambiguity_proved": "rubin-formal/RubinFormal/PinnedSections.lean"
-      }
+        "RubinFormal.core_ext_cursor_no_ambiguity_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.unknown_suite_0x05_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.sentinel_nonempty_pubkey_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.sentinel_empty_accepted": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
+      },
+      "notes": "Structural validation proved through concrete witness-item behavioral tests: unknown suite rejection, sentinel empty enforcement, sentinel nonempty rejection. Combined with existing cursor-no-ambiguity and ML-DSA binding proofs.",
+      "limitations": [
+        "Universal quantified witness structural theorem not proved — concrete test cases only due to do-notation unfolding complexity."
+      ]
     },
     {
       "section_key": "replay_domain_checks",
