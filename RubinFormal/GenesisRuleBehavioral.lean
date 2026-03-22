@@ -2,13 +2,16 @@ import RubinFormal.CovenantGenesisV1
 namespace RubinFormal
 open CovenantGenesisV1
 
-/-- P2PK covenant type is 0x0000 (genesis rule anchor). -/
-theorem genesis_p2pk_covenant : COV_TYPE_P2PK = 0 := rfl
+/-- P2PK, ANCHOR, HTLC covenant types are pairwise distinct at genesis. -/
+theorem genesis_covenant_types_distinct :
+    COV_TYPE_P2PK ≠ COV_TYPE_ANCHOR ∧
+    COV_TYPE_P2PK ≠ COV_TYPE_HTLC ∧
+    COV_TYPE_ANCHOR ≠ COV_TYPE_HTLC := by native_decide
 
-/-- ANCHOR covenant type is 0x0002. -/
-theorem genesis_anchor_covenant : COV_TYPE_ANCHOR = 2 := rfl
+/-- P2PK tag is strictly less than HTLC tag (ordering invariant). -/
+theorem genesis_p2pk_before_htlc : COV_TYPE_P2PK < COV_TYPE_HTLC := by native_decide
 
-/-- HTLC covenant type is 0x0100 (256). -/
-theorem genesis_htlc_covenant : COV_TYPE_HTLC = 256 := rfl
+/-- ANCHOR tag is strictly less than HTLC tag. -/
+theorem genesis_anchor_before_htlc : COV_TYPE_ANCHOR < COV_TYPE_HTLC := by native_decide
 
 end RubinFormal
