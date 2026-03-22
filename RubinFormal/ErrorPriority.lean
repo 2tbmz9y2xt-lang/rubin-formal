@@ -66,8 +66,8 @@ theorem error_priority_target
   simp only [hFail, ite_true]
   rfl
 
-/-- Stage 4: linkage mismatch (parse+PoW+target ok) → returns BLOCK_ERR_LINKAGE_INVALID. -/
-theorem error_priority_linkage
+/-- Stage 4a: linkage mismatch, no target gate → returns BLOCK_ERR_LINKAGE_INVALID. -/
+theorem error_priority_linkage_no_target
     (blockBytes : Bytes) (expPrev : Bytes)
     (pb : ParsedBlock)
     (hParse : parseBlock blockBytes = .ok pb)
@@ -80,6 +80,23 @@ theorem error_priority_linkage
   show (do powCheck pb.header; _) = _
   rw [hPow]
   simp only [hFail, ite_true]
+  rfl
+
+/-- Stage 4b: linkage mismatch, target gate passes → returns BLOCK_ERR_LINKAGE_INVALID. -/
+theorem error_priority_linkage_target_ok
+    (blockBytes : Bytes) (expPrev expTarget : Bytes)
+    (pb : ParsedBlock)
+    (hParse : parseBlock blockBytes = .ok pb)
+    (hPow : powCheck pb.header = .ok ())
+    (hTargetOk : (pb.header.target != expTarget) = false)
+    (hFail : (pb.header.prevHash != expPrev) = true) :
+    validateBlockBasic blockBytes (some expPrev) (some expTarget) =
+    .error "BLOCK_ERR_LINKAGE_INVALID" := by
+  unfold validateBlockBasic
+  rw [hParse]
+  show (do powCheck pb.header; _) = _
+  rw [hPow]
+  simp only [hTargetOk, ite_false, hFail, ite_true]
   rfl
 
 /-! ## Monadic error propagation -/

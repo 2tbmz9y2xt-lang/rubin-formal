@@ -198,7 +198,6 @@
         "RubinFormal.error_priority_parse",
         "RubinFormal.error_priority_pow",
         "RubinFormal.error_priority_target",
-        "RubinFormal.error_priority_linkage",
         "RubinFormal.except_error_bind",
         "RubinFormal.validate_success_parse",
         "RubinFormal.validate_success_pow",
@@ -213,16 +212,17 @@
         "RubinFormal.err_ne_linkage_witness",
         "RubinFormal.err_ne_merkle_witness",
         "RubinFormal.err_ne_ts_old_future",
-        "RubinFormal.err_ne_tx_parse_nonce"
+        "RubinFormal.err_ne_tx_parse_nonce",
+        "RubinFormal.error_priority_linkage_no_target",
+        "RubinFormal.error_priority_linkage_target_ok"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.Conformance.cv_validation_order_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVValidationOrderReplay.lean",
-        "RubinFormal.det001_validation_order_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.det001_validation_order_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
         "RubinFormal.error_priority_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.error_priority_pow": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.error_priority_target": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.error_priority_linkage": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.except_error_bind": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.validate_success_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.validate_success_pow": "rubin-formal/RubinFormal/ErrorPriority.lean",
@@ -237,7 +237,9 @@
         "RubinFormal.err_ne_linkage_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_merkle_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_ts_old_future": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_linkage_no_target": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.error_priority_linkage_target_ok": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
       "notes": "Direct error propagation proved for stages 1-4 (parse→PoW→target→linkage). Each theorem proves: if stage N fails, validateBlockBasic returns EXACTLY stage N error code. Combined with §25 totality + ordering + error code distinctness.",
       "limitations": [
