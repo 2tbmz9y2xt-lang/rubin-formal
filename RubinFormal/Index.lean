@@ -41,3 +41,4 @@ import RubinFormal.RetargetBehavioral
 import RubinFormal.StructuralRulesBehavioral
 import RubinFormal.ValueConservationBehavioral
 import RubinFormal.PrimitiveEncodingRoundtrip
+import RubinFormal.BlockHeaderRoundtrip
