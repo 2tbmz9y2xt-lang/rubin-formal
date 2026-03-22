@@ -214,7 +214,8 @@
         "RubinFormal.err_ne_ts_old_future",
         "RubinFormal.err_ne_tx_parse_nonce",
         "RubinFormal.error_priority_linkage_no_target",
-        "RubinFormal.error_priority_linkage_target_ok"
+        "RubinFormal.error_priority_linkage_target_ok",
+        "RubinFormal.WitnessCommitmentV1.validateBlockBasic_rejects_mismatched_anchor"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -239,12 +240,13 @@
         "RubinFormal.err_ne_ts_old_future": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.error_priority_linkage_no_target": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.error_priority_linkage_target_ok": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.error_priority_linkage_target_ok": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.WitnessCommitmentV1.validateBlockBasic_rejects_mismatched_anchor": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean"
       },
-      "notes": "Direct error propagation proved for stages 1-4 (parse→PoW→target→linkage). Each theorem proves: if stage N fails, validateBlockBasic returns EXACTLY stage N error code. Combined with §25 totality + ordering + error code distinctness.",
+      "notes": "Direct error propagation proved for stages 1-4 and 6 (parse, PoW, target mismatch, linkage, witness). Note: BLOCK_ERR_TARGET_INVALID is shared between powCheck (malformed target) and stage-3 target mismatch — this error code is NOT uniquely attributable to one stage. Combined with §25 totality + ordering + error code distinctness for non-shared codes.",
       "limitations": [
+        "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID can originate from both powCheck (stage 2, malformed target bytes) and target mismatch check (stage 3, expected != actual). The error code alone does not uniquely identify the failing stage.",
         "UNCOVERED: merkle error propagation (stage 5) — requires merkleRootTxids failure threading through do block.",
-        "UNCOVERED: witness commitment error propagation (stage 6) — requires checkWitnessCommitment failure threading.",
         "UNCOVERED: tx-level error ordering (TX_ERR_SIG_INVALID, TX_ERR_DOUBLE_SPEND, etc.) — requires applyNonCoinbaseTxBasic error priority proof.",
         "UNCOVERED: TXCTX-era error source mappings (Section 13.1 extensions)."
       ]
