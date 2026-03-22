@@ -45,3 +45,4 @@ import RubinFormal.BlockHeaderRoundtrip
 import RubinFormal.TxIdBehavioral
 import RubinFormal.TransactionWireBehavioral
 import RubinFormal.SighashRefinementUpgrade
+import RubinFormal.ChainIdBehavioral
