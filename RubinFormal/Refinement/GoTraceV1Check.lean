@@ -118,7 +118,8 @@ private def checkPow (o : PowOut) : Bool :=
         false
 
 def retargetGoTraceV1Pass : Bool :=
-  (powOuts.filter (fun o => o.op == "retarget_v1")).all checkPow
+  let retargetRows := powOuts.filter (fun o => o.op == "retarget_v1")
+  !retargetRows.isEmpty && retargetRows.all checkPow
 
 private def toUtxoPairs? (us : List RubinFormal.Conformance.CVUtxoEntry) : Option (List (Outpoint × UtxoEntry)) :=
   us.mapM (fun u => do
