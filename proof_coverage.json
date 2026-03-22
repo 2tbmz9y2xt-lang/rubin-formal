@@ -47,7 +47,9 @@
         "RubinFormal.u32le_roundtrip_max",
         "RubinFormal.encodeU64le_length",
         "RubinFormal.u64le_roundtrip_0",
-        "RubinFormal.u64le_roundtrip_1M"
+        "RubinFormal.u64le_roundtrip_1M",
+        "RubinFormal.u16le_roundtrip_258",
+        "RubinFormal.u32le_roundtrip_16909060"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -64,7 +66,9 @@
         "RubinFormal.u32le_roundtrip_max": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.encodeU64le_length": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.u64le_roundtrip_0": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
-        "RubinFormal.u64le_roundtrip_1M": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean"
+        "RubinFormal.u64le_roundtrip_1M": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u16le_roundtrip_258": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
+        "RubinFormal.u32le_roundtrip_16909060": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean"
       },
       "limitations": [
         "Full transaction parse-serialize roundtrip not claimed — coverage limited to CompactSize + primitive LE encoding roundtrips."
