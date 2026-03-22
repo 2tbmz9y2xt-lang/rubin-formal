@@ -13,7 +13,7 @@ structure CVNativeRotationCutoffVector where
 
 def cvNativeRotationCutoffVectors : List CVNativeRotationCutoffVector := [
   { id := "NATIVE-ROT-CUTOFF-01", op := "rotation_create_suite_check", height := 199, suiteId := 1, expectOk := true, expectErr := none },
-  { id := "NATIVE-ROT-CUTOFF-02", op := "rotation_create_suite_check", height := 200, suiteId := 1, expectOk := true, expectErr := none },
+  { id := "NATIVE-ROT-CUTOFF-02", op := "rotation_create_suite_check", height := 200, suiteId := 1, expectOk := false, expectErr := some "TX_ERR_SIG_ALG_INVALID" },
   { id := "NATIVE-ROT-CUTOFF-03", op := "rotation_create_suite_check", height := 200, suiteId := 2, expectOk := true, expectErr := none },
   { id := "NATIVE-ROT-CUTOFF-04", op := "rotation_create_suite_check", height := 99, suiteId := 2, expectOk := false, expectErr := some "TX_ERR_SIG_ALG_INVALID" },
   { id := "NATIVE-ROT-CUTOFF-05", op := "rotation_create_suite_check", height := 100, suiteId := 2, expectOk := true, expectErr := none },
