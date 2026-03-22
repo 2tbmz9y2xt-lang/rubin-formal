@@ -235,7 +235,7 @@
         "RubinFormal.sig_noncanonical_last_priority",
         "RubinFormal.witness_check_all_pass",
         "RubinFormal.witness_check_total",
-        "RubinFormal.parseTxWitnessChecks_eq_explicit"
+        "RubinFormal.applyWitnessChecks_eq_explicit"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -281,13 +281,14 @@
         "RubinFormal.sig_noncanonical_last_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_check_all_pass": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_check_total": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.parseTxWitnessChecks_eq_explicit": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.applyWitnessChecks_eq_explicit": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation proved on live functions for all 6 stages. Merkle via explicit-bind equivalence. Tx-level: parseTxWitnessChecks decomposition with rfl equivalence proves OVERFLOW→SIG_ALG→NONCANONICAL ordering on live WitnessSectionResult type. Error code distinctness proved for all block and tx codes. Status remains stated: full parseTxFromCursor and applyNonCoinbaseTxBasicNoCrypto ordering requires explicit-bind decomposition of monolithic do blocks (70+ and 100+ lines).",
+      "notes": "Block-level: direct error propagation proved on live functions for all 6 stages. Tx-level: applyWitnessChecks is a LIVE sub-function called from parseTxFromCursor (not proof-only decomposition). rfl equivalence with explicit-bind version proved. Error priority OVERFLOW→SIG_ALG→NONCANONICAL proved on live function. All error code distinctness proved by decide.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
         "Merkle propagation at afterPow level via explicit-bind equivalence.",
-        "Tx-level: only the witness-check sub-segment (4 checks) is decomposed with rfl equivalence. Full parseTxFromCursor and semantic apply ordering not proved."
+        "Tx-level: only witness-check sub-function (applyWitnessChecks) is live-extracted. Full parseTxFromCursor header/bounds/DA ordering not decomposed.",
+        "Tx semantic ordering (applyNonCoinbaseTxBasicNoCrypto) not decomposed — 100+ line for-loop do block."
       ]
     },
     {

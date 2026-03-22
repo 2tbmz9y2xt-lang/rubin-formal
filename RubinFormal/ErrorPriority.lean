@@ -227,24 +227,17 @@ theorem err_ne_tx_covenant_sig_alg :
 theorem err_ne_tx_covenant_missing :
     ("TX_ERR_COVENANT_TYPE_INVALID" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
 
-/-! ## Live witness-check ordering (parseTxFromCursor lines 144-147)
+/-! ## Live witness-check ordering (applyWitnessChecks — called from parseTxFromCursor)
 
-Proof-only decomposition of the witness-check tail from parseTxFromCursor.
-Uses the same pattern as merkle: do-version → explicit-bind version → rfl equivalence.
+`applyWitnessChecks` is a LIVE sub-function extracted from parseTxFromCursor.
+It is called directly by parseTxFromCursor (BlockBasicV1.lean) — not a proof-only
+decomposition. Error ordering is proved via explicit-bind equivalence.
 -/
 
 open RubinFormal.TxWeightV2 in
-/-- Do-notation version matching parseTxFromCursor lines 144-147 verbatim. -/
-def parseTxWitnessChecks (witBytes : Nat) (ws : WitnessSectionResult) : Except String Unit := do
-  if witBytes > MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
-  if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-  if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
-  if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
-  pure ()
-
-open RubinFormal.TxWeightV2 in
-/-- Explicit-bind version (no join points, amenable to tactic proofs). -/
-def witnessCheckSequence (witBytes : Nat) (ws : WitnessSectionResult) : Except String Unit :=
+/-- Explicit-bind version of applyWitnessChecks (no join points). -/
+def applyWitnessChecksExplicit (ws : WitnessSectionResult) : Except String Unit :=
+  let witBytes := ws.endOff - ws.startOff
   if witBytes > MAX_WITNESS_BYTES_PER_TX then
     Except.error "TX_ERR_WITNESS_OVERFLOW"
   else if ws.isOverflow then
@@ -257,65 +250,58 @@ def witnessCheckSequence (witBytes : Nat) (ws : WitnessSectionResult) : Except S
     Except.ok ()
 
 open RubinFormal.TxWeightV2 in
-/-- Definitional equivalence: do version = explicit bind version. -/
-theorem parseTxWitnessChecks_eq_explicit
-    (witBytes : Nat) (ws : WitnessSectionResult) :
-    parseTxWitnessChecks witBytes ws = witnessCheckSequence witBytes ws := by
-  simp only [parseTxWitnessChecks, witnessCheckSequence, Except.bind]; rfl
+/-- Definitional equivalence: live do-version = explicit bind version. -/
+theorem applyWitnessChecks_eq_explicit (ws : WitnessSectionResult) :
+    applyWitnessChecks ws = applyWitnessChecksExplicit ws := by
+  simp only [applyWitnessChecks, applyWitnessChecksExplicit, Except.bind]; rfl
 
--- Ordering theorems on parseTxWitnessChecks (the do-version = live code)
--- via equivalence with explicit version
+-- Ordering theorems on the LIVE applyWitnessChecks function
 
 open RubinFormal.TxWeightV2 in
-theorem witness_bytes_overflow_priority
-    (witBytes : Nat) (ws : WitnessSectionResult)
-    (h : (witBytes > MAX_WITNESS_BYTES_PER_TX) = true) :
-    parseTxWitnessChecks witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
-  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, h]
+theorem witness_bytes_overflow_priority (ws : WitnessSectionResult)
+    (h : (ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX) = true) :
+    applyWitnessChecks ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  rw [applyWitnessChecks_eq_explicit]; simp [applyWitnessChecksExplicit, h]
 
 open RubinFormal.TxWeightV2 in
-theorem witness_count_overflow_priority
-    (witBytes : Nat) (ws : WitnessSectionResult)
-    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+theorem witness_count_overflow_priority (ws : WitnessSectionResult)
+    (hBytes : (ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX) = false)
     (hOverflow : ws.isOverflow = true) :
-    parseTxWitnessChecks witBytes ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
-  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hOverflow]
+    applyWitnessChecks ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  rw [applyWitnessChecks_eq_explicit]; simp [applyWitnessChecksExplicit, hBytes, hOverflow]
 
 open RubinFormal.TxWeightV2 in
-theorem sig_alg_priority_over_noncanonical
-    (witBytes : Nat) (ws : WitnessSectionResult)
-    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+theorem sig_alg_priority_over_noncanonical (ws : WitnessSectionResult)
+    (hBytes : (ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX) = false)
     (hNoOverflow : ws.isOverflow = false)
     (hSigAlg : ws.anySigAlgInvalid = true) :
-    parseTxWitnessChecks witBytes ws = .error "TX_ERR_SIG_ALG_INVALID" := by
-  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hNoOverflow, hSigAlg]
+    applyWitnessChecks ws = .error "TX_ERR_SIG_ALG_INVALID" := by
+  rw [applyWitnessChecks_eq_explicit]; simp [applyWitnessChecksExplicit, hBytes, hNoOverflow, hSigAlg]
 
 open RubinFormal.TxWeightV2 in
-theorem sig_noncanonical_last_priority
-    (witBytes : Nat) (ws : WitnessSectionResult)
-    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+theorem sig_noncanonical_last_priority (ws : WitnessSectionResult)
+    (hBytes : (ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX) = false)
     (hNoOverflow : ws.isOverflow = false)
     (hNoSigAlg : ws.anySigAlgInvalid = false)
     (hNoncanon : ws.anySigNoncanonical = true) :
-    parseTxWitnessChecks witBytes ws = .error "TX_ERR_SIG_NONCANONICAL" := by
-  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoncanon]
+    applyWitnessChecks ws = .error "TX_ERR_SIG_NONCANONICAL" := by
+  rw [applyWitnessChecks_eq_explicit]; simp [applyWitnessChecksExplicit, hBytes, hNoOverflow, hNoSigAlg, hNoncanon]
 
 open RubinFormal.TxWeightV2 in
-theorem witness_check_all_pass
-    (witBytes : Nat) (ws : WitnessSectionResult)
-    (hBytes : (witBytes > MAX_WITNESS_BYTES_PER_TX) = false)
+theorem witness_check_all_pass (ws : WitnessSectionResult)
+    (hBytes : (ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX) = false)
     (hNoOverflow : ws.isOverflow = false)
     (hNoSigAlg : ws.anySigAlgInvalid = false)
     (hNoNoncanon : ws.anySigNoncanonical = false) :
-    parseTxWitnessChecks witBytes ws = .ok () := by
-  rw [parseTxWitnessChecks_eq_explicit]; simp [witnessCheckSequence, hBytes, hNoOverflow, hNoSigAlg, hNoNoncanon]
+    applyWitnessChecks ws = .ok () := by
+  rw [applyWitnessChecks_eq_explicit]; simp [applyWitnessChecksExplicit, hBytes, hNoOverflow, hNoSigAlg, hNoNoncanon]
 
 open RubinFormal.TxWeightV2 in
-theorem witness_check_total (witBytes : Nat) (ws : WitnessSectionResult) :
-    (∃ err, parseTxWitnessChecks witBytes ws = .error err) ∨
-    parseTxWitnessChecks witBytes ws = .ok () := by
-  rw [parseTxWitnessChecks_eq_explicit]
-  unfold witnessCheckSequence
+theorem witness_check_total (ws : WitnessSectionResult) :
+    (∃ err, applyWitnessChecks ws = .error err) ∨
+    applyWitnessChecks ws = .ok () := by
+  rw [applyWitnessChecks_eq_explicit]
+  unfold applyWitnessChecksExplicit
   split <;> simp_all
   split <;> simp_all
   split <;> simp_all

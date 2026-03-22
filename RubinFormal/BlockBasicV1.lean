@@ -94,6 +94,16 @@ def powCheck (h : BlockHeader) : Except String Unit := do
   let _ ← RubinFormal.PowV1.powCheck (headerBytes h) h.target
   pure ()
 
+  /-- Witness-section error checks extracted from parseTxFromCursor (lines 143-147).
+      This is a LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def applyWitnessChecks (ws : TxWeightV2.WitnessSectionResult) : Except String Unit := do
+    let witBytes := ws.endOff - ws.startOff
+    if witBytes > TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
+    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
+    if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
+    if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+    pure ()
+
   def parseTxFromCursor (c : Cursor) : Except String (Nat × Bytes × Bytes × Bytes × Cursor) := do
   let start := c.off
   let (ver, c1) ←
@@ -140,11 +150,7 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
-    let witBytes := ws.endOff - ws.startOff
-    if witBytes > RubinFormal.TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
-    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-    if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
-    if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+    applyWitnessChecks ws
     let (daLen, c10, minDa) ←
       match ws.cursor.getCompactSize? with
       | none => throw "BLOCK_ERR_PARSE"
