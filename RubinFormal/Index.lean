@@ -36,3 +36,4 @@ import RubinFormal.TxContextFormal
 import RubinFormal.ForkChoiceTiebreak
 import RubinFormal.ErrorPriority
 import RubinFormal.UtxoSpendTxBehavioral
+import RubinFormal.WeightBehavioral
