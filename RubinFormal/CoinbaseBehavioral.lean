@@ -219,20 +219,70 @@ theorem coinbase_list_no_anchor_or_da
 
 /-! ## UTXO key safety (Checklist 3.2)
 
-Index uniqueness derived from `List.enum` structure: entries at different
-positions in the filtered enum list have distinct indices by construction.
-No external `i ≠ j` assumption needed — it follows from list membership.
--/
+Index uniqueness follows from `List.enum` structure: `List.enum` assigns
+consecutive indices starting from 0. Two entries at different LIST positions
+get different indices by construction. `List.enum` injectivity on first
+component is not in Std4, so we prove it directly. -/
 
-/-- Enum-derived: different positions in filtered enum → different vout indices. -/
-theorem coinbase_vout_from_enum_position
-    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (_height : Nat)
-    (i j : Nat) (_oi _oj : CovenantGenesisV1.TxOut)
-    (_hi : (i, _oi) ∈ outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2))
-    (_hj : (j, _oj) ∈ outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2))
-    (hNeq : i ≠ j) :
-    ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
-  intro heq; cases heq; exact hNeq rfl
+/-- List.enum assigns unique indices: if (i, a) and (j, b) are both in
+    xs.enum and i = j, then they must be the same pair (same list position).
+    Proved by induction on the list. -/
+private theorem enumFrom_ge {α : Type} (start : Nat) (xs : List α) (i : Nat) (a : α)
+    (h : (i, a) ∈ List.enumFrom start xs) : i ≥ start := by
+  induction xs generalizing start with
+  | nil => simp [List.enumFrom] at h
+  | cons x rest ih =>
+    simp [List.enumFrom] at h
+    obtain ⟨rfl, _⟩ | h := h
+    · omega
+    · have := ih (start + 1) h; omega
+
+private theorem enumFrom_injective_fst {α : Type} (start : Nat) (xs : List α)
+    (i : Nat) (a b : α)
+    (ha : (i, a) ∈ List.enumFrom start xs)
+    (hb : (i, b) ∈ List.enumFrom start xs) : a = b := by
+  induction xs generalizing start with
+  | nil => simp [List.enumFrom] at ha
+  | cons x rest ih =>
+    simp [List.enumFrom] at ha hb
+    obtain ⟨rfl, rfl⟩ | ha := ha
+    · obtain ⟨_, rfl⟩ | hb := hb
+      · rfl
+      · exact absurd (enumFrom_ge _ rest _ _ hb) (by omega)
+    · obtain ⟨rfl, _⟩ | hb := hb
+      · exact absurd (enumFrom_ge _ rest _ _ ha) (by omega)
+      · exact ih _ ha hb
+
+/-- List.enum assigns unique indices: if (i, a) and (i, b) are both in
+    xs.enum, then a = b. Proved by induction via enumFrom_ge bound. -/
+theorem enum_injective_fst {α : Type} (xs : List α) (i : Nat) (a b : α)
+    (ha : (i, a) ∈ xs.enum) (hb : (i, b) ∈ xs.enum) : a = b :=
+  enumFrom_injective_fst 0 xs i a b ha hb
+
+/-- Coinbase entries have distinct outpoints: derived from List.enum
+    injectivity — different entries must have different indices. -/
+theorem coinbase_distinct_outpoints
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (p1 p2 : Outpoint × UtxoEntry)
+    (h1 : p1 ∈ coinbaseEntryList outputs txid height)
+    (h2 : p2 ∈ coinbaseEntryList outputs txid height)
+    (hNe : p1 ≠ p2) :
+    p1.1 ≠ p2.1 := by
+  simp [coinbaseEntryList, List.mem_map] at h1 h2
+  obtain ⟨⟨i, oi⟩, hi, rfl⟩ := h1
+  obtain ⟨⟨j, oj⟩, hj, rfl⟩ := h2
+  -- p1.1 = {txid, vout := i}, p2.1 = {txid, vout := j}
+  -- Need i ≠ j. If i = j, then by enum_injective_fst applied to
+  -- the filtered list, oi = oj, so p1 = p2, contradicting hNe.
+  intro heq
+  -- heq : {txid, vout := i} = {txid, vout := j} → i = j
+  cases heq
+  -- Now i = j. Show p1 = p2.
+  have hMem_i := List.mem_filter.mp hi
+  have hMem_j := List.mem_filter.mp hj
+  have := enum_injective_fst outputs i oi oj hMem_i.1 hMem_j.1
+  subst this
+  exact hNe rfl
 
 /-! ## Boundary cases (Checklist 2.2) -/
 
