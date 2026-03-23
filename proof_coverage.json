@@ -559,7 +559,6 @@
         "RubinFormal.connectBlockFull_txcontext_ext_ids",
         "RubinFormal.connectBlockFull_txcontext_base_values",
         "RubinFormal.coinbaseEntryList_uses_shared_constructor",
-        "RubinFormal.coinbaseUtxoEntry_always_marked",
         "RubinFormal.addCoinbaseOutputs_step_uses_shared"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
@@ -603,7 +602,6 @@
         "RubinFormal.connectBlockFull_txcontext_ext_ids": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.coinbaseEntryList_uses_shared_constructor": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
-        "RubinFormal.coinbaseUtxoEntry_always_marked": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.addCoinbaseOutputs_step_uses_shared": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",

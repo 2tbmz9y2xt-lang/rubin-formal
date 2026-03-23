@@ -154,18 +154,13 @@ theorem coinbaseEntryList_uses_shared_constructor
       (fun p => (Outpoint.mk txid p.1, coinbaseUtxoEntry p.2 height)) := by
   unfold coinbaseEntryList coinbaseUtxoEntry; rfl
 
-/-- createdByCoinbase = true for the shared constructor (structural). -/
-theorem coinbaseUtxoEntry_always_marked (out : CovenantGenesisV1.TxOut) (height : Nat) :
-    (coinbaseUtxoEntry out height).createdByCoinbase = true := rfl
-
 /-- addCoinbaseOutputs fold step uses the same coinbaseUtxoEntry constructor.
     Bridge: both addCoinbaseOutputs (RBMap.insert) and coinbaseEntryList (List.map)
     construct entries with coinbaseUtxoEntry. RBMap operational equivalence
     (find? after insert) requires Std.RBMap lemmas not available in Std4 without
     Mathlib — the shared constructor is the strongest provable bridge. -/
 theorem addCoinbaseOutputs_step_uses_shared
-    (out : CovenantGenesisV1.TxOut) (_txid : Bytes) (height _idx : Nat)
-    (_hSpend : isSpendableCoinbaseOutput out = true) :
+    (out : CovenantGenesisV1.TxOut) (height : Nat) :
     coinbaseUtxoEntry out height =
     { value := out.value, covenantType := out.covenantType,
       covenantData := out.covenantData, creationHeight := height,
