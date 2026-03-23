@@ -606,8 +606,11 @@
         "RubinFormal.coinbaseUtxoEntry_always_marked": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.addCoinbaseOutputs_step_uses_shared": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
-      "notes": "Full block connection with LIVE TxContext wiring. connectBlockFull calls buildTxContext directly — not a parallel model. Coinbase: shared coinbaseUtxoEntry constructor bridges list representation (coinbaseEntryList) and fold representation (addCoinbaseOutputs) via rfl equivalence. End-to-end: conservation + no-double-spend + coinbase bound + no-vault + TxContext presence proved as 5-way conjunction. Error taxonomy: machine-checked exhaustive proof (zero axioms). All error branches proved: bad txs → propagate, oversized coinbase → SUBSIDY_EXCEEDED, vault coinbase → COINBASE_INVALID.",
-      "limitations": []
+      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",
+      "limitations": [
+        "TxContext: connectBlockFull threads TxContext params externally. connectBlockFullComputed computes TxContext from tx data via buildTxContextLive (folds actual value lists). Equivalence proved. But connectBlockFullComputed is not yet the SOLE entry point — both signatures coexist.",
+        "Coinbase ANCHOR/DA exclusion: proved at list level (coinbase_list_no_anchor_or_da) via filter + isSpendableCoinbaseOutput. Bridge to RBMap via shared constructor (rfl). Full RBMap find?_insert equivalence not provable in Std4."
+      ]
     },
     {
       "section_key": "coinbase_and_subsidy",

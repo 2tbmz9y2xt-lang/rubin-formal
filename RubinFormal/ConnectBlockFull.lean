@@ -24,9 +24,19 @@ structure ConnectBlockResult where
   sumFees : Nat
   txContext : Option TxContextBundle
 
-/-- Full block connection pipeline with TxContext construction.
-    Models connect_block_inmem.go:138-186 + per-tx BuildTxContext.
-    TxContext is constructed from activeExtIds/totalIn/totalOut when ext_ids active. -/
+/-- Per-tx TxContext input data — resolved from UTXO lookup.
+    In Go, this comes from resolved inputs (sumTxContextInputValues)
+    and tx outputs (sumTxContextOutputValues). -/
+structure TxContextInputData where
+  inputValues : List Nat
+  outputValues : List Nat
+  activeExtIds : List Nat
+  continuingData : List (Nat × TxContextContinuing)
+
+/-- Full block connection pipeline.
+    TxContext parameters are threaded through for backward compatibility
+    with existing proofs. See connectBlockFullComputed for the version
+    that computes TxContext from tx data. -/
 def connectBlockFull
     (nonCoinbaseTxs : List Bytes)
     (coinbaseOutputs : List CovenantGenesisV1.TxOut)
@@ -48,6 +58,84 @@ def connectBlockFull
         .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
             , sumFees := sumFees
             , txContext := buildTxContext activeExtIds totalIn totalOut height continuingData }
+
+/-- Full block connection with COMPUTED TxContext from tx data.
+    This is the CORRECT version: TxContext is computed from resolved
+    input/output values, not passed as free parameters.
+    Uses buildTxContextLive which folds actual value lists. -/
+def connectBlockFullComputed
+    (nonCoinbaseTxs : List Bytes)
+    (coinbaseOutputs : List CovenantGenesisV1.TxOut)
+    (coinbaseTxid : Bytes)
+    (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes) (subsidy : Nat)
+    (txCtxData : Option TxContextInputData)
+    : Except String ConnectBlockResult :=
+  match connectBlockTxs nonCoinbaseTxs utxoMap height blockTimestamp chainId with
+  | .error e => .error e
+  | .ok (sumFees, postTxUtxos) =>
+    match validateCoinbaseValueBound coinbaseOutputs subsidy sumFees with
+    | .error e => .error e
+    | .ok () =>
+      match validateCoinbaseApplyOutputs coinbaseOutputs with
+      | .error e => .error e
+      | .ok () =>
+        let txCtx := match txCtxData with
+          | none => none
+          | some d => buildTxContextLive d.activeExtIds d.inputValues d.outputValues height d.continuingData
+        .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
+            , sumFees := sumFees
+            , txContext := txCtx }
+
+/-- Equivalence: connectBlockFullComputed with Some data = connectBlockFull
+    with computed sums. This bridges the two signatures. -/
+theorem connectBlockFullComputed_eq_connectBlockFull
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData) :
+    connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) =
+    connectBlockFull nctxs couts ctxid utxos h bt cid sub
+      d.activeExtIds (sumInputValues d.inputValues) (sumOutputValues d.outputValues) d.continuingData := by
+  simp [connectBlockFullComputed, connectBlockFull, buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
+
+/-- connectBlockFullComputed with None = connectBlockFull with empty ext_ids. -/
+theorem connectBlockFullComputed_none_eq
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat) :
+    connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub none =
+    connectBlockFull nctxs couts ctxid utxos h bt cid sub [] 0 0 [] := by
+  simp [connectBlockFullComputed, connectBlockFull, buildTxContextLive, buildTxContext]
+
+/-- Computed TxContext has correct base values from tx data. -/
+theorem connectBlockFullComputed_txcontext_correct
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData)
+    (hIds : d.activeExtIds.length > 0)
+    (result : ConnectBlockResult)
+    (hOk : connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) = .ok result) :
+    ∃ bundle, result.txContext = some bundle ∧
+      bundle.base.totalIn = sumInputValues d.inputValues ∧
+      bundle.base.totalOut = sumOutputValues d.outputValues ∧
+      bundle.base.height = h := by
+  simp only [connectBlockFullComputed] at hOk
+  match hT : connectBlockTxs nctxs utxos h bt cid with
+  | .error _ => simp [hT] at hOk
+  | .ok (sf, ptx) =>
+    simp [hT] at hOk
+    match hB : validateCoinbaseValueBound couts sub sf with
+    | .error _ => simp [hB] at hOk
+    | .ok () =>
+      simp [hB] at hOk
+      match hV : validateCoinbaseApplyOutputs couts with
+      | .error _ => simp [hV] at hOk
+      | .ok () =>
+        simp [hV] at hOk; cases hOk
+        simp [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
+        split
+        · rename_i heq; omega
+        · exact ⟨_, rfl, rfl, rfl, rfl⟩
 
 /-! ## Helper: extract connectBlockTxs success -/
 
