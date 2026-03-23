@@ -643,7 +643,9 @@
         "RubinFormal.fork_choice_tiebreak_deterministic",
         "RubinFormal.bytesLT_antisym",
         "RubinFormal.forkSelect_heavier",
-        "RubinFormal.forkSelect_tiebreak_det"
+        "RubinFormal.forkSelect_tiebreak_det",
+        "RubinFormal.forkSelect_chainwork_bridge",
+        "RubinFormal.forkSelect_total_det"
       ],
       "file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
       "theorem_files": {
@@ -653,11 +655,13 @@
         "RubinFormal.fork_choice_tiebreak_deterministic": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
         "RubinFormal.bytesLT_antisym": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
         "RubinFormal.forkSelect_heavier": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
-        "RubinFormal.forkSelect_tiebreak_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
+        "RubinFormal.forkSelect_tiebreak_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_chainwork_bridge": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_total_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
       },
-      "notes": "Full fork-choice selector modeled with machine-checked determinism. bytesLT proved irreflexive, total, and antisymmetric. forkSelect_heavier: unequal chainwork → heavier wins. forkSelect_tiebreak_det: equal chainwork + different 32-byte hashes → both nodes agree on winner. Bridge upgraded from baseline to machine_checked_contract.",
+      "notes": "Full fork-choice selector modeled with machine-checked determinism. bytesLT proved irreflexive, total, and antisymmetric. forkSelect_heavier: unequal chainwork → heavier wins. forkSelect_tiebreak_det: equal chainwork + different 32-byte hashes → both nodes agree on winner. forkSelect_chainwork_bridge: connects forkSelect to heavierChain via chainWork composition. forkSelect_total_det: for ANY two chains with different (work, hash) pairs, both nodes agree on winner — full end-to-end determinism.",
       "limitations": [
-        "forkSelect models runtime operation; Go/Rust equivalence is structural, not rfl-proved."
+        "forkSelect models the runtime fork_choice_select operation. Go/Rust code follows the same if/else chain (chainwork > → Left, chainwork < → Right, else bytesLT hash). Structural equivalence is evident from code inspection but not proved via rfl in Lean (Go/Rust code not importable into Lean)."
       ]
     },
     {
