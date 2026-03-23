@@ -276,7 +276,11 @@
         "RubinFormal.value_conservation_vault_drain",
         "RubinFormal.err_ne_tx_value_parse",
         "RubinFormal.err_ne_tx_value_missing",
-        "RubinFormal.err_ne_tx_value_covenant"
+        "RubinFormal.err_ne_tx_value_covenant",
+        "RubinFormal.parse_before_suite",
+        "RubinFormal.suite_before_sig",
+        "RubinFormal.error_selection_commutative",
+        "RubinFormal.parse_always_wins"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -363,12 +367,14 @@
         "RubinFormal.value_conservation_vault_drain": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_value_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_value_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_tx_value_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_tx_value_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.parse_before_suite": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.suite_before_sig": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.error_selection_commutative": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.parse_always_wins": "rubin-formal/RubinFormal/CoreExtRefinement.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed.",
-      "limitations": [
-        "TXCTX §13.1 source mappings: only error code distinctness proved (err_ne_covenant_*). TXCTX validation path (step 3c / §7.x) error propagation not modeled in Lean. Partial coverage only."
-      ]
+      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed. TXCTX §13.1: CORE_EXT error priority ordering proved via ExtError model in CoreExtRefinement.lean — parse_before_suite, suite_before_sig, error_selection_commutative, parse_always_wins.",
+      "limitations": []
     },
     {
       "section_key": "covenant_registry",
