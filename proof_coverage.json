@@ -540,7 +540,13 @@
         "RubinFormal.chainConsistency_inductive",
         "RubinFormal.spendTx_end_to_end",
         "RubinFormal.spendTx_behavioral",
-        "RubinFormal.connectBlockTxs_behavioral"
+        "RubinFormal.connectBlockTxs_behavioral",
+        "RubinFormal.coinbase_value_bound_rejects",
+        "RubinFormal.coinbase_value_bound_accepts",
+        "RubinFormal.coinbase_no_vault_rejects",
+        "RubinFormal.coinbase_no_vault_accepts",
+        "RubinFormal.coinbase_entry_always_marked",
+        "RubinFormal.coinbase_nonspendable_excluded"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -564,14 +570,19 @@
         "RubinFormal.chainConsistency_inductive": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.spendTx_end_to_end": "rubin-formal/RubinFormal/SpendTxEndToEnd.lean",
         "RubinFormal.spendTx_behavioral": "rubin-formal/RubinFormal/UtxoSpendTxBehavioral.lean",
-        "RubinFormal.connectBlockTxs_behavioral": "rubin-formal/RubinFormal/UtxoSpendTxBehavioral.lean"
+        "RubinFormal.connectBlockTxs_behavioral": "rubin-formal/RubinFormal/UtxoSpendTxBehavioral.lean",
+        "RubinFormal.coinbase_value_bound_rejects": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.coinbase_value_bound_accepts": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.coinbase_no_vault_rejects": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.coinbase_no_vault_accepts": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.coinbase_entry_always_marked": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.coinbase_nonspendable_excluded": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
-      "notes": "Section now includes single-tx behavioral proof (spendTx_behavioral: inputs_available + no_double_spend + conservation + deterministic nextUtxoMap) and block-level composition (connectBlockTxs_behavioral: conservation + no_double_spend across all txs). Status remains stated because TXCTX/coinbase/vault paths not fully proved.",
+      "notes": "Section 18 backbone: spendTx_behavioral (single-tx behavioral), connectBlockTxs_behavioral (block-level conservation+no-double-spend), chainConsistency_inductive (chain-level). Coinbase path now proved: value bound (subsidy+fees), no-vault constraint, coinbase UTXO marking, non-spendable exclusion. All on LIVE sub-functions.",
       "limitations": [
         "No theorem in the current registry proves SpendTx step 3c TxContext construction or the exact bundle contents for TxContext-enabled CORE_EXT spends.",
-        "No theorem in the current registry proves the >K continuing-output reject / discard semantics or the ext_id ordering rule added by TXCTX.",
-        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1↔L2 equivalence for all vault transactions.",
-        "ConnectBlockStrong theorems cover pre-TXCTX non-coinbase tx path only; coinbase and TXCTX-enabled paths require separate proof surfaces."
+        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1-L2 equivalence for all vault transactions.",
+        "ConnectBlockStrong theorems cover pre-TXCTX non-coinbase tx path only; TXCTX-enabled paths require separate proof surfaces."
       ]
     },
     {
