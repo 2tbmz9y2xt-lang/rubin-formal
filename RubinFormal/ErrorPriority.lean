@@ -2,23 +2,26 @@ import RubinFormal.BlockValidationOrder
 import RubinFormal.UtxoApplyGenesisV1
 
 /-!
-# Error Priority Ordering (§7 / §13 / §25)
+# Error Priority Ordering (§13 / §25)
 
-Proves deterministic error-priority ordering for the RUBIN validation pipeline.
+## Block-level (§25) — on live `validateBlockBasic`
+Direct error propagation for all 6 stages: parse → PoW → target →
+linkage → merkle (via explicit-bind equivalence) → witness (existing).
 
-## Block-level (§25)
-Direct error propagation: when a block validation stage fails,
-`validateBlockBasic` returns EXACTLY that stage's error code.
-Stages 1-6 (parse, PoW, target, linkage, merkle, witness) are all covered.
+## Tx-level — live sub-function decomposition
+- `applyWitnessChecks` (LIVE, called from `parseTxFromCursor`):
+  OVERFLOW → SIG_ALG_INVALID → SIG_NONCANONICAL ordering via rfl equivalence.
+- `applyDaLenChecks` (LIVE, called from `parseTxFromCursor`):
+  4 DA-length checks, all TX_ERR_PARSE.
+- `applyTxPreInputChecks` (LIVE, called from `applyNonCoinbaseTxBasicNoCrypto`):
+  empty inputs → nonce invalid → output covenant loop.
+- `validateInputStructural` (LIVE, per-input loop):
+  scriptSig → sequence → coinbase prevout.
 
-## Transaction-level (§7)
-Deterministic parse error mapping: tx parse checks are applied in order,
-first applicable error code wins. Modeled via `TxParseStage` enum with
-strict ordering.
-
-## TXCTX extension (§13.1)
-Error source mappings for SPEC-TXCTX-01 extension codes, modeled as
-an extension of the tx-level error taxonomy.
+## Not covered
+- `parseTxFromCursor` header/bounds (lines 108-139): all TX_ERR_PARSE.
+- Per-input UTXO lookup/duplicate/covenant-type: mutable state in for-loop.
+- Error code distinctness: all block + tx codes via `by decide`.
 -/
 
 namespace RubinFormal
@@ -194,11 +197,9 @@ theorem validate_success_pow
 
 /-! ## Tx-level error code distinctness (§7/§13)
 
-Pairwise inequality for tx error codes. These are ONLY distinctness proofs.
-No ordering enum is provided because full tx-level ordering requires
-explicit-bind decomposition of parseTxFromCursor (70-line do block)
-and applyNonCoinbaseTxBasicNoCrypto (100+ line do block).
-The witness-check sub-segment IS decomposed below with rfl equivalence.
+Pairwise inequality for all tx error codes used in the validation pipeline.
+Ordering is proved via live sub-function decomposition (see sections below),
+not via enum models.
 -/
 
 theorem err_ne_tx_parse_witness_overflow :
