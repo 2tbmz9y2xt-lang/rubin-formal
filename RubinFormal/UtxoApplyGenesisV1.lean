@@ -536,6 +536,32 @@ theorem vault_recursion_ban :
     vaultSpendOutputsAllowed sampleSpendWhitelist [sampleSpendOutput1, sampleRecursiveVaultOutput] = false := by
   native_decide
 
+/-- Vault dispatch routing: covenantType=VAULT → dispatchCovenantValidation
+    enters the vault branch (parses vault covenant data + witness slots).
+    Full split proof on explicit if/else chain — P2PK eliminated,
+    Multisig eliminated, Vault selected via native_decide on type comparisons. -/
+theorem dispatch_routes_to_vault
+    (e : UtxoBasicV1.UtxoEntry) (tx : UtxoBasicV1.Tx)
+    (wc height bm : Nat)
+    (hVault : e.covenantType = CovenantGenesisV1.COV_TYPE_VAULT) :
+    dispatchCovenantValidation e tx wc height bm =
+    (match CovenantGenesisV1.parseVaultCovenantData e.covenantData with
+     | .error err => Except.error err
+     | .ok _ =>
+       match WITNESS_SLOTS e.covenantType e.covenantData with
+       | .error err => Except.error err
+       | .ok slots =>
+         if wc + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+         else Except.ok (wc + slots)) := by
+  unfold dispatchCovenantValidation; rw [hVault]
+  split
+  · rename_i h; exact absurd h (by simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_P2PK) = false from by native_decide])
+  · split
+    · rename_i h; exact absurd h (by simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_MULTISIG) = false from by native_decide])
+    · split
+      · rfl
+      · rename_i _ _ h1; simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_VAULT) = true from by native_decide] at h1
+
 end UtxoApplyGenesisV1
 
 end RubinFormal

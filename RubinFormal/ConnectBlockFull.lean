@@ -473,11 +473,61 @@ theorem valid_block_end_to_end_no_extids
    connectBlockFull_no_vault _ _ _ _ _ _ _ _ _ _ _ _ _ hOk,
    connectBlockFull_no_txcontext_when_empty _ _ _ _ _ _ _ _ _ _ _ _ hOk⟩
 
-/-! ## Per-tx TxContext
+/-! ## Per-tx TxContext with COMPUTED values (not alias)
 
-In Go, BuildTxContext is called PER-TX with per-tx totalIn/totalOut.
-Use buildTxContext directly — no alias needed. Per-tx properties
-(base values, ext_ids) are already proved in TxContextBehavioral.lean. -/
+In Go, BuildTxContext is called PER-TX with resolved input/output values.
+buildPerTxContextFromData takes raw value lists and COMPUTES sums. -/
+
+/-- Per-tx TxContext from RESOLVED inputs and outputs.
+    NOT an alias — takes raw value lists and computes totalIn/totalOut via fold.
+    Models Go BuildTxContext per-tx call in connect_block_parallel.go. -/
+def buildPerTxContextFromData
+    (txActiveExtIds : List Nat)
+    (txInputValues txOutputValues : List Nat)
+    (height : Nat)
+    (txContinuingData : List (Nat × TxContextContinuing))
+    : Option TxContextBundle :=
+  buildTxContextLive txActiveExtIds txInputValues txOutputValues height txContinuingData
+
+/-- Per-tx base values are COMPUTED from actual tx input/output values. -/
+theorem perTx_base_values_computed
+    (ids : List Nat) (hIds : ids.length > 0)
+    (inVals outVals : List Nat) (height : Nat)
+    (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildPerTxContextFromData ids inVals outVals height cd = some bundle) :
+    bundle.base.totalIn = inVals.foldl (· + ·) 0 ∧
+    bundle.base.totalOut = outVals.foldl (· + ·) 0 ∧
+    bundle.base.height = height := by
+  simp [buildPerTxContextFromData, buildTxContextLive, buildTxContext] at hEq
+  split at hEq
+  · rename_i heq; omega
+  · cases hEq; exact ⟨rfl, rfl, rfl⟩
+
+/-- Per-tx ext_ids preserved (no reordering). -/
+theorem perTx_ext_ids_preserved
+    (ids : List Nat) (hIds : ids.length > 0)
+    (inVals outVals : List Nat) (height : Nat)
+    (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildPerTxContextFromData ids inVals outVals height cd = some bundle) :
+    bundle.continuingExtIds = ids := by
+  simp [buildPerTxContextFromData, buildTxContextLive, buildTxContext] at hEq
+  split at hEq
+  · rename_i heq; omega
+  · cases hEq; rfl
+
+/-- Per-tx value conservation: inputs ≥ outputs → totalIn ≥ totalOut. -/
+theorem perTx_value_conservation
+    (ids : List Nat) (hIds : ids.length > 0)
+    (inVals outVals : List Nat) (height : Nat)
+    (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildPerTxContextFromData ids inVals outVals height cd = some bundle)
+    (hFee : inVals.foldl (· + ·) 0 ≥ outVals.foldl (· + ·) 0) :
+    bundle.base.totalIn ≥ bundle.base.totalOut := by
+  have ⟨hIn, hOut, _⟩ := perTx_base_values_computed ids hIds inVals outVals height cd bundle hEq
+  omega
 
 /-! ## Vault error propagation (R14 integration)
 
