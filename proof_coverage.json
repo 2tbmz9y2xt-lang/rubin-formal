@@ -640,19 +640,24 @@
         "RubinFormal.ForkChoiceV1.overLimitTarget_rejected",
         "RubinFormal.bytesLT_irrefl",
         "RubinFormal.bytesLT_total_of_ne",
-        "RubinFormal.fork_choice_tiebreak_deterministic"
+        "RubinFormal.fork_choice_tiebreak_deterministic",
+        "RubinFormal.bytesLT_antisym",
+        "RubinFormal.forkSelect_heavier",
+        "RubinFormal.forkSelect_tiebreak_det"
       ],
       "file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
       "theorem_files": {
         "RubinFormal.Conformance.cv_fork_choice_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVForkChoiceReplay.lean",
         "RubinFormal.bytesLT_irrefl": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
         "RubinFormal.bytesLT_total_of_ne": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
-        "RubinFormal.fork_choice_tiebreak_deterministic": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean"
+        "RubinFormal.fork_choice_tiebreak_deterministic": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
+        "RubinFormal.bytesLT_antisym": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_heavier": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_tiebreak_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
       },
-      "notes": "bytesLT proved irreflexive and total on same-length lists, giving deterministic tie-break for equal-chainwork fork choice. Combined with existing heavierChain_wins for strict chainwork ordering.",
+      "notes": "Full fork-choice selector modeled with machine-checked determinism. bytesLT proved irreflexive, total, and antisymmetric. forkSelect_heavier: unequal chainwork → heavier wins. forkSelect_tiebreak_det: equal chainwork + different 32-byte hashes → both nodes agree on winner. Bridge upgraded from baseline to machine_checked_contract.",
       "limitations": [
-        "Tie-break proof covers bytesLT comparator on arbitrary same-length byte lists. Runtime fork-choice selector composition (chainwork comparison + tie-break fallback) not proved as a single end-to-end theorem.",
-        "No machine-checked bridge for fork_choice_select beyond baseline registry linkage."
+        "forkSelect models runtime operation; Go/Rust equivalence is structural, not rfl-proved."
       ]
     },
     {
