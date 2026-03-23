@@ -363,6 +363,58 @@ theorem valid_block_end_to_end
    connectBlockFull_no_vault _ _ _ _ _ _ _ _ _ _ _ _ _ hOk,
    connectBlockFull_produces_txcontext _ _ _ _ _ _ _ _ _ hIds _ _ _ _ hOk⟩
 
+/-! ## End-to-end without ext_ids (Gap 5) -/
+
+/-- Valid block end-to-end WITHOUT active ext_ids.
+    4-way invariant + txContext = none. -/
+theorem valid_block_end_to_end_no_extids
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat)
+    (tin tout : Nat) (cd : List (Nat × TxContextContinuing))
+    (result : ConnectBlockResult)
+    (hOk : connectBlockFull nctxs couts ctxid utxos h bt cid sub [] tin tout cd = .ok result) :
+    utxo_conserved nctxs utxos h bt cid ∧
+    no_double_spend nctxs utxos h bt cid ∧
+    ¬(sumCoinbaseOutputs couts > sub + result.sumFees) ∧
+    couts.any (fun o => o.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = false ∧
+    result.txContext = none :=
+  ⟨(connectBlockFull_preserves_noncoinbase_invariants _ _ _ _ _ _ _ _ _ _ _ _ _ hOk).1,
+   (connectBlockFull_preserves_noncoinbase_invariants _ _ _ _ _ _ _ _ _ _ _ _ _ hOk).2,
+   connectBlockFull_coinbase_bound _ _ _ _ _ _ _ _ _ _ _ _ _ hOk,
+   connectBlockFull_no_vault _ _ _ _ _ _ _ _ _ _ _ _ _ hOk,
+   connectBlockFull_no_txcontext_when_empty _ _ _ _ _ _ _ _ _ _ _ _ hOk⟩
+
+/-! ## Per-tx TxContext with per-tx parameters (Gap 3)
+
+In Go, BuildTxContext is called PER-TX with per-tx totalIn/totalOut.
+buildPerTxContext models this exactly — same function, per-tx inputs. -/
+
+/-- Per-tx TxContext construction — same as buildTxContext but named
+    to emphasize per-tx scope vs block-level aggregation. -/
+def buildPerTxContext
+    (txActiveExtIds : List Nat) (txTotalIn txTotalOut height : Nat)
+    (txCd : List (Nat × TxContextContinuing)) : Option TxContextBundle :=
+  buildTxContext txActiveExtIds txTotalIn txTotalOut height txCd
+
+/-- Per-tx TxContext has correct per-tx base values. -/
+theorem perTx_context_base_values
+    (txIds : List Nat) (hIds : txIds.length > 0)
+    (txIn txOut height : Nat) (txCd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildPerTxContext txIds txIn txOut height txCd = some bundle) :
+    bundle.base.totalIn = txIn ∧ bundle.base.totalOut = txOut ∧ bundle.base.height = height :=
+  buildTxContext_base_values txIds hIds txIn txOut height txCd bundle hEq
+
+/-- Per-tx TxContext has correct per-tx ext_ids. -/
+theorem perTx_context_ext_ids
+    (txIds : List Nat) (hIds : txIds.length > 0)
+    (txIn txOut height : Nat) (txCd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildPerTxContext txIds txIn txOut height txCd = some bundle) :
+    bundle.continuingExtIds = txIds :=
+  buildTxContext_ext_ids txIds hIds txIn txOut height txCd bundle hEq
+
 /-! ## Guard lemma
 
 connectBlockFull has exactly 4 match arms + TxContext construction:

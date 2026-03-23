@@ -39,6 +39,28 @@ theorem applyTx_state_transition
     change Except.ok (prepared.fee, prepared.nextUtxoMap) = .ok (fee, nextMap) at hOk
     cases hOk; exact ⟨prepared, rfl, rfl, rfl⟩
 
+/-! ## UTXO map decomposition (eraseInputs + insertOutputs) -/
+
+/-- Per-tx UTXO map structure: prepare decomposes into
+    eraseInputs (remove spent) + insertOutputs (add created).
+    This is the explicit erase+insert structure, not just "nextMap exists". -/
+theorem prepare_tx_utxo_decomposition
+    (txBytes : Bytes) (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes)
+    (prepared : PreparedNonCoinbaseTx)
+    (hOk : prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId = .ok prepared) :
+    ∃ core txid,
+      prepareNonCoinbaseTxCore txBytes utxoMap height blockTimestamp chainId = .ok core ∧
+      prepared.nextUtxoMap = insertOutputs (eraseInputs utxoMap core.tx.inputs) txid core.tx.outputs height := by
+  unfold prepareNonCoinbaseTxBasic at hOk
+  match hCore : prepareNonCoinbaseTxCore txBytes utxoMap height blockTimestamp chainId with
+  | .error _ => rw [hCore] at hOk; cases hOk
+  | .ok core =>
+    rw [hCore] at hOk
+    change Except.ok _ = Except.ok prepared at hOk
+    cases hOk
+    exact ⟨core, _, rfl, rfl⟩
+
 /-! ## Error propagation in tx sequence -/
 
 /-- First tx error → entire sequence fails with same error. -/

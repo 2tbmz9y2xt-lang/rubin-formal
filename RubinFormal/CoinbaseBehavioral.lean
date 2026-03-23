@@ -161,7 +161,11 @@ theorem coinbaseEntryList_uses_shared_constructor
 theorem coinbaseUtxoEntry_always_marked (out : CovenantGenesisV1.TxOut) (height : Nat) :
     (coinbaseUtxoEntry out height).createdByCoinbase = true := rfl
 
-/-- addCoinbaseOutputs fold step uses the same coinbaseUtxoEntry constructor. -/
+/-- addCoinbaseOutputs fold step uses the same coinbaseUtxoEntry constructor.
+    Bridge: both addCoinbaseOutputs (RBMap.insert) and coinbaseEntryList (List.map)
+    construct entries with coinbaseUtxoEntry. RBMap operational equivalence
+    (find? after insert) requires Std.RBMap lemmas not available in Std4 without
+    Mathlib — the shared constructor is the strongest provable bridge. -/
 theorem addCoinbaseOutputs_step_uses_shared
     (out : CovenantGenesisV1.TxOut) (_txid : Bytes) (height _idx : Nat)
     (_hSpend : isSpendableCoinbaseOutput out = true) :
