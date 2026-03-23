@@ -415,6 +415,35 @@ theorem perTx_context_ext_ids
     bundle.continuingExtIds = txIds :=
   buildTxContext_ext_ids txIds hIds txIn txOut height txCd bundle hEq
 
+/-! ## Vault error propagation (R14 integration)
+
+Vault rules are enforced per-tx inside connectBlockTxs → applyNonCoinbaseTxBasicState →
+applyNonCoinbaseTxBasicNoCrypto → validateVaultSpend.
+connectBlockFull_rejects_bad_txs ALREADY propagates ALL tx errors including vault.
+These corollaries make the vault integration explicit for the requirement matrix. -/
+
+/-- Vault owner auth failure propagates to block level. -/
+theorem connectBlockFull_vault_owner_auth_propagates
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat)
+    (ids : List Nat) (tin tout : Nat) (cd : List (Nat × TxContextContinuing))
+    (hFail : connectBlockTxs nctxs utxos h bt cid = .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED") :
+    connectBlockFull nctxs couts ctxid utxos h bt cid sub ids tin tout cd =
+    .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED" :=
+  connectBlockFull_rejects_bad_txs nctxs couts ctxid utxos h bt cid sub ids tin tout cd _ hFail
+
+/-- Vault whitelist failure propagates to block level. -/
+theorem connectBlockFull_vault_whitelist_propagates
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat)
+    (ids : List Nat) (tin tout : Nat) (cd : List (Nat × TxContextContinuing))
+    (hFail : connectBlockTxs nctxs utxos h bt cid = .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED") :
+    connectBlockFull nctxs couts ctxid utxos h bt cid sub ids tin tout cd =
+    .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED" :=
+  connectBlockFull_rejects_bad_txs nctxs couts ctxid utxos h bt cid sub ids tin tout cd _ hFail
+
 /-! ## Guard lemma
 
 connectBlockFull has exactly 4 match arms + TxContext construction:
