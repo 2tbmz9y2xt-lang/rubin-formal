@@ -206,7 +206,7 @@ theorem buildTxContextFromValues_value_conservation
   have hOut := buildTxContextFromValues_totalOut_real ids hLen inVals outVals ht cd bundle hEq
   omega
 
-/-! ## Live TxContext construction (§14 step 3c — R13 FULL)
+/-! ## Live TxContext construction (§14 step 3c — R13)
 
 Models the LIVE BuildTxContext path from Go connect_block_parallel.go.
 Written as explicit match (no do) for formal proof access.

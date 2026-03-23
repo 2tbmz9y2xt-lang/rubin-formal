@@ -345,10 +345,13 @@ theorem addCoinbaseOutputs_empty
     addCoinbaseOutputs [] txid height utxos = utxos := by
   simp [addCoinbaseOutputs, List.enum, List.foldl]
 
-/-! ## List-based UTXO map with full find?_insert proofs
+/-! ## List-based UTXO map with find?_insert proofs
 
 Std4 RBMap doesn't export find?_insert. This section provides a
-List-based UTXO map with COMPLETE find? semantics:
+List-based UTXO map with find? semantics for the coinbase path.
+Note: operational equivalence between List-based addCoinbaseOutputsList
+and RBMap-based addCoinbaseOutputs is structural (same fold step logic)
+but not rfl-proved across type boundaries.
 - listFind?_insert_self: find? after insert same key = inserted value
 - listFind?_insert_other: find? after insert different key = original
 - addCoinbaseOutputsList: fold equivalent to addCoinbaseOutputs

@@ -618,7 +618,9 @@
         "RubinFormal.addCoinbaseOutputsList_single_spendable_found": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.listFind?_inserts_all_other": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.listFind?_foldl_finds_head": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
-        "RubinFormal.coinbase_outpoint_beq_diff_vout": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
+        "RubinFormal.coinbase_outpoint_beq_diff_vout": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.Conformance.cv_utxo_basic_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVUtxoBasicReplay.lean",
+        "RubinFormal.det001_validation_order_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction. List-based UTXO map provides full find?_insert semantics: insert_self, insert_other, non-spendable unchanged at query level. ANCHOR/DA_COMMIT exclusion proved at both fold level (RBMap identity) and query level (listFind? unchanged).",
       "limitations": []
