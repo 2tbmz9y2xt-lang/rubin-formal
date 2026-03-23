@@ -5,11 +5,14 @@ import RubinFormal.ConnectBlockStrong
 
 Models the coinbase transaction apply path and proves:
 1. Coinbase value bound: sum(coinbase outputs) ≤ subsidy + fees
-2. Coinbase UTXO creation: only spendable outputs added, all marked CreatedByCoinbase
+2. Coinbase UTXO creation: spendable outputs marked CreatedByCoinbase
 3. No vault in coinbase: CORE_VAULT outputs forbidden
-4. Deterministic coinbase UTXO set: same inputs → same outputs
+4. Non-spendable (ANCHOR/DA_COMMIT) outputs excluded from UTXO set
 
-These are LIVE sub-functions extracted from the connect_block_inmem path.
+These are Lean model functions that mirror the Go/Rust coinbase path
+(block_basic_coinbase.go / connect_block_inmem.go). They are NOT wired
+into the live parseTxFromCursor/validateBlockBasic path — equivalence
+with Go/Rust is structural (same logic), not rfl-proved.
 -/
 
 namespace RubinFormal

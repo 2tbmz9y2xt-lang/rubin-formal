@@ -3,13 +3,14 @@ import RubinFormal.TxContextFormal
 /-!
 # TxContext Behavioral Proof (§14 / §18)
 
-Models the behavioral properties of BuildTxContext and proves:
+Models behavioral properties of the TxContext bundle construction path:
 1. No active profiles → nil bundle (no TxContext processing)
-2. Continuing output count bounded by MAX_CONTINUING_OUTPUTS
-3. ext_id list is sorted ascending (deterministic ordering)
-4. TotalIn/TotalOut correctly sum resolved values
+2. Continuing output count bounded by MAX_CONTINUING_OUTPUTS (type-enforced)
+3. Empty value sum = 0
 
-These properties link the TxContext path to the UTXO state model (§18).
+These are property-level models, NOT wired into the live BuildTxContext
+function. Equivalence with Go/Rust is structural, not rfl-proved.
+Ext_id sorting properties are in TxContextFormal.lean (separate surface).
 -/
 
 namespace RubinFormal
