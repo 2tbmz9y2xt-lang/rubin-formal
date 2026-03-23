@@ -433,6 +433,40 @@ theorem addCoinbaseOutputsList_single_spendable_found
   simp [addCoinbaseOutputsList, List.enum, List.enumFrom, List.foldl, hSpend,
         listInsert, listFind?]
 
+/-! ## Multi-insert find? semantics -/
+
+/-- After inserting entries with all keys ≠ k, find? k is unchanged. -/
+theorem listFind?_inserts_all_other
+    (entries : List (Outpoint × UtxoEntry))
+    (utxos : List (Outpoint × UtxoEntry))
+    (k : Outpoint)
+    (hAll : ∀ kv ∈ entries, (kv.1 == k) = false) :
+    listFind? (entries.foldl (fun acc kv => listInsert acc kv.1 kv.2) utxos) k =
+    listFind? utxos k := by
+  induction entries generalizing utxos with
+  | nil => simp [List.foldl]
+  | cons hd tl ih =>
+    simp only [List.foldl]
+    rw [ih (listInsert utxos hd.1 hd.2) (fun kv h => hAll kv (List.mem_cons_of_mem _ h))]
+    exact listFind?_insert_other utxos hd.1 k hd.2 (hAll hd (List.mem_cons_self _ _))
+
+/-- After foldl-inserting entries, the head entry IS findable if all tail
+    keys are distinct from head key. -/
+theorem listFind?_foldl_finds_head
+    (hd : Outpoint × UtxoEntry) (tl : List (Outpoint × UtxoEntry))
+    (utxos : List (Outpoint × UtxoEntry))
+    (hDistinct : ∀ kv ∈ tl, (kv.1 == hd.1) = false) :
+    listFind? ((hd :: tl).foldl (fun acc kv => listInsert acc kv.1 kv.2) utxos) hd.1 =
+    some hd.2 := by
+  simp only [List.foldl]
+  rw [listFind?_inserts_all_other tl (listInsert utxos hd.1 hd.2) hd.1 hDistinct]
+  exact listFind?_insert_self utxos hd.1 hd.2
+
+/-- Different vout indices → BEq false (for same txid coinbase entries). -/
+theorem coinbase_outpoint_beq_diff_vout (txid : Bytes) (i j : Nat) (h : i ≠ j) :
+    (({ txid := txid, vout := i } : Outpoint) == { txid := txid, vout := j }) = false := by
+  simp [BEq.beq, Outpoint.mk.injEq]; omega
+
 /-! ## Boundary cases (Checklist 2.2) -/
 
 /-- Zero fees: coinbase ≤ subsidy. -/
