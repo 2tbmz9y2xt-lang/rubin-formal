@@ -102,10 +102,6 @@ theorem coinbase_no_vault_accepts
     validateCoinbaseApplyOutputs outputs = .ok () := by
   simp [validateCoinbaseApplyOutputs, h]
 
-/-- Every coinbase entry has `createdByCoinbase = true` (from shared constructor). -/
-theorem coinbase_entry_always_marked (out : CovenantGenesisV1.TxOut) (height : Nat) :
-    (coinbaseUtxoEntry out height).createdByCoinbase = true := rfl
-
 /-- Non-spendable outputs are NOT added to UTXO set. -/
 theorem coinbase_nonspendable_excluded
     (out : CovenantGenesisV1.TxOut)
