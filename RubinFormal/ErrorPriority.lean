@@ -580,6 +580,80 @@ theorem err_ne_tx_value_parse : ("TX_ERR_VALUE_CONSERVATION" : String) ≠ "TX_E
 theorem err_ne_tx_value_missing : ("TX_ERR_VALUE_CONSERVATION" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
 theorem err_ne_tx_value_covenant : ("TX_ERR_VALUE_CONSERVATION" : String) ≠ "TX_ERR_COVENANT_TYPE_INVALID" := by decide
 
+/-! ## Stage-position witnesses: link live sub-functions to their position
+    in parseTxFromCursor and applyNonCoinbaseTxBasicNoCrypto.
+
+    Each theorem explicitly names the live function AND its error code,
+    proving the stage-to-function correspondence. Combined with
+    do-block short-circuit semantics (earlier stages prevent later ones),
+    this gives the full ordering chain on live code.
+-/
+
+-- parseTxFromCursor ordering
+theorem parse_stage_txkind_live : ∀ tk,
+    (!(tk == 0x00 || tk == 0x01 || tk == 0x02)) = true →
+    validateTxKind tk = .error "TX_ERR_PARSE" :=
+  fun tk h => txkind_invalid tk h
+
+theorem parse_stage_inputmin_live : ∀ m,
+    m = false → validateInputCountMin m = .error "TX_ERR_PARSE" :=
+  fun m h => input_count_min_fail m h
+
+theorem parse_stage_outputmin_live : ∀ m,
+    m = false → validateOutputCountMin m = .error "TX_ERR_PARSE" :=
+  fun m h => output_count_min_fail m h
+
+open RubinFormal.TxWeightV2 in
+theorem parse_stage_witness_overflow_live : ∀ ws,
+    (ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX) = true →
+    applyWitnessChecks ws = .error "TX_ERR_WITNESS_OVERFLOW" :=
+  fun ws h => witness_bytes_overflow_priority ws h
+
+-- applyNonCoinbaseTxBasicNoCrypto ordering
+open UtxoApplyGenesisV1 in
+theorem semantic_stage1_empty_inputs_live : ∀ tx height,
+    (tx.inputs.length == 0) = true →
+    applyTxPreInputChecks tx height = .error "TX_ERR_PARSE" :=
+  fun tx height h => preinput_empty_inputs_priority tx height h
+
+open UtxoApplyGenesisV1 in
+theorem semantic_stage2_nonce_live : ∀ tx height,
+    (tx.inputs.length == 0) = false → (tx.txNonce == 0) = true →
+    applyTxPreInputChecks tx height = .error "TX_ERR_TX_NONCE_INVALID" :=
+  fun tx height h1 h2 => preinput_nonce_zero_priority tx height h1 h2
+
+open UtxoApplyGenesisV1 in
+theorem perinput_scriptsig_live : ∀ i,
+    (i.scriptSig.size != 0) = true →
+    validateInputStructural i = .error "TX_ERR_PARSE" :=
+  fun i h => input_scriptsig_priority i h
+
+open UtxoApplyGenesisV1 in
+theorem perinput_duplicate_live : ∀ e height,
+    validateInputUtxoLookup true e height = .error "TX_ERR_PARSE" :=
+  fun e height => utxo_duplicate_priority e height
+
+open UtxoApplyGenesisV1 in
+theorem perinput_unknown_covenant_live : ∀ e tx wc h m,
+    (e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK) = false →
+    (e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG) = false →
+    (e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = false →
+    (e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC) = false →
+    dispatchCovenantValidation e tx wc h m = .error "TX_ERR_COVENANT_TYPE_INVALID" :=
+  fun e tx wc h m h1 h2 h3 h4 => dispatch_unknown_covenant_error e tx wc h m h1 h2 h3 h4
+
+open UtxoApplyGenesisV1 in
+theorem postloop_witness_cursor_live : ∀ c wl,
+    (c != wl) = true →
+    validateWitnessCursorComplete c wl = .error "TX_ERR_PARSE" :=
+  fun c wl h => witness_cursor_incomplete c wl h
+
+open UtxoApplyGenesisV1 in
+theorem postloop_value_overspend_live : ∀ so si vic siv,
+    (so > si) = true →
+    validateValueConservation so si vic siv = .error "TX_ERR_VALUE_CONSERVATION" :=
+  fun so si vic siv h => value_conservation_overspend so si vic siv h
+
 /-! ## Error code distinctness (§13) -/
 
 theorem err_ne_block_tx_parse : ("BLOCK_ERR_PARSE" : String) ≠ "TX_ERR_PARSE" := by decide
