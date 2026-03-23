@@ -217,6 +217,17 @@ def applyTxPreInputChecks
       { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData }
       tx.txKind height
 
+/-- Value conservation check. LIVE sub-function: called from
+    applyNonCoinbaseTxBasicNoCrypto after output summation.
+    Written without do-notation. -/
+def validateValueConservation
+    (sumOut sumIn : Nat)
+    (vaultInputCount sumInVault : Nat) : Except String Unit :=
+  if sumOut > sumIn then Except.error "TX_ERR_VALUE_CONSERVATION"
+  else if vaultInputCount == 1 && sumOut < sumInVault then
+    Except.error "TX_ERR_VALUE_CONSERVATION"
+  else Except.ok ()
+
 /-- Per-input covenant dispatch — LIVE extracted iteration body.
     Written without do-notation to enable formal dispatch ordering proofs.
     Called from `applyNonCoinbaseTxBasicNoCrypto` for-loop body.
@@ -398,10 +409,7 @@ def applyNonCoinbaseTxBasicNoCrypto
     if !vaultSpendOutputsAllowed vaultWhitelist tx.outputs then
       throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
 
-  if sumOut > sumIn then
-    throw "TX_ERR_VALUE_CONSERVATION"
-  if vaultInputCount == 1 && sumOut < sumInVault then
-    throw "TX_ERR_VALUE_CONSERVATION"
+  validateValueConservation sumOut sumIn vaultInputCount sumInVault
 
   let fee := sumIn - sumOut
   pure (fee, next.size)

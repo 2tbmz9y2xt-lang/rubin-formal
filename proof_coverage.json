@@ -270,7 +270,13 @@
         "RubinFormal.err_ne_tx_missing_coinbase",
         "RubinFormal.err_ne_tx_parse_nonce_invalid",
         "RubinFormal.witness_cursor_incomplete",
-        "RubinFormal.dispatch_unknown_covenant_error"
+        "RubinFormal.dispatch_unknown_covenant_error",
+        "RubinFormal.target_error_disambiguated",
+        "RubinFormal.value_conservation_overspend",
+        "RubinFormal.value_conservation_vault_drain",
+        "RubinFormal.err_ne_tx_value_parse",
+        "RubinFormal.err_ne_tx_value_missing",
+        "RubinFormal.err_ne_tx_value_covenant"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -351,13 +357,16 @@
         "RubinFormal.err_ne_tx_missing_coinbase": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_nonce_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_cursor_incomplete": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.target_error_disambiguated": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.value_conservation_overspend": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.value_conservation_vault_drain": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_value_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_value_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_value_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
       "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed.",
-      "limitations": [
-        "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
-        "Value conservation (sumOut <= sumIn) not covered — different error category (TX_ERR_VALUE)."
-      ]
+      "limitations": []
     },
     {
       "section_key": "covenant_registry",

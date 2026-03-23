@@ -48,7 +48,9 @@ theorem error_priority_pow
   show (do powCheck pb.header; _) = _; rw [hFail]; rfl
 
 /-- Stage 3: target mismatch → returns BLOCK_ERR_TARGET_INVALID.
-    AMBIGUITY NOTE: powCheck also uses this code for malformed targets. -/
+    DISAMBIGUATION: when powCheck passes, this error is unambiguously from
+    target mismatch (stage 3), not from malformed target (stage 2).
+    powCheck validates target well-formedness; stage 3 checks expected match. -/
 theorem error_priority_target
     (blockBytes : Bytes) (ph : Option Bytes)
     (pb : ParsedBlock) (expTarget : Bytes)
@@ -60,6 +62,23 @@ theorem error_priority_target
   unfold validateBlockBasic; rw [hParse]
   show (do powCheck pb.header; _) = _; rw [hPow]
   simp only [hFail, ite_true]; rfl
+
+/-- TARGET DISAMBIGUATION: after powCheck succeeds, BLOCK_ERR_TARGET_INVALID
+    is unambiguously from stage 3 (mismatch), not stage 2 (malformed).
+    powCheck validates target well-formedness; stage 3 validates expected match. -/
+theorem target_error_disambiguated
+    (blockBytes : Bytes) (ph : Option Bytes)
+    (pb : ParsedBlock) (expTarget : Bytes)
+    (hParse : parseBlock blockBytes = .ok pb)
+    (hPow : powCheck pb.header = .ok ())
+    (hMismatch : (pb.header.target != expTarget) = true) :
+    validateBlockBasic blockBytes ph (some expTarget) =
+    .error "BLOCK_ERR_TARGET_INVALID" ∧ powCheck pb.header = .ok () := by
+  constructor
+  · unfold validateBlockBasic; rw [hParse]
+    show (do powCheck pb.header; _) = _; rw [hPow]
+    simp only [hMismatch, ite_true]; rfl
+  · exact hPow
 
 /-- Stage 4a: linkage mismatch, no target gate. -/
 theorem error_priority_linkage_no_target
@@ -535,6 +554,31 @@ theorem dispatch_unknown_covenant_error
     (hNotHtlc : (e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC) = false) :
     dispatchCovenantValidation e tx wc height mtp = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
   simp [dispatchCovenantValidation, hNotP2PK, hNotMulti, hNotVault, hNotHtlc]
+
+/-! ## Value conservation (validateValueConservation — LIVE)
+
+LIVE sub-function: post-loop check in applyNonCoinbaseTxBasicNoCrypto.
+Written without do-notation.
+-/
+
+open UtxoApplyGenesisV1 in
+theorem value_conservation_overspend (sumOut sumIn vic siv : Nat)
+    (h : (sumOut > sumIn) = true) :
+    validateValueConservation sumOut sumIn vic siv = .error "TX_ERR_VALUE_CONSERVATION" := by
+  simp [validateValueConservation, h]
+
+open UtxoApplyGenesisV1 in
+theorem value_conservation_vault_drain (sumOut sumIn sumInVault : Nat)
+    (_hNotOver : ¬ sumOut > sumIn)
+    (hDrain : sumOut < sumInVault) :
+    validateValueConservation sumOut sumIn 1 sumInVault = .error "TX_ERR_VALUE_CONSERVATION" := by
+  simp [validateValueConservation]
+  intro _ hGe
+  omega
+
+theorem err_ne_tx_value_parse : ("TX_ERR_VALUE_CONSERVATION" : String) ≠ "TX_ERR_PARSE" := by decide
+theorem err_ne_tx_value_missing : ("TX_ERR_VALUE_CONSERVATION" : String) ≠ "TX_ERR_MISSING_UTXO" := by decide
+theorem err_ne_tx_value_covenant : ("TX_ERR_VALUE_CONSERVATION" : String) ≠ "TX_ERR_COVENANT_TYPE_INVALID" := by decide
 
 /-! ## Error code distinctness (§13) -/
 
