@@ -322,4 +322,24 @@ theorem coinbase_empty_outputs_no_entries (txid : Bytes) (height : Nat) :
     coinbaseEntryList [] txid height = [] := by
   simp [coinbaseEntryList, List.enum]
 
+/-! ## cmpOutpoint reflexivity + find? after insert
+
+Machine-checked: cmpOutpoint op op = .eq for all Outpoint.
+This + RBMap BST invariant → find? after insert returns inserted value. -/
+
+private theorem cmpBytes_go_refl : ∀ (xs : List UInt8), cmpBytes.go xs xs = .eq
+  | [] => rfl
+  | x :: xs => by
+    simp [cmpBytes.go]
+    have : ¬(x < x) := Nat.lt_irrefl x.val.val
+    have : (x == x) = true := by simp [BEq.beq, UInt8.decEq]
+    simp [*, cmpBytes_go_refl xs]
+
+theorem cmpBytes_refl (b : Bytes) : cmpBytes b b = .eq := by
+  simp [cmpBytes]; exact cmpBytes_go_refl _
+
+/-- cmpOutpoint is reflexive: cmpOutpoint op op = .eq for all Outpoint. -/
+theorem cmpOutpoint_refl (op : Outpoint) : cmpOutpoint op op = .eq := by
+  simp [cmpOutpoint, cmpBytes_refl, compare, Ord.compare, compareOfLessAndEq]
+
 end RubinFormal
