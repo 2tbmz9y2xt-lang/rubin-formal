@@ -698,6 +698,12 @@ theorem bridge_parse_witness (ws : WitnessSectionResult)
     applyWitnessChecks ws = .error "TX_ERR_WITNESS_OVERFLOW" :=
   ⟨rfl, witness_bytes_overflow_priority ws h⟩
 
+theorem bridge_parse_dalen (tk daLen : Nat) (minDa : Bool)
+    (h : minDa = false) :
+    txParseStageOrd .DaLenChecks = 8 ∧
+    applyDaLenChecks tk daLen minDa = .error "TX_ERR_PARSE" :=
+  ⟨rfl, dalen_minimality_priority tk daLen minDa h⟩
+
 theorem parse_stage_chain :
     txParseStageOrd .TxKind < txParseStageOrd .InputCountMin ∧
     txParseStageOrd .InputCountMin < txParseStageOrd .OutputCountMin ∧
@@ -765,6 +771,34 @@ theorem semantic_stage_chain :
     txSemanticStageOrd .WitnessCursor < txSemanticStageOrd .ValueConservation := by
   simp [txSemanticStageOrd]
 
+-- Missing bridges: OutputCovenants, InputStructural, WitnessCursor
+
+theorem bridge_semantic_output_covenant (out : CovenantGenesisV1.TxOut)
+    (txKind height : Nat)
+    (h1 : (out.covenantType == CovenantGenesisV1.COV_TYPE_P2PK) = false)
+    (h2 : (out.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR) = false)
+    (h3 : (out.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = false)
+    (h4 : (out.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG) = false)
+    (h5 : (out.covenantType == CovenantGenesisV1.COV_TYPE_HTLC) = false)
+    (h6 : (out.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT) = false) :
+    txSemanticStageOrd TxSemanticStage.OutputCovenants = 2 ∧
+    CovenantGenesisV1.validateOutGenesis out txKind height = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  exact ⟨rfl, by unfold CovenantGenesisV1.validateOutGenesis; simp only [h1, h2, h3, h4, h5, h6, ite_false]; rfl⟩
+
+open UtxoApplyGenesisV1 in
+theorem bridge_semantic_scriptsig (i : UtxoBasicV1.TxIn)
+    (h : (i.scriptSig.size != 0) = true) :
+    txSemanticStageOrd .InputStructural = 3 ∧
+    validateInputStructural i = .error "TX_ERR_PARSE" :=
+  ⟨rfl, input_scriptsig_priority i h⟩
+
+open UtxoApplyGenesisV1 in
+theorem bridge_semantic_witness_cursor (cursor witnessLen : Nat)
+    (h : (cursor != witnessLen) = true) :
+    txSemanticStageOrd .WitnessCursor = 6 ∧
+    validateWitnessCursorComplete cursor witnessLen = .error "TX_ERR_PARSE" :=
+  ⟨rfl, witness_cursor_incomplete cursor witnessLen h⟩
+
 /-! ## TXCTX §13.1 bridge: CoreExtRefinement.ExtError → live functions
 
 Machine-checked bridge connecting the ExtError model (ParseError < SuiteDisallowed < SigInvalid)
@@ -830,5 +864,23 @@ theorem err_ne_ts_old_future : ("BLOCK_ERR_TIMESTAMP_OLD" : String) ≠ "BLOCK_E
 theorem err_ne_parse_ts_old : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_TIMESTAMP_OLD" := by decide
 theorem err_ne_parse_ts_future : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_TIMESTAMP_FUTURE" := by decide
 theorem err_ne_tx_parse_nonce : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_NONCE_REPLAY" := by decide
+
+/-! ## Smoke tests: bridge lemmas with concrete inputs -/
+
+-- bridge_parse_dalen: minDa=false → error at stage 8
+example : txParseStageOrd .DaLenChecks = 8 ∧
+    BlockBasicV1.applyDaLenChecks 0 100 false = .error "TX_ERR_PARSE" :=
+  bridge_parse_dalen 0 100 false rfl
+
+-- bridge_semantic_witness_cursor: cursor ≠ witnessLen → error at stage 6
+example : txSemanticStageOrd .WitnessCursor = 6 ∧
+    UtxoApplyGenesisV1.validateWitnessCursorComplete 3 5 = .error "TX_ERR_PARSE" :=
+  bridge_semantic_witness_cursor 3 5 (by native_decide)
+
+-- ext_error_ordering: parse < suite < sig (concrete ordinals)
+open CoreExtRefinement in
+example : errorPriority .ParseError < errorPriority .SuiteDisallowed ∧
+    errorPriority .SuiteDisallowed < errorPriority .SigInvalid :=
+  ext_error_ordering_matches_live
 
 end RubinFormal
