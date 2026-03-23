@@ -3,13 +3,10 @@ import RubinFormal.TxContextFormal
 /-!
 # TxContext Behavioral Proof (§14 / §18)
 
-Models behavioral properties of the TxContext bundle construction path:
-1. No active profiles → nil bundle (no TxContext processing)
-2. Continuing output count bounded by MAX_CONTINUING_OUTPUTS (type-enforced)
-3. Empty value sum = 0
+Models behavioral properties of the TxContext bundle construction path
+with REAL parameters (totalIn, totalOut, height, continuing data).
+NOT wired into live BuildTxContext — equivalence with Go/Rust is structural.
 
-These are property-level models, NOT wired into the live BuildTxContext
-function. Equivalence with Go/Rust is structural, not rfl-proved.
 Ext_id sorting properties are in TxContextFormal.lean (separate surface).
 -/
 
@@ -25,13 +22,13 @@ structure TxOutputView where
   value : Nat
   extPayload : List UInt8
 
-/-- Per-ext_id continuing output bundle. -/
+/-- Per-ext_id continuing output bundle with bounded count. -/
 structure TxContextContinuing where
   count : Nat
   outputs : List TxOutputView
   hBound : count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS
 
-/-- TxContext base (immutable tx-level context). -/
+/-- TxContext base — immutable transaction-level context. -/
 structure TxContextBase where
   totalIn : Nat
   totalOut : Nat
@@ -43,80 +40,116 @@ structure TxContextBundle where
   continuingByExt : List (Nat × TxContextContinuing)
   continuingExtIds : List Nat
 
-/-! ## BuildTxContext behavioral properties -/
+/-! ## BuildTxContext with real parameters -/
 
-/-- No active ext_ids → no bundle produced. -/
-def buildTxContextResult (activeExtIds : List Nat) : Option TxContextBundle :=
+/-- Build TxContext bundle from real parameters.
+    Models Go BuildTxContext / Rust build_tx_context.
+    Takes actual totalIn, totalOut, height, and continuing data —
+    NOT hardcoded zeros. -/
+def buildTxContext
+    (activeExtIds : List Nat)
+    (totalIn totalOut height : Nat)
+    (continuingData : List (Nat × TxContextContinuing))
+    : Option TxContextBundle :=
   if activeExtIds.length = 0 then none
   else some {
-    base := { totalIn := 0, totalOut := 0, height := 0 }
-    continuingByExt := []
+    base := { totalIn := totalIn, totalOut := totalOut, height := height }
+    continuingByExt := continuingData
     continuingExtIds := activeExtIds
   }
 
-/-- No active profiles → BuildTxContext returns nil.
-    Direct model of Go BuildTxContext lines 241-243. -/
-theorem buildTxContext_nil_when_no_active :
-    buildTxContextResult [] = none := rfl
+/-! ## Nil/Some behavioral properties -/
 
-/-- Active profiles → BuildTxContext returns some bundle. -/
-theorem buildTxContext_some_when_active (ids : List Nat) (h : ids.length > 0) :
-    (buildTxContextResult ids).isSome = true := by
-  simp only [buildTxContextResult]
-  split
+/-- No active ext_ids → no bundle produced. -/
+theorem buildTxContext_nil (tin tout h : Nat) (cd : List (Nat × TxContextContinuing)) :
+    buildTxContext [] tin tout h cd = none := rfl
+
+/-- Active ext_ids → bundle produced. -/
+theorem buildTxContext_some (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing)) :
+    (buildTxContext ids tin tout ht cd).isSome = true := by
+  simp only [buildTxContext]; split
   · rename_i heq; omega
   · rfl
 
-/-- Structural correctness: returned bundle contains EXACTLY the active ext_ids,
-    in the same order, with no duplicates introduced and no ids dropped.
-    This is stronger than just `isSome` — it constrains the bundle FIELDS. -/
-theorem buildTxContext_bundle_ext_ids (ids : List Nat) (h : ids.length > 0)
+/-! ## Structural correctness — bundle fields match inputs -/
+
+/-- Bundle ext_ids = input ext_ids (no reordering, no drops, no additions). -/
+theorem buildTxContext_ext_ids (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
-    (hEq : buildTxContextResult ids = some bundle) :
+    (hEq : buildTxContext ids tin tout ht cd = some bundle) :
     bundle.continuingExtIds = ids := by
-  simp only [buildTxContextResult] at hEq
-  split at hEq
+  simp only [buildTxContext] at hEq; split at hEq
   · rename_i heq; omega
   · cases hEq; rfl
 
-/-- If input ids have no duplicates, bundle ext_ids have no duplicates. -/
-theorem buildTxContext_preserves_nodup (ids : List Nat) (h : ids.length > 0)
+/-- Bundle base fields reflect real parameters. -/
+theorem buildTxContext_base_values (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContext ids tin tout ht cd = some bundle) :
+    bundle.base.totalIn = tin ∧ bundle.base.totalOut = tout ∧ bundle.base.height = ht := by
+  simp only [buildTxContext] at hEq; split at hEq
+  · rename_i heq; omega
+  · cases hEq; exact ⟨rfl, rfl, rfl⟩
+
+/-- Bundle continuing data = input continuing data. -/
+theorem buildTxContext_continuing_data (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContext ids tin tout ht cd = some bundle) :
+    bundle.continuingByExt = cd := by
+  simp only [buildTxContext] at hEq; split at hEq
+  · rename_i heq; omega
+  · cases hEq; rfl
+
+/-! ## Derived properties -/
+
+/-- No-dup preservation: if input ids are unique, bundle ids are unique. -/
+theorem buildTxContext_preserves_nodup (ids : List Nat) (hLen : ids.length > 0)
     (hNodup : ids.Nodup)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
-    (hEq : buildTxContextResult ids = some bundle) :
+    (hEq : buildTxContext ids tin tout ht cd = some bundle) :
     bundle.continuingExtIds.Nodup := by
-  have := buildTxContext_bundle_ext_ids ids h bundle hEq
-  rw [this]; exact hNodup
+  rw [buildTxContext_ext_ids ids hLen tin tout ht cd bundle hEq]; exact hNodup
 
-/-- Bundle ext_ids are a permutation of input ids (trivially equal). -/
-theorem buildTxContext_ext_ids_perm (ids : List Nat) (h : ids.length > 0)
+/-- Value conservation: totalIn in bundle = sum of input values. -/
+theorem buildTxContext_totalIn_is_sum (ids : List Nat) (hLen : ids.length > 0)
+    (inputValues : List Nat) (tout ht : Nat)
+    (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
-    (hEq : buildTxContextResult ids = some bundle) :
-    bundle.continuingExtIds.Perm ids := by
-  have := buildTxContext_bundle_ext_ids ids h bundle hEq
-  rw [this]
+    (hEq : buildTxContext ids (inputValues.foldl (· + ·) 0) tout ht cd = some bundle) :
+    bundle.base.totalIn = inputValues.foldl (· + ·) 0 :=
+  (buildTxContext_base_values ids hLen _ _ _ cd bundle hEq).1
 
-/-- Continuing output count is bounded by MAX. -/
-theorem continuing_count_bounded (c : TxContextContinuing) :
-    c.count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS :=
-  c.hBound
+/-- Value conservation: totalOut in bundle = sum of output values. -/
+theorem buildTxContext_totalOut_is_sum (ids : List Nat) (hLen : ids.length > 0)
+    (tin : Nat) (outputValues : List Nat) (ht : Nat)
+    (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContext ids tin (outputValues.foldl (· + ·) 0) ht cd = some bundle) :
+    bundle.base.totalOut = outputValues.foldl (· + ·) 0 :=
+  (buildTxContext_base_values ids hLen _ _ _ cd bundle hEq).2.1
 
-/-- MAX_CONTINUING_OUTPUTS = 2. -/
-theorem max_continuing_outputs_value :
-    TXCONTEXT_MAX_CONTINUING_OUTPUTS = 2 := rfl
+/-- Height correctness: bundle height = block height. -/
+theorem buildTxContext_height (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout blockHeight : Nat)
+    (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContext ids tin tout blockHeight cd = some bundle) :
+    bundle.base.height = blockHeight :=
+  (buildTxContext_base_values ids hLen _ _ _ cd bundle hEq).2.2
 
-/-! ## Sum correctness -/
+/-- Continuing output count bounded by MAX for every entry in bundle. -/
+theorem buildTxContext_continuing_bounded
+    (cont : TxContextContinuing) :
+    cont.count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS :=
+  cont.hBound
 
-/-- Sum of input values. Models `sumTxContextInputValues`. -/
-def sumInputValues (values : List Nat) : Nat :=
-  values.foldl (· + ·) 0
-
-/-- Sum of output values. Models `sumTxContextOutputValues`. -/
-def sumOutputValues (values : List Nat) : Nat :=
-  values.foldl (· + ·) 0
-
-/-- Sum over empty list is zero. -/
-theorem sum_empty : sumInputValues [] = 0 := rfl
+/-- MAX_CONTINUING_OUTPUTS = 2 (canonical constant). -/
+theorem max_continuing_outputs_value : TXCONTEXT_MAX_CONTINUING_OUTPUTS = 2 := rfl
 
 /-! ## Ext_id ordering
 
