@@ -498,9 +498,20 @@ theorem listFind?_foldl_finds_head
   rw [listFind?_inserts_all_other tl (listInsert utxos hd.1 hd.2) hd.1 hDistinct]
   exact listFind?_insert_self utxos hd.1 hd.2
 
-/-- Different vout indices → BEq false (for same txid coinbase entries). -/
-theorem coinbase_outpoint_beq_diff_vout (txid : Bytes) (i j : Nat) (h : i ≠ j) :
+/-- Different enum positions → BEq false for coinbase outpoints.
+    i ≠ j DERIVED from enum membership + entry inequality, not free parameter. -/
+theorem coinbase_outpoint_beq_derived
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (_height : Nat)
+    (i j : Nat) (oi oj : CovenantGenesisV1.TxOut)
+    (hi : (i, oi) ∈ (outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2)))
+    (hj : (j, oj) ∈ (outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2)))
+    (hEntry : (i, oi) ≠ (j, oj)) :
     (({ txid := txid, vout := i } : Outpoint) == { txid := txid, vout := j }) = false := by
+  have hNe : i ≠ j := by
+    intro heq; subst heq
+    have := enum_injective_fst outputs i oi oj
+      (List.mem_filter.mp hi).1 (List.mem_filter.mp hj).1
+    subst this; exact hEntry rfl
   simp [BEq.beq, Outpoint.mk.injEq]; omega
 
 /-! ## Boundary cases (Checklist 2.2) -/
