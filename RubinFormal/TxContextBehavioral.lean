@@ -119,41 +119,92 @@ theorem buildTxContext_preserves_nodup (ids : List Nat) (hLen : ids.length > 0)
     bundle.continuingExtIds.Nodup := by
   rw [buildTxContext_ext_ids ids hLen tin tout ht cd bundle hEq]; exact hNodup
 
-/-- Value conservation: totalIn in bundle = sum of input values. -/
-theorem buildTxContext_totalIn_is_sum (ids : List Nat) (hLen : ids.length > 0)
-    (inputValues : List Nat) (tout ht : Nat)
+/-! ## Real value computation (models Go sumTxContextInputValues) -/
+
+/-- Sum input values by folding over resolved inputs. -/
+def sumInputValues (values : List Nat) : Nat := values.foldl (· + ·) 0
+
+/-- Sum output values by folding over tx outputs. -/
+def sumOutputValues (values : List Nat) : Nat := values.foldl (· + ·) 0
+
+/-- BuildTxContext with COMPUTED totalIn/totalOut from real value lists.
+    This is the REAL path: totalIn/totalOut are not free parameters
+    but computed from actual input/output values via fold. -/
+def buildTxContextFromValues
+    (activeExtIds : List Nat)
+    (inputValues outputValues : List Nat)
+    (height : Nat)
+    (continuingData : List (Nat × TxContextContinuing))
+    : Option TxContextBundle :=
+  buildTxContext activeExtIds (sumInputValues inputValues) (sumOutputValues outputValues) height continuingData
+
+/-! ## Value conservation with REAL sums (not free parameters) -/
+
+/-- bundle.totalIn = fold sum of actual input values. -/
+theorem buildTxContextFromValues_totalIn_real
+    (ids : List Nat) (hLen : ids.length > 0)
+    (inVals outVals : List Nat) (ht : Nat)
     (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
-    (hEq : buildTxContext ids (inputValues.foldl (· + ·) 0) tout ht cd = some bundle) :
-    bundle.base.totalIn = inputValues.foldl (· + ·) 0 :=
+    (hEq : buildTxContextFromValues ids inVals outVals ht cd = some bundle) :
+    bundle.base.totalIn = sumInputValues inVals :=
   (buildTxContext_base_values ids hLen _ _ _ cd bundle hEq).1
 
-/-- Value conservation: totalOut in bundle = sum of output values. -/
-theorem buildTxContext_totalOut_is_sum (ids : List Nat) (hLen : ids.length > 0)
-    (tin : Nat) (outputValues : List Nat) (ht : Nat)
+/-- bundle.totalOut = fold sum of actual output values. -/
+theorem buildTxContextFromValues_totalOut_real
+    (ids : List Nat) (hLen : ids.length > 0)
+    (inVals outVals : List Nat) (ht : Nat)
     (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
-    (hEq : buildTxContext ids tin (outputValues.foldl (· + ·) 0) ht cd = some bundle) :
-    bundle.base.totalOut = outputValues.foldl (· + ·) 0 :=
+    (hEq : buildTxContextFromValues ids inVals outVals ht cd = some bundle) :
+    bundle.base.totalOut = sumOutputValues outVals :=
   (buildTxContext_base_values ids hLen _ _ _ cd bundle hEq).2.1
 
-/-- Height correctness: bundle height = block height. -/
-theorem buildTxContext_height (ids : List Nat) (hLen : ids.length > 0)
-    (tin tout blockHeight : Nat)
+/-- bundle.height = block height (wired through buildTxContextFromValues). -/
+theorem buildTxContextFromValues_height_real
+    (ids : List Nat) (hLen : ids.length > 0)
+    (inVals outVals : List Nat) (blockHeight : Nat)
     (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
-    (hEq : buildTxContext ids tin tout blockHeight cd = some bundle) :
+    (hEq : buildTxContextFromValues ids inVals outVals blockHeight cd = some bundle) :
     bundle.base.height = blockHeight :=
   (buildTxContext_base_values ids hLen _ _ _ cd bundle hEq).2.2
 
-/-- Continuing output count bounded by MAX for every entry in bundle. -/
-theorem buildTxContext_continuing_bounded
-    (cont : TxContextContinuing) :
-    cont.count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS :=
-  cont.hBound
+/-! ## Continuing output bounds (type invariant, not precondition) -/
 
-/-- MAX_CONTINUING_OUTPUTS = 2 (canonical constant). -/
-theorem max_continuing_outputs_value : TXCONTEXT_MAX_CONTINUING_OUTPUTS = 2 := rfl
+/-- Every TxContextContinuing carries count ≤ MAX as TYPE INVARIANT. -/
+theorem continuing_bound_is_invariant (cont : TxContextContinuing) :
+    cont.count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS := cont.hBound
+
+/-- MAX = 2 (canonical constant from §14). -/
+theorem max_continuing_is_two : TXCONTEXT_MAX_CONTINUING_OUTPUTS = 2 := rfl
+
+/-- ALL continuings in a built bundle have count ≤ 2 (fold-level). -/
+theorem buildTxContext_all_continuings_bounded
+    (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContext ids tin tout ht cd = some bundle)
+    (pair : Nat × TxContextContinuing)
+    (hMem : pair ∈ bundle.continuingByExt) :
+    pair.2.count ≤ 2 := by
+  have hCd := buildTxContext_continuing_data ids hLen tin tout ht cd bundle hEq
+  rw [hCd] at hMem; exact pair.2.hBound
+
+/-! ## Cross-property: value conservation (fee ≥ 0) -/
+
+/-- If inputs ≥ outputs, bundle preserves totalIn ≥ totalOut. -/
+theorem buildTxContextFromValues_value_conservation
+    (ids : List Nat) (hLen : ids.length > 0)
+    (inVals outVals : List Nat) (ht : Nat)
+    (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContextFromValues ids inVals outVals ht cd = some bundle)
+    (hFee : sumInputValues inVals ≥ sumOutputValues outVals) :
+    bundle.base.totalIn ≥ bundle.base.totalOut := by
+  have hIn := buildTxContextFromValues_totalIn_real ids hLen inVals outVals ht cd bundle hEq
+  have hOut := buildTxContextFromValues_totalOut_real ids hLen inVals outVals ht cd bundle hEq
+  omega
 
 /-! ## Ext_id ordering
 
