@@ -256,7 +256,19 @@
         "RubinFormal.input_scriptsig_priority",
         "RubinFormal.input_sequence_priority",
         "RubinFormal.input_coinbase_prevout_priority",
-        "RubinFormal.dalen_kind2_bounds"
+        "RubinFormal.dalen_kind2_bounds",
+        "RubinFormal.txkind_invalid",
+        "RubinFormal.input_count_min_fail",
+        "RubinFormal.output_count_min_fail",
+        "RubinFormal.utxo_duplicate_priority",
+        "RubinFormal.utxo_missing_priority",
+        "RubinFormal.utxo_anchor_rejected",
+        "RubinFormal.utxo_coinbase_immature",
+        "RubinFormal.err_ne_block_tx_parse",
+        "RubinFormal.err_ne_tx_parse_seq",
+        "RubinFormal.err_ne_tx_parse_coinbase",
+        "RubinFormal.err_ne_tx_missing_coinbase",
+        "RubinFormal.err_ne_tx_parse_nonce_invalid"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -323,13 +335,25 @@
         "RubinFormal.input_scriptsig_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.input_sequence_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.input_coinbase_prevout_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.dalen_kind2_bounds": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.dalen_kind2_bounds": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.txkind_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.input_count_min_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.output_count_min_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.utxo_duplicate_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.utxo_missing_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.utxo_anchor_rejected": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.utxo_coinbase_immature": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_block_tx_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_parse_seq": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_parse_coinbase": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_missing_coinbase": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.err_ne_tx_parse_nonce_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation on live validateBlockBasic for all 6 stages including merkle at top level (4 combos). Tx parse witness: applyWitnessChecks (LIVE sub-function called from parseTxFromCursor) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence with explicit-bind helper. Tx parse DA: applyDaLenChecks (LIVE sub-function called from parseTxFromCursor) — 4 DA-len checks proved (minimality, kind0, kind1, kind2). Tx semantic: applyTxPreInputChecks (LIVE) — empty inputs → nonce invalid → output covenant. validateInputStructural (LIVE, per-input loop) — scriptSig → sequence → coinbase prevout. Explicit-bind helpers (merkleWitnessTailExplicit, applyWitnessChecksExplicit) are proof-only, not called from live code.",
+      "notes": "Block-level: direct error propagation on live validateBlockBasic for all 6 stages including merkle at top level. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin (LIVE, header/bounds). applyWitnessChecks (LIVE, witness ordering). applyDaLenChecks (LIVE, DA checks). Tx semantic: applyTxPreInputChecks (LIVE, empty inputs → nonce → covenants). validateInputStructural (LIVE, per-input scriptSig → sequence → coinbase prevout). validateInputUtxoLookup (LIVE, per-input duplicate → missing → anchor/DA → coinbase maturity). All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed to enable formal ordering proofs.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
-        "parseTxFromCursor header/bounds stages (lines 108-139) not decomposed — all throw TX_ERR_PARSE so inter-stage ordering is trivially uninteresting.",
-        "Per-input UTXO lookup / duplicate / covenant-type ordering within for-loop body not decomposed (mutable state dependency)."
+        "Per-input covenant dispatch (P2PK→Multisig→Vault→HTLC→else) ordering: each branch calls existing live sub-functions (validateP2PKSpendPreSig etc.), dispatch is a match/if-else chain in the for-loop body.",
+        "Post-loop witness cursor check and value conservation not decomposed."
       ]
     },
     {

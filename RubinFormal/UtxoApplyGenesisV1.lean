@@ -177,6 +177,27 @@ def validateInputStructural (i : UtxoBasicV1.TxIn) : Except String Unit := do
   if UtxoBasicV1.isCoinbasePrevout i then throw "TX_ERR_PARSE"
   pure ()
 
+/-- Per-input UTXO lookup and pre-covenant checks.
+    LIVE sub-function: called from applyNonCoinbaseTxBasicNoCrypto per-input loop.
+    Ordering: duplicate → missing UTXO → anchor/DA → coinbase maturity.
+    Written without do-notation to avoid join points for formal proofs. -/
+def validateInputUtxoLookup
+    (isDuplicate : Bool)
+    (utxoEntry : Option UtxoBasicV1.UtxoEntry)
+    (height : Nat) : Except String UtxoBasicV1.UtxoEntry :=
+  if isDuplicate then Except.error "TX_ERR_PARSE"
+  else match utxoEntry with
+    | none => Except.error "TX_ERR_MISSING_UTXO"
+    | some e =>
+      if e.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR ||
+         e.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT then
+        Except.error "TX_ERR_MISSING_UTXO"
+      else if e.createdByCoinbase then
+        if height < e.creationHeight + UtxoBasicV1.COINBASE_MATURITY then
+          Except.error "TX_ERR_COINBASE_IMMATURE"
+        else Except.ok e
+      else Except.ok e
+
 /-- Pre-input semantic checks: parse, nonce, output covenants.
     LIVE sub-function: applyNonCoinbaseTxBasicNoCrypto calls it directly.
     Ordering: TX_ERR_PARSE (empty inputs) → TX_ERR_TX_NONCE_INVALID →
@@ -226,19 +247,9 @@ def applyNonCoinbaseTxBasicNoCrypto
     let i := tx.inputs.get! inputIndex
     validateInputStructural i
     let op : Outpoint := { txid := i.prevTxid, vout := i.prevVout }
-    if seen.contains op then throw "TX_ERR_PARSE"
+    let isDup := seen.contains op
     seen := seen.insert op
-
-    let e? := next.find? op
-    let e ← match e? with
-      | none => throw "TX_ERR_MISSING_UTXO"
-      | some x => pure x
-    if e.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR || e.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT then
-      throw "TX_ERR_MISSING_UTXO"
-
-    if e.createdByCoinbase then
-      if height < e.creationHeight + UtxoBasicV1.COINBASE_MATURITY then
-        throw "TX_ERR_COINBASE_IMMATURE"
+    let e ← validateInputUtxoLookup isDup (next.find? op) height
 
     -- spend covenant structural validity (parsers)
     if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then

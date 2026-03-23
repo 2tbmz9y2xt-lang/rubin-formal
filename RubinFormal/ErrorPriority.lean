@@ -452,7 +452,64 @@ theorem input_coinbase_prevout_priority
     validateInputStructural i = .error "TX_ERR_PARSE" := by
   simp [validateInputStructural, hSS, hSeq, h]; rfl
 
+/-! ## Header/bounds parse checks (validateTxKind, validateInputCountMin, validateOutputCountMin)
+
+LIVE sub-functions called from parseTxFromCursor. All throw TX_ERR_PARSE.
+-/
+
+open BlockBasicV1 in
+theorem txkind_invalid (tk : Nat)
+    (h : (!(tk == 0x00 || tk == 0x01 || tk == 0x02)) = true) :
+    validateTxKind tk = .error "TX_ERR_PARSE" := by
+  unfold validateTxKind; rw [h]; rfl
+
+open BlockBasicV1 in
+theorem input_count_min_fail (minIn : Bool) (h : minIn = false) :
+    validateInputCountMin minIn = .error "TX_ERR_PARSE" := by
+  unfold validateInputCountMin; rw [h]; rfl
+
+open BlockBasicV1 in
+theorem output_count_min_fail (minOut : Bool) (h : minOut = false) :
+    validateOutputCountMin minOut = .error "TX_ERR_PARSE" := by
+  unfold validateOutputCountMin; rw [h]; rfl
+
+/-! ## Per-input UTXO lookup ordering (validateInputUtxoLookup)
+
+LIVE sub-function called from per-input loop. Written without do-notation
+to enable formal ordering proofs. Ordering: duplicate → missing → anchor/DA → coinbase.
+-/
+
+open UtxoApplyGenesisV1 in
+theorem utxo_duplicate_priority (utxoEntry : Option UtxoBasicV1.UtxoEntry) (height : Nat) :
+    validateInputUtxoLookup true utxoEntry height = .error "TX_ERR_PARSE" := by
+  simp [validateInputUtxoLookup]
+
+open UtxoApplyGenesisV1 in
+theorem utxo_missing_priority (height : Nat) :
+    validateInputUtxoLookup false none height = .error "TX_ERR_MISSING_UTXO" := by
+  simp [validateInputUtxoLookup]
+
+open UtxoApplyGenesisV1 in
+theorem utxo_anchor_rejected (e : UtxoBasicV1.UtxoEntry) (height : Nat)
+    (h : (e.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR || e.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT) = true) :
+    validateInputUtxoLookup false (some e) height = .error "TX_ERR_MISSING_UTXO" := by
+  simp [validateInputUtxoLookup, h]
+
+open UtxoApplyGenesisV1 in
+theorem utxo_coinbase_immature (e : UtxoBasicV1.UtxoEntry) (height : Nat)
+    (hNotAnchor : (e.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR || e.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT) = false)
+    (hCoinbase : e.createdByCoinbase = true)
+    (hImmature : (height < e.creationHeight + UtxoBasicV1.COINBASE_MATURITY) = true) :
+    validateInputUtxoLookup false (some e) height = .error "TX_ERR_COINBASE_IMMATURE" := by
+  simp [validateInputUtxoLookup, hNotAnchor, hCoinbase, hImmature]
+
 /-! ## Block-level error code distinctness (§13) -/
+
+theorem err_ne_block_tx_parse : ("BLOCK_ERR_PARSE" : String) ≠ "TX_ERR_PARSE" := by decide
+theorem err_ne_tx_parse_seq : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SEQUENCE_INVALID" := by decide
+theorem err_ne_tx_parse_coinbase : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_COINBASE_IMMATURE" := by decide
+theorem err_ne_tx_missing_coinbase : ("TX_ERR_MISSING_UTXO" : String) ≠ "TX_ERR_COINBASE_IMMATURE" := by decide
+theorem err_ne_tx_parse_nonce_invalid : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_TX_NONCE_INVALID" := by decide
 
 theorem err_ne_parse_target : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_TARGET_INVALID" := by decide
 theorem err_ne_parse_linkage : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_LINKAGE_INVALID" := by decide
