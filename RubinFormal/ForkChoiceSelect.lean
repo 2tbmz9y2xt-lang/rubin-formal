@@ -133,14 +133,19 @@ theorem forkSelect_lighter_loses (lw rw : Nat) (lh rh : List UInt8) (h : lw > rw
 
 /-! ## Concrete eval checks (smoke tests) -/
 
--- Heavier chain: work 100 vs 50 → Left wins
-#eval forkSelect 100 50 [1] [2]  -- .Left
--- Lighter chain: work 50 vs 100 → Right wins
-#eval forkSelect 50 100 [1] [2]  -- .Right
--- Equal work, lh < rh → Right wins (tie-break)
-#eval forkSelect 100 100 [0] [1]  -- .Right
--- Equal work, lh > rh → Left wins (tie-break)
-#eval forkSelect 100 100 [1] [0]  -- .Left
+-- Smoke tests: all fork-choice cases
+#eval forkSelect 100 50 [1] [2]    -- .Left  (heavier lhs)
+#eval forkSelect 50 100 [1] [2]    -- .Right (heavier rhs)
+#eval forkSelect 100 100 [0] [1]   -- .Right (tie-break: [0] < [1])
+#eval forkSelect 100 100 [1] [0]   -- .Left  (tie-break: [1] > [0])
+-- Edge cases
+#eval forkSelect 0 0 [0] [1]       -- .Right (zero work, tie-break)
+#eval forkSelect 0 0 [1] [0]       -- .Left  (zero work, reverse)
+#eval forkSelect 1 0 [0] [255]     -- .Left  (work wins over hash)
+-- Symmetric agreement check: A sees (lh,rh), B sees (rh,lh)
+-- Both must agree on same winner
+#eval (forkSelect 50 50 [0,1] [1,0], forkSelect 50 50 [1,0] [0,1])
+-- Expected: (.Right, .Left) — both pick [1,0] as winner
 
 /-! ## Go/Rust code reference
 
