@@ -342,4 +342,42 @@ theorem cmpBytes_refl (b : Bytes) : cmpBytes b b = .eq := by
 theorem cmpOutpoint_refl (op : Outpoint) : cmpOutpoint op op = .eq := by
   simp [cmpOutpoint, cmpBytes_refl, compare, Ord.compare, compareOfLessAndEq]
 
+/-! ## OrientedCmp instance for cmpOutpoint
+
+Machine-checked: cmpOutpoint a b = (cmpOutpoint b a).swap.
+Proved via cmpBytes_go_symm (induction on byte list) + Nat compare symmetry. -/
+
+private theorem cmpBytes_go_symm : ∀ (xs ys : List UInt8),
+    (cmpBytes.go xs ys).swap = cmpBytes.go ys xs
+  | [], [] => rfl | [], _ :: _ => rfl | _ :: _, [] => rfl
+  | x :: xs, y :: ys => by
+    simp only [cmpBytes.go]
+    by_cases hxy : (x : UInt8) < y
+    · simp only [hxy, ite_true, show ¬(y < x) from fun h => Nat.lt_asymm hxy h, ite_false, Ordering.swap]
+    · by_cases hyx : (y : UInt8) < x
+      · simp only [hxy, ite_false, hyx, ite_true, Ordering.swap]
+      · simp only [hxy, ite_false, hyx, Ordering.swap]; exact cmpBytes_go_symm xs ys
+
+theorem cmpBytes_symm (a b : Bytes) : (cmpBytes a b).swap = cmpBytes b a := by
+  simp [cmpBytes]; exact cmpBytes_go_symm _ _
+
+private theorem nat_cmp_symm (a b : Nat) :
+    Ordering.swap (compareOfLessAndEq a b) = compareOfLessAndEq b a := by
+  unfold compareOfLessAndEq Ordering.swap
+  by_cases h1 : a < b
+  · simp [h1, show ¬(b < a) from by omega, show a ≠ b from by omega, show b ≠ a from by omega]
+  · by_cases h2 : a = b
+    · simp [h1, h2, show ¬(b < a) from by omega]
+    · simp [h1, h2, show b < a from by omega, show b ≠ a from by omega]
+
+instance : Std.OrientedCmp cmpOutpoint where
+  symm a b := by
+    show (cmpOutpoint a b).swap = cmpOutpoint b a
+    unfold cmpOutpoint; rw [← cmpBytes_symm a.txid b.txid]
+    cases cmpBytes a.txid b.txid
+    · rfl
+    · show Ordering.swap (compare a.vout b.vout) = compare b.vout a.vout
+      simp only [compare, Ord.compare]; exact nat_cmp_symm a.vout b.vout
+    · rfl
+
 end RubinFormal
