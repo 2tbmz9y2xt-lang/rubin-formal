@@ -278,6 +278,81 @@ def dispatchCovenantValidation
   else
     Except.error "TX_ERR_COVENANT_TYPE_INVALID"
 
+/-! ## Vault spend validation — FULL (R14)
+
+Extracted from applyNonCoinbaseTxBasicNoCrypto lines 398-412.
+Covers ALL vault spend rules: owner auth + fee sponsor + threshold sig + whitelist.
+Written without do-notation for formal proof access.
+LIVE: called from applyNonCoinbaseTxBasicNoCrypto vault branch. -/
+
+/-- Vault spend validation: ALL vault rules.
+    LIVE sub-function: explicit bind, mirrors live code exactly. -/
+def validateVaultSpend
+    (ownerAuthPresent : Bool)
+    (inputLockIds : List Bytes)
+    (inputCovTypes : List Nat)
+    (vaultOwnerLockId : Bytes)
+    (vaultKeys : List Bytes)
+    (vaultThreshold : Nat)
+    (vaultWitness : List UtxoBasicV1.WitnessItem)
+    (height : Nat)
+    (txOutputs : List UtxoBasicV1.TxOut)
+    (vaultWhitelist : List Bytes)
+    : Except String Unit :=
+  if !ownerAuthPresent then Except.error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
+  else
+    let sponsorOk := (List.zip inputCovTypes inputLockIds).all fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vaultOwnerLockId
+    if !sponsorOk then Except.error "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN"
+    else
+      match validateThresholdSigSpendNoCrypto vaultKeys vaultThreshold vaultWitness height "CORE_VAULT" with
+      | .error e => Except.error e
+      | .ok () =>
+        if !(vaultSpendOutputsAllowed vaultWhitelist txOutputs) then
+          Except.error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
+        else Except.ok ()
+
+/-- Owner auth missing → TX_ERR_VAULT_OWNER_AUTH_REQUIRED. -/
+theorem vault_no_owner (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes) :
+    validateVaultSpend false lids covs vOwnLid vKeys vThr vWit h outs wl =
+    .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED" := by
+  simp [validateVaultSpend]
+
+/-- Bad fee sponsor → TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN. -/
+theorem vault_bad_sponsor (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hBad : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = false) :
+    validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+    .error "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN" := by
+  simp [validateVaultSpend, hBad]
+
+/-- Bad whitelist → TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED. -/
+theorem vault_bad_whitelist (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hSig : validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" = .ok ())
+    (hWL : vaultSpendOutputsAllowed wl outs = false) :
+    validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+    .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED" := by
+  simp [validateVaultSpend, hOk, hSig, hWL]
+
+/-- All vault rules pass → .ok (). -/
+theorem vault_all_pass (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hSig : validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" = .ok ())
+    (hWL : vaultSpendOutputsAllowed wl outs = true) :
+    validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl = .ok () := by
+  simp [validateVaultSpend, hOk, hSig, hWL]
+
 def applyNonCoinbaseTxBasicNoCrypto
     (txBytes : Bytes)
     (utxos : List (Outpoint × UtxoEntry))
@@ -394,22 +469,11 @@ def applyNonCoinbaseTxBasicNoCrypto
       if !vaultCreationOwnerAuthorized owner inputLockIds inputCovTypes then
         throw "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
 
-  -- CORE_VAULT spend rules (safe-only model).
+  -- CORE_VAULT spend rules — delegated to LIVE sub-function validateVaultSpend.
   if vaultInputCount == 1 then
-    let mut ownerAuthPresent : Bool := false
-    for lid in inputLockIds do
-      if lid == vaultOwnerLockId then ownerAuthPresent := true
-    if !ownerAuthPresent then
-      throw "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
-    for idx in [0:inputCovTypes.length] do
-      let cov := inputCovTypes.get! idx
-      if cov == CovenantGenesisV1.COV_TYPE_VAULT then
-        continue
-      if inputLockIds.get! idx != vaultOwnerLockId then
-        throw "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN"
-    validateThresholdSigSpendNoCrypto vaultKeys vaultThreshold vaultWitness height "CORE_VAULT"
-    if !vaultSpendOutputsAllowed vaultWhitelist tx.outputs then
-      throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
+    let ownerAuthPresent := inputLockIds.any (· == vaultOwnerLockId)
+    validateVaultSpend ownerAuthPresent inputLockIds inputCovTypes vaultOwnerLockId
+      vaultKeys vaultThreshold vaultWitness height tx.outputs vaultWhitelist
 
   validateValueConservation sumOut sumIn vaultInputCount sumInVault
 
@@ -471,6 +535,32 @@ theorem output_whitelist_closure :
 theorem vault_recursion_ban :
     vaultSpendOutputsAllowed sampleSpendWhitelist [sampleSpendOutput1, sampleRecursiveVaultOutput] = false := by
   native_decide
+
+/-- Vault dispatch routing: covenantType=VAULT → dispatchCovenantValidation
+    enters the vault branch (parses vault covenant data + witness slots).
+    Full split proof on explicit if/else chain — P2PK eliminated,
+    Multisig eliminated, Vault selected via native_decide on type comparisons. -/
+theorem dispatch_routes_to_vault
+    (e : UtxoBasicV1.UtxoEntry) (tx : UtxoBasicV1.Tx)
+    (wc height bm : Nat)
+    (hVault : e.covenantType = CovenantGenesisV1.COV_TYPE_VAULT) :
+    dispatchCovenantValidation e tx wc height bm =
+    (match CovenantGenesisV1.parseVaultCovenantData e.covenantData with
+     | .error err => Except.error err
+     | .ok _ =>
+       match WITNESS_SLOTS e.covenantType e.covenantData with
+       | .error err => Except.error err
+       | .ok slots =>
+         if wc + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+         else Except.ok (wc + slots)) := by
+  unfold dispatchCovenantValidation; rw [hVault]
+  split
+  · rename_i h; exact absurd h (by simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_P2PK) = false from by native_decide])
+  · split
+    · rename_i h; exact absurd h (by simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_MULTISIG) = false from by native_decide])
+    · split
+      · rfl
+      · rename_i _ _ h1; simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_VAULT) = true from by native_decide] at h1
 
 end UtxoApplyGenesisV1
 

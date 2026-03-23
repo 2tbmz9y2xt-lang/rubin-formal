@@ -56,3 +56,7 @@ import RubinFormal.BlockTimestampBehavioral
 import RubinFormal.BlockValidationOrderBehavioral
 import RubinFormal.DeterminismRequirements
 import RubinFormal.GenesisRuleBehavioral
+import RubinFormal.CoinbaseBehavioral
+import RubinFormal.TxContextBehavioral
+import RubinFormal.ConnectBlockFull
+import RubinFormal.PerTxStateMachine
