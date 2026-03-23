@@ -300,6 +300,51 @@ theorem coinbase_distinct_outpoints
   subst this
   exact hNe rfl
 
+/-! ## RBMap-level operational proofs -/
+
+/-- Helper: foldl with identity step = identity. -/
+private theorem foldl_id {α β : Type} (f : α → β → α) (init : α)
+    (xs : List β) (hId : ∀ x ∈ xs, ∀ acc, f acc x = acc) :
+    xs.foldl f init = init := by
+  induction xs with
+  | nil => rfl
+  | cons y ys ih =>
+    simp [List.foldl, hId y (List.mem_cons_self y ys)]
+    exact ih (fun x hx => hId x (List.mem_cons_of_mem y hx))
+
+/-- Helper: membership in List.enumFrom → membership in original list. -/
+private theorem mem_snd_of_mem_enumFrom {α : Type} {n : Nat} {xs : List α}
+    {i : Nat} {x : α} (h : (i, x) ∈ List.enumFrom n xs) : x ∈ xs := by
+  induction xs generalizing n with
+  | nil => exact absurd h (List.not_mem_nil _)
+  | cons y ys ih =>
+    simp [List.enumFrom] at h
+    cases h with
+    | inl heq => exact heq.2 ▸ List.mem_cons_self _ _
+    | inr hmem => exact List.mem_cons_of_mem _ (ih hmem)
+
+/-- If ALL outputs are non-spendable, addCoinbaseOutputs = identity.
+    Proved at RBMap fold level: each step is identity, so entire fold is identity.
+    This closes the "ANCHOR/DA_COMMIT never inserted into UTXO map" gap. -/
+theorem addCoinbaseOutputs_all_nonspendable
+    (outputs : List CovenantGenesisV1.TxOut)
+    (txid : Bytes) (height : Nat)
+    (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (hAll : ∀ out ∈ outputs, isSpendableCoinbaseOutput out = false) :
+    addCoinbaseOutputs outputs txid height utxos = utxos := by
+  unfold addCoinbaseOutputs
+  apply foldl_id
+  intro ⟨idx, out⟩ hMem acc
+  have hOut : out ∈ outputs := mem_snd_of_mem_enumFrom hMem
+  simp [hAll out hOut]
+
+/-- addCoinbaseOutputs on empty outputs = identity (RBMap level). -/
+theorem addCoinbaseOutputs_empty
+    (txid : Bytes) (height : Nat)
+    (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint) :
+    addCoinbaseOutputs [] txid height utxos = utxos := by
+  simp [addCoinbaseOutputs, List.enum, List.foldl]
+
 /-! ## Boundary cases (Checklist 2.2) -/
 
 /-- Zero fees: coinbase ≤ subsidy. -/

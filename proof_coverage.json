@@ -556,7 +556,9 @@
         "RubinFormal.connectBlockFull_produces_txcontext",
         "RubinFormal.connectBlockFull_no_txcontext_when_empty",
         "RubinFormal.connectBlockFull_txcontext_ext_ids",
-        "RubinFormal.connectBlockFull_txcontext_base_values"
+        "RubinFormal.connectBlockFull_txcontext_base_values",
+        "RubinFormal.addCoinbaseOutputs_all_nonspendable",
+        "RubinFormal.addCoinbaseOutputs_empty"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -596,11 +598,13 @@
         "RubinFormal.connectBlockFull_produces_txcontext": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_no_txcontext_when_empty": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_txcontext_ext_ids": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
-        "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean"
+        "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.addCoinbaseOutputs_all_nonspendable": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.addCoinbaseOutputs_empty": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",
       "limitations": [
-        "TransCmp.le_trans for cmpOutpoint: OrientedCmp proved (symmetry). Reflexivity proved. Transitivity (le_trans) requires cmpBytes_go_le_trans induction — in progress."
+        "Std4 RBMap does not export find?_insert or TransCmp lemmas. RBMap operational equivalence proved at fold-step level (non-spendable = identity, all_nonspendable = identity) but not at individual find? query level."
       ]
     },
     {
