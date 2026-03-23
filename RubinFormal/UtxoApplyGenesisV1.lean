@@ -228,11 +228,13 @@ def validateValueConservation
     Except.error "TX_ERR_VALUE_CONSERVATION"
   else Except.ok ()
 
-/-- Per-input covenant dispatch — LIVE extracted iteration body.
-    Written without do-notation to enable formal dispatch ordering proofs.
-    Called from `applyNonCoinbaseTxBasicNoCrypto` for-loop body.
-    Returns: (updated witnessCursor, updated vaultInputCount, Ok () or error).
-    Ordering: structural → UTXO lookup → covenant dispatch → TX_ERR_COVENANT_TYPE_INVALID. -/
+/-- Per-input covenant dispatch — parallel model of the inline if/else chain
+    in `applyNonCoinbaseTxBasicNoCrypto` for-loop body (lines 308-349).
+    NOT directly called from the for-loop (inline code has mutable state updates
+    that this function doesn't model). Written without do-notation to enable
+    formal dispatch ordering proofs. The inline code's covenant-type checks
+    are structurally identical to this function's if/else chain.
+    Ordering: P2PK → Multisig → Vault → HTLC → TX_ERR_COVENANT_TYPE_INVALID. -/
 def dispatchCovenantValidation
     (e : UtxoBasicV1.UtxoEntry)
     (tx : UtxoBasicV1.Tx)
