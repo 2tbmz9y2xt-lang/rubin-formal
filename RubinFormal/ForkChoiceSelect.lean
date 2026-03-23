@@ -89,15 +89,6 @@ theorem forkSelect_tiebreak_det (w : Nat) (lh rh : List UInt8)
     simp [hLR] at this; simp [this]
   · have := bytesLT_antisym lh rh (by simp [hLR]); simp [this]
 
-/-- Bridge: forkSelect with chainWork composition matches heavierChain
-    for the unequal-work case. -/
-theorem forkSelect_chainwork_bridge (lhs rhs : List Nat)
-    (lhsHash rhsHash : List UInt8)
-    (h : ChainWorkV1.chainWork lhs > ChainWorkV1.chainWork rhs) :
-    forkSelect (ChainWorkV1.chainWork lhs) (ChainWorkV1.chainWork rhs) lhsHash rhsHash = .Left ∧
-    ChainWorkV1.heavierChain lhs rhs = true :=
-  ⟨forkSelect_heavier _ _ _ _ h, heavierChain_wins lhs rhs h⟩
-
 /-- Full end-to-end symmetric agreement: for ANY two chains with different
     (work, hash) pairs, two nodes seeing them in opposite order agree on
     the winner. Subsumes both the chainwork and tie-break cases. -/
