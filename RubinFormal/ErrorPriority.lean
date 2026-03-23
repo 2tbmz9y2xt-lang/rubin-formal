@@ -514,7 +514,48 @@ theorem witness_cursor_incomplete (cursor witnessLen : Nat)
     validateWitnessCursorComplete cursor witnessLen = .error "TX_ERR_PARSE" := by
   simp [validateWitnessCursorComplete, h]
 
-/-! ## Block-level error code distinctness (§13) -/
+/-! ## Covenant dispatch ordering (per-input if/else chain)
+
+`covenantTypeKnown` models the dispatch gate from `applyNonCoinbaseTxBasicNoCrypto`
+lines 260-301. The real if/else chain checks P2PK → Multisig → Vault → HTLC → else.
+When none match, `TX_ERR_COVENANT_TYPE_INVALID` fires.
+
+This is a TYPE-GATE model: it proves which covenant types dispatch vs reject.
+Full branch-body proofs (with mutable witnessCursor) are in the individual
+live sub-functions (validateP2PKSpendPreSig, validateThresholdSigSpendNoCrypto, etc.).
+-/
+
+open UtxoApplyGenesisV1 in
+/-- Covenant type known = dispatches to a live sub-function, not to error. -/
+def covenantTypeKnown (ct : Nat) : Bool :=
+  ct == CovenantGenesisV1.COV_TYPE_P2PK ||
+  ct == CovenantGenesisV1.COV_TYPE_MULTISIG ||
+  ct == CovenantGenesisV1.COV_TYPE_VAULT ||
+  ct == CovenantGenesisV1.COV_TYPE_HTLC
+
+open UtxoApplyGenesisV1 in
+/-- Unknown covenant type → rejected. All known checks fail → else branch fires. -/
+theorem unknown_covenant_rejected (ct : Nat)
+    (hNotP2PK : (ct == CovenantGenesisV1.COV_TYPE_P2PK) = false)
+    (hNotMulti : (ct == CovenantGenesisV1.COV_TYPE_MULTISIG) = false)
+    (hNotVault : (ct == CovenantGenesisV1.COV_TYPE_VAULT) = false)
+    (hNotHtlc : (ct == CovenantGenesisV1.COV_TYPE_HTLC) = false) :
+    covenantTypeKnown ct = false := by
+  simp [covenantTypeKnown, hNotP2PK, hNotMulti, hNotVault, hNotHtlc]
+
+open UtxoApplyGenesisV1 in
+theorem p2pk_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_P2PK = true := by native_decide
+
+open UtxoApplyGenesisV1 in
+theorem multisig_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_MULTISIG = true := by native_decide
+
+open UtxoApplyGenesisV1 in
+theorem vault_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_VAULT = true := by native_decide
+
+open UtxoApplyGenesisV1 in
+theorem htlc_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_HTLC = true := by native_decide
+
+/-! ## Error code distinctness (§13) -/
 
 theorem err_ne_block_tx_parse : ("BLOCK_ERR_PARSE" : String) ≠ "TX_ERR_PARSE" := by decide
 theorem err_ne_tx_parse_seq : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_SEQUENCE_INVALID" := by decide
