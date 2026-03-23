@@ -599,7 +599,9 @@
         "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",
-      "limitations": []
+      "limitations": [
+        "find? after coinbase insert: cmpOutpoint_refl proved (cmpOutpoint op op = .eq). Full find?_insert_self requires TransCmp cmpOutpoint instance (cmpBytes transitivity + symmetry, ~30 lines). Foundation laid, connection pending."
+      ]
     },
     {
       "section_key": "coinbase_and_subsidy",
