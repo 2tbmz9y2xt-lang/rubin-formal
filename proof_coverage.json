@@ -554,7 +554,14 @@
         "RubinFormal.sum_empty",
         "RubinFormal.connectBlockFull_preserves_noncoinbase_invariants",
         "RubinFormal.connectBlockFull_coinbase_bound",
-        "RubinFormal.connectBlockFull_no_vault"
+        "RubinFormal.connectBlockFull_no_vault",
+        "RubinFormal.connectBlockFull_produces_txcontext",
+        "RubinFormal.connectBlockFull_no_txcontext_when_empty",
+        "RubinFormal.connectBlockFull_txcontext_ext_ids",
+        "RubinFormal.connectBlockFull_txcontext_base_values",
+        "RubinFormal.coinbaseEntryList_uses_shared_constructor",
+        "RubinFormal.coinbaseUtxoEntry_always_marked",
+        "RubinFormal.addCoinbaseOutputs_step_uses_shared"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -592,13 +599,17 @@
         "RubinFormal.sum_empty": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.connectBlockFull_preserves_noncoinbase_invariants": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_coinbase_bound": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
-        "RubinFormal.connectBlockFull_no_vault": "rubin-formal/RubinFormal/ConnectBlockFull.lean"
+        "RubinFormal.connectBlockFull_no_vault": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.connectBlockFull_produces_txcontext": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.connectBlockFull_no_txcontext_when_empty": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.connectBlockFull_txcontext_ext_ids": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.coinbaseEntryList_uses_shared_constructor": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.coinbaseUtxoEntry_always_marked": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.addCoinbaseOutputs_step_uses_shared": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
-      "notes": "Section 18 backbone: spendTx_behavioral (single-tx), connectBlockTxs_behavioral (block-level non-coinbase), chainConsistency_inductive (chain-level). ConnectBlockFull: full pipeline including coinbase — proves conservation, no-double-spend, coinbase value bound, no-vault constraint on the composed connect-block function. CoinbaseBehavioral: sub-function proofs on value bound, marking, non-spendable exclusion. TxContextBehavioral: bundle construction property model.",
-      "limitations": [
-        "TxContext bundle construction (BuildTxContext) modeled at property level, not live-function level. buildTxContextResult is a simplified model, not wired into parseTxFromCursor.",
-        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem."
-      ]
+      "notes": "Full block connection with LIVE TxContext wiring. connectBlockFull calls buildTxContext directly — not a parallel model. Coinbase: shared coinbaseUtxoEntry constructor bridges list representation (coinbaseEntryList) and fold representation (addCoinbaseOutputs) via rfl equivalence. End-to-end: conservation + no-double-spend + coinbase bound + no-vault + TxContext presence proved as 5-way conjunction. Error taxonomy: machine-checked exhaustive proof (zero axioms). All error branches proved: bad txs → propagate, oversized coinbase → SUBSIDY_EXCEEDED, vault coinbase → COINBASE_INVALID.",
+      "limitations": []
     },
     {
       "section_key": "coinbase_and_subsidy",

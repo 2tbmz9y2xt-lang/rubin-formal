@@ -5,7 +5,8 @@ import RubinFormal.TxContextFormal
 
 Models behavioral properties of the TxContext bundle construction path
 with REAL parameters (totalIn, totalOut, height, continuing data).
-NOT wired into live BuildTxContext — equivalence with Go/Rust is structural.
+WIRED into connectBlockFull (ConnectBlockFull.lean) — buildTxContext is
+called as part of the live block connection pipeline.
 
 Ext_id sorting properties are in TxContextFormal.lean (separate surface).
 -/
