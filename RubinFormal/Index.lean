@@ -59,3 +59,4 @@ import RubinFormal.GenesisRuleBehavioral
 import RubinFormal.CoinbaseBehavioral
 import RubinFormal.TxContextBehavioral
 import RubinFormal.ConnectBlockFull
+import RubinFormal.PerTxStateMachine
