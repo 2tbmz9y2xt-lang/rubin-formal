@@ -151,4 +151,43 @@ theorem connectBlockTxs_sequential_decomposition
       subst h1; subst h2
       exact ⟨fee, next, feesTail, rfl, hTail, rfl⟩
 
+/-! ## Value conservation at per-tx level
+
+Already proved in ConnectBlockStrong.lean:
+- `utxo_conserved_tx`: per-tx, inputState.sumIn = sumOutputs + fee
+- `utxo_conserved`: recursive over all txs — every tx conserves value
+- `connectBlockFull_preserves_noncoinbase_invariants`: block-level proof
+  that utxo_conserved AND no_double_spend hold for all non-coinbase txs
+
+These are NOT new — they're existing behavioral theorems.
+The value conservation gap is CLOSED by these existing proofs.
+
+Per-tx fee = sumIn - sumOut: proved structurally because
+`validateValueConservation` checks sumOut ≤ sumIn BEFORE
+computing fee := sumIn - sumOut. So fee ≥ 0 is guaranteed.
+
+Per-tx UTXO map evolution: `prepare_tx_utxo_decomposition` proves
+nextMap = insertOutputs(eraseInputs(utxoMap, inputs), outputs).
+`no_double_spend` (ConnectBlockStrong) proves inputs are available
+and intra-tx unique. Together these give full UTXO map characterization.
+-/
+
+/-- Value conservation: per-tx, conservation follows from successful prepare. -/
+theorem perTx_conservation_from_prepare
+    (txBytes : Bytes) (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes)
+    (prepared : PreparedNonCoinbaseTx)
+    (hOk : prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId = .ok prepared) :
+    utxo_conserved_tx prepared.tx utxoMap height prepared.fee :=
+  prepareNonCoinbaseTxBasic_utxo_conserved txBytes utxoMap height blockTimestamp chainId prepared hOk
+
+/-- No double spend: per-tx, follows from successful prepare. -/
+theorem perTx_no_double_spend_from_prepare
+    (txBytes : Bytes) (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes)
+    (prepared : PreparedNonCoinbaseTx)
+    (hOk : prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId = .ok prepared) :
+    no_intra_tx_double_spend prepared.tx :=
+  prepareNonCoinbaseTxBasic_no_intra_double_spend txBytes utxoMap height blockTimestamp chainId prepared hOk
+
 end RubinFormal
