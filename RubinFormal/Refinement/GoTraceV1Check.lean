@@ -151,6 +151,14 @@ private def checkUtxoBasic (o : UtxoBasicOut) : Bool :=
               (!o.ok) && (o.err == e)
       | _, _ => false
 
+/-- Narrow machine-checked bridge for the live UTXO apply path.
+    Every `CV-UTXO-BASIC` row in the generated Go trace v1 corpus is rechecked
+    against Lean's executable `applyNonCoinbaseTxBasic` on the matching fixture.
+    This is a trace-backed executable contract, not a universal proof for every
+    possible UTXO/input combination. -/
+def utxoApplyBasicGoTraceV1Pass : Bool :=
+  !utxoBasicOuts.isEmpty && utxoBasicOuts.all checkUtxoBasic
+
 private def blockSummary? (blockBytes : Bytes) : Except String (Bytes × Nat × Nat) := do
   let pb ← BlockBasicV1.parseBlock blockBytes
   -- block hash is over header bytes
