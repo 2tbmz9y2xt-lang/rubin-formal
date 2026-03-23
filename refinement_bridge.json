@@ -34,9 +34,10 @@
       "gate": "CV-FORK-CHOICE",
       "model_theorem": "RubinFormal.forkSelect_tiebreak_det",
       "lean_file": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "machine_checked_with_cryptographic_axiom",
       "limitations": [
-        "forkSelect models the runtime operation; equivalence with Go/Rust implementation is structural (same if/else chain), not proved via rfl."
+        "forkSelect models the runtime operation; equivalence with Go/Rust implementation is structural (same if/else chain), not proved via rfl.",
+        "Tie-break determinism for distinct block headers relies on block_hash_collision_resistance axiom (SHA3-256 collision resistance). This is a standard cryptographic assumption, not a Lean-provable fact."
       ]
     },
     {

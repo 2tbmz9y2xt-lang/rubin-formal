@@ -102,7 +102,12 @@ theorem forkSelect_chainwork_bridge (lhs rhs : List Nat)
 
 /-- Full end-to-end symmetric agreement: for ANY two chains with different
     (work, hash) pairs, two nodes seeing them in opposite order agree on
-    the winner. Subsumes both the chainwork and tie-break cases. -/
+    the winner. Subsumes both the chainwork and tie-break cases.
+
+    The precondition `hDiff : lw ≠ rw ∨ lh ≠ rh` excludes the trivial case
+    where both chains are identical (same work AND same hash). Identical chains
+    represent the same block — there is no fork to resolve. This is by design,
+    not an incompleteness: fork-choice is only called when chains differ. -/
 theorem forkSelect_total_det (lw rw : Nat) (lh rh : List UInt8)
     (hL : lh.length = 32) (hR : rh.length = 32)
     (hDiff : lw ≠ rw ∨ lh ≠ rh) :
