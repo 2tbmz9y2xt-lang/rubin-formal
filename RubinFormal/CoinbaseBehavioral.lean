@@ -303,7 +303,7 @@ theorem coinbase_distinct_outpoints
 /-! ## RBMap-level operational proofs -/
 
 /-- Helper: foldl with identity step = identity. -/
-private theorem foldl_id {α β : Type} (f : α → β → α) (init : α)
+theorem foldl_id {α β : Type} (f : α → β → α) (init : α)
     (xs : List β) (hId : ∀ x ∈ xs, ∀ acc, f acc x = acc) :
     xs.foldl f init = init := by
   induction xs with
@@ -313,7 +313,7 @@ private theorem foldl_id {α β : Type} (f : α → β → α) (init : α)
     exact ih (fun x hx => hId x (List.mem_cons_of_mem y hx))
 
 /-- Helper: membership in List.enumFrom → membership in original list. -/
-private theorem mem_snd_of_mem_enumFrom {α : Type} {n : Nat} {xs : List α}
+theorem mem_snd_of_mem_enumFrom {α : Type} {n : Nat} {xs : List α}
     {i : Nat} {x : α} (h : (i, x) ∈ List.enumFrom n xs) : x ∈ xs := by
   induction xs generalizing n with
   | nil => exact absurd h (List.not_mem_nil _)
@@ -344,6 +344,94 @@ theorem addCoinbaseOutputs_empty
     (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint) :
     addCoinbaseOutputs [] txid height utxos = utxos := by
   simp [addCoinbaseOutputs, List.enum, List.foldl]
+
+/-! ## List-based UTXO map with full find?_insert proofs
+
+Std4 RBMap doesn't export find?_insert. This section provides a
+List-based UTXO map with COMPLETE find? semantics:
+- listFind?_insert_self: find? after insert same key = inserted value
+- listFind?_insert_other: find? after insert different key = original
+- addCoinbaseOutputsList: fold equivalent to addCoinbaseOutputs
+- Full anchor/DA exclusion at QUERY level (not just fold level)
+-/
+
+/-- List-based UTXO lookup. -/
+def listFind? (entries : List (Outpoint × UtxoEntry)) (k : Outpoint) : Option UtxoEntry :=
+  match entries with
+  | [] => none
+  | (k', v) :: rest => if k' == k then some v else listFind? rest k
+
+/-- List-based insert (prepend, latest wins). -/
+def listInsert (entries : List (Outpoint × UtxoEntry)) (k : Outpoint) (v : UtxoEntry)
+    : List (Outpoint × UtxoEntry) := (k, v) :: entries
+
+/-- find? after insert SAME key = inserted value. -/
+theorem listFind?_insert_self (entries : List (Outpoint × UtxoEntry))
+    (k : Outpoint) (v : UtxoEntry) :
+    listFind? (listInsert entries k v) k = some v := by
+  simp [listFind?, listInsert]
+
+/-- find? after insert DIFFERENT key = original lookup. -/
+theorem listFind?_insert_other (entries : List (Outpoint × UtxoEntry))
+    (k1 k2 : Outpoint) (v : UtxoEntry) (hNe : (k1 == k2) = false) :
+    listFind? (listInsert entries k1 v) k2 = listFind? entries k2 := by
+  simp [listFind?, listInsert, hNe]
+
+/-- Coinbase fold on list-based map. -/
+def addCoinbaseOutputsList
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (utxos : List (Outpoint × UtxoEntry)) : List (Outpoint × UtxoEntry) :=
+  outputs.enum.foldl (fun acc (idx, out) =>
+    if isSpendableCoinbaseOutput out then
+      listInsert acc { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
+    else acc) utxos
+
+/-- Non-spendable outputs: find? unchanged for ANY key (query-level). -/
+theorem addCoinbaseOutputsList_nonspendable_find?_unchanged
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (utxos : List (Outpoint × UtxoEntry))
+    (hAll : ∀ out ∈ outputs, isSpendableCoinbaseOutput out = false)
+    (k : Outpoint) :
+    listFind? (addCoinbaseOutputsList outputs txid height utxos) k =
+    listFind? utxos k := by
+  suffices h : addCoinbaseOutputsList outputs txid height utxos = utxos by rw [h]
+  simp only [addCoinbaseOutputsList]
+  apply foldl_id; intro ⟨idx, out⟩ hMem acc
+  have hOut : out ∈ outputs := mem_snd_of_mem_enumFrom hMem
+  simp [hAll out hOut]
+
+/-- ANCHOR outputs: find? unchanged (query-level specialization). -/
+theorem addCoinbaseOutputsList_anchor_find?_unchanged
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (utxos : List (Outpoint × UtxoEntry))
+    (hAll : ∀ out ∈ outputs, out.covenantType = CovenantGenesisV1.COV_TYPE_ANCHOR)
+    (k : Outpoint) :
+    listFind? (addCoinbaseOutputsList outputs txid height utxos) k =
+    listFind? utxos k :=
+  addCoinbaseOutputsList_nonspendable_find?_unchanged outputs txid height utxos
+    (fun out hMem => coinbase_nonspendable_excluded out (Or.inl (hAll out hMem))) k
+
+/-- DA_COMMIT outputs: find? unchanged (query-level specialization). -/
+theorem addCoinbaseOutputsList_da_find?_unchanged
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (utxos : List (Outpoint × UtxoEntry))
+    (hAll : ∀ out ∈ outputs, out.covenantType = CovenantGenesisV1.COV_TYPE_DA_COMMIT)
+    (k : Outpoint) :
+    listFind? (addCoinbaseOutputsList outputs txid height utxos) k =
+    listFind? utxos k :=
+  addCoinbaseOutputsList_nonspendable_find?_unchanged outputs txid height utxos
+    (fun out hMem => coinbase_nonspendable_excluded out (Or.inr (hAll out hMem))) k
+
+/-- Single spendable output IS found at the expected key. -/
+theorem addCoinbaseOutputsList_single_spendable_found
+    (out : CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (utxos : List (Outpoint × UtxoEntry))
+    (hSpend : isSpendableCoinbaseOutput out = true) :
+    listFind? (addCoinbaseOutputsList [out] txid height utxos)
+      { txid := txid, vout := 0 } =
+    some (coinbaseUtxoEntry out height) := by
+  simp [addCoinbaseOutputsList, List.enum, List.enumFrom, List.foldl, hSpend,
+        listInsert, listFind?]
 
 /-! ## Boundary cases (Checklist 2.2) -/
 

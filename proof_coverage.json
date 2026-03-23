@@ -558,7 +558,13 @@
         "RubinFormal.connectBlockFull_txcontext_ext_ids",
         "RubinFormal.connectBlockFull_txcontext_base_values",
         "RubinFormal.addCoinbaseOutputs_all_nonspendable",
-        "RubinFormal.addCoinbaseOutputs_empty"
+        "RubinFormal.addCoinbaseOutputs_empty",
+        "RubinFormal.listFind?_insert_self",
+        "RubinFormal.listFind?_insert_other",
+        "RubinFormal.addCoinbaseOutputsList_nonspendable_find?_unchanged",
+        "RubinFormal.addCoinbaseOutputsList_anchor_find?_unchanged",
+        "RubinFormal.addCoinbaseOutputsList_da_find?_unchanged",
+        "RubinFormal.addCoinbaseOutputsList_single_spendable_found"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -600,12 +606,16 @@
         "RubinFormal.connectBlockFull_txcontext_ext_ids": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.addCoinbaseOutputs_all_nonspendable": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
-        "RubinFormal.addCoinbaseOutputs_empty": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
+        "RubinFormal.addCoinbaseOutputs_empty": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.listFind?_insert_self": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.listFind?_insert_other": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.addCoinbaseOutputsList_nonspendable_find?_unchanged": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.addCoinbaseOutputsList_anchor_find?_unchanged": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.addCoinbaseOutputsList_da_find?_unchanged": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.addCoinbaseOutputsList_single_spendable_found": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
-      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",
-      "limitations": [
-        "Std4 RBMap does not export find?_insert or TransCmp lemmas. RBMap operational equivalence proved at fold-step level (non-spendable = identity, all_nonspendable = identity) but not at individual find? query level."
-      ]
+      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction. List-based UTXO map provides full find?_insert semantics: insert_self, insert_other, non-spendable unchanged at query level. ANCHOR/DA_COMMIT exclusion proved at both fold level (RBMap identity) and query level (listFind? unchanged).",
+      "limitations": []
     },
     {
       "section_key": "coinbase_and_subsidy",
