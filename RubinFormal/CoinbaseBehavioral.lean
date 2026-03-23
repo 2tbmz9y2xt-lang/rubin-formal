@@ -48,6 +48,15 @@ def isSpendableCoinbaseOutput (out : CovenantGenesisV1.TxOut) : Bool :=
   out.covenantType != CovenantGenesisV1.COV_TYPE_ANCHOR &&
   out.covenantType != CovenantGenesisV1.COV_TYPE_DA_COMMIT
 
+/-- Shared UtxoEntry constructor for coinbase outputs.
+    Single source of truth — used by addCoinbaseOutputs AND coinbaseEntryList. -/
+def coinbaseUtxoEntry (out : CovenantGenesisV1.TxOut) (height : Nat) : UtxoEntry :=
+  { value := out.value
+  , covenantType := out.covenantType
+  , covenantData := out.covenantData
+  , creationHeight := height
+  , createdByCoinbase := true }
+
 /-- Add spendable coinbase outputs to UTXO set.
     Models the coinbase UTXO creation loop (connect_block_inmem.go:174-186). -/
 def addCoinbaseOutputs
@@ -57,13 +66,7 @@ def addCoinbaseOutputs
     : Std.RBMap Outpoint UtxoEntry cmpOutpoint :=
   outputs.enum.foldl (fun acc (idx, out) =>
     if isSpendableCoinbaseOutput out then
-      acc.insert
-        { txid := txid, vout := idx }
-        { value := out.value
-        , covenantType := out.covenantType
-        , covenantData := out.covenantData
-        , creationHeight := height
-        , createdByCoinbase := true }
+      acc.insert { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
     else acc
   ) utxos
 
@@ -99,15 +102,6 @@ theorem coinbase_no_vault_accepts
     validateCoinbaseApplyOutputs outputs = .ok () := by
   simp [validateCoinbaseApplyOutputs, h]
 
-/-- Shared UtxoEntry constructor for coinbase outputs.
-    Used by both addCoinbaseOutputs fold and coinbaseEntryList. -/
-def coinbaseUtxoEntry (out : CovenantGenesisV1.TxOut) (height : Nat) : UtxoEntry :=
-  { value := out.value
-  , covenantType := out.covenantType
-  , covenantData := out.covenantData
-  , creationHeight := height
-  , createdByCoinbase := true }
-
 /-- Every coinbase entry has `createdByCoinbase = true` (from shared constructor). -/
 theorem coinbase_entry_always_marked (out : CovenantGenesisV1.TxOut) (height : Nat) :
     (coinbaseUtxoEntry out height).createdByCoinbase = true := rfl
@@ -132,41 +126,12 @@ def coinbaseEntryList
     (outputs : List CovenantGenesisV1.TxOut)
     (txid : Bytes) (height : Nat) : List (Outpoint × UtxoEntry) :=
   (outputs.enum.filter (fun (_, out) => isSpendableCoinbaseOutput out)).map
-    (fun (idx, out) => (
-      { txid := txid, vout := idx },
-      { value := out.value
-      , covenantType := out.covenantType
-      , covenantData := out.covenantData
-      , creationHeight := height
-      , createdByCoinbase := true }))
+    (fun (idx, out) => ({ txid := txid, vout := idx }, coinbaseUtxoEntry out height))
 
-/-! ## Bridge: shared entry constructor (coinbaseEntryList ↔ addCoinbaseOutputs)
+/-! ## Fold-level properties
 
-Both `addCoinbaseOutputs` (RBMap fold) and `coinbaseEntryList` (List filter+map)
-use the SAME UtxoEntry literal. This bridges the two representations.
--/
-
-/-- coinbaseEntryList is exactly filter+map with coinbaseUtxoEntry (rfl). -/
-theorem coinbaseEntryList_uses_shared_constructor
-    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat) :
-    coinbaseEntryList outputs txid height =
-    (outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2)).map
-      (fun p => (Outpoint.mk txid p.1, coinbaseUtxoEntry p.2 height)) := by
-  unfold coinbaseEntryList coinbaseUtxoEntry; rfl
-
-/-- addCoinbaseOutputs fold step uses the same coinbaseUtxoEntry constructor.
-    Bridge: both addCoinbaseOutputs (RBMap.insert) and coinbaseEntryList (List.map)
-    construct entries with coinbaseUtxoEntry. RBMap operational equivalence
-    (find? after insert) requires Std.RBMap lemmas not available in Std4 without
-    Mathlib — the shared constructor is the strongest provable bridge. -/
-theorem addCoinbaseOutputs_step_uses_shared
-    (out : CovenantGenesisV1.TxOut) (height : Nat) :
-    coinbaseUtxoEntry out height =
-    { value := out.value, covenantType := out.covenantType,
-      covenantData := out.covenantData, creationHeight := height,
-      createdByCoinbase := true } := rfl
-
-/-! ## Fold-level properties -/
+addCoinbaseOutputs and coinbaseEntryList both use coinbaseUtxoEntry directly.
+No bridge theorems needed — single source of truth. -/
 
 /-- EVERY entry in the coinbase list has createdByCoinbase = true.
     Proved by induction on the filtered+mapped list structure. -/

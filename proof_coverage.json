@@ -545,7 +545,6 @@
         "RubinFormal.coinbase_value_bound_accepts",
         "RubinFormal.coinbase_no_vault_rejects",
         "RubinFormal.coinbase_no_vault_accepts",
-        "RubinFormal.coinbase_entry_always_marked",
         "RubinFormal.coinbase_nonspendable_excluded",
         "RubinFormal.buildTxContext_nil",
         "RubinFormal.buildTxContext_some",
@@ -557,9 +556,7 @@
         "RubinFormal.connectBlockFull_produces_txcontext",
         "RubinFormal.connectBlockFull_no_txcontext_when_empty",
         "RubinFormal.connectBlockFull_txcontext_ext_ids",
-        "RubinFormal.connectBlockFull_txcontext_base_values",
-        "RubinFormal.coinbaseEntryList_uses_shared_constructor",
-        "RubinFormal.addCoinbaseOutputs_step_uses_shared"
+        "RubinFormal.connectBlockFull_txcontext_base_values"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -588,7 +585,6 @@
         "RubinFormal.coinbase_value_bound_accepts": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.coinbase_no_vault_rejects": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.coinbase_no_vault_accepts": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
-        "RubinFormal.coinbase_entry_always_marked": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.coinbase_nonspendable_excluded": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.buildTxContext_nil": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.buildTxContext_some": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
@@ -600,9 +596,7 @@
         "RubinFormal.connectBlockFull_produces_txcontext": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_no_txcontext_when_empty": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
         "RubinFormal.connectBlockFull_txcontext_ext_ids": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
-        "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
-        "RubinFormal.coinbaseEntryList_uses_shared_constructor": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
-        "RubinFormal.addCoinbaseOutputs_step_uses_shared": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
+        "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",
       "limitations": [

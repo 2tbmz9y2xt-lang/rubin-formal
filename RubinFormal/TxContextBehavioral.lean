@@ -47,9 +47,9 @@ structure TxContextBundle where
     Models Go BuildTxContext / Rust build_tx_context.
     Takes actual totalIn, totalOut, height, and continuing data.
     Called from connectBlockFull (block-level) with block aggregates,
-    AND from buildPerTxContext (ConnectBlockFull.lean) with per-tx params.
-    Both paths use the same buildTxContext — per-tx properties proved
-    via perTx_context_base_values and perTx_context_ext_ids. -/
+    AND from buildPerTxContextFromData (ConnectBlockFull.lean) with per-tx
+    resolved input/output value lists. Per-tx properties proved via
+    perTx_base_values_computed and perTx_ext_ids_preserved. -/
 def buildTxContext
     (activeExtIds : List Nat)
     (totalIn totalOut height : Nat)
