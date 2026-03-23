@@ -99,13 +99,18 @@ theorem coinbase_no_vault_accepts
     validateCoinbaseApplyOutputs outputs = .ok () := by
   simp [validateCoinbaseApplyOutputs, h]
 
-/-- Every entry created by `addCoinbaseOutputs` has `createdByCoinbase = true`.
-    Proved via the structure of the inserted UtxoEntry literal. -/
-theorem coinbase_entry_always_marked (out : CovenantGenesisV1.TxOut)
-    (_txid : Bytes) (height _idx : Nat) (_hSpend : isSpendableCoinbaseOutput out = true) :
-    ({ value := out.value, covenantType := out.covenantType,
-       covenantData := out.covenantData, creationHeight := height,
-       createdByCoinbase := true } : UtxoEntry).createdByCoinbase = true := rfl
+/-- Shared UtxoEntry constructor for coinbase outputs.
+    Used by both addCoinbaseOutputs fold and coinbaseEntryList. -/
+def coinbaseUtxoEntry (out : CovenantGenesisV1.TxOut) (height : Nat) : UtxoEntry :=
+  { value := out.value
+  , covenantType := out.covenantType
+  , covenantData := out.covenantData
+  , creationHeight := height
+  , createdByCoinbase := true }
+
+/-- Every coinbase entry has `createdByCoinbase = true` (from shared constructor). -/
+theorem coinbase_entry_always_marked (out : CovenantGenesisV1.TxOut) (height : Nat) :
+    (coinbaseUtxoEntry out height).createdByCoinbase = true := rfl
 
 /-- Non-spendable outputs are NOT added to UTXO set. -/
 theorem coinbase_nonspendable_excluded
@@ -140,14 +145,6 @@ def coinbaseEntryList
 Both `addCoinbaseOutputs` (RBMap fold) and `coinbaseEntryList` (List filter+map)
 use the SAME UtxoEntry literal. This bridges the two representations.
 -/
-
-/-- Shared UtxoEntry constructor for coinbase outputs. -/
-def coinbaseUtxoEntry (out : CovenantGenesisV1.TxOut) (height : Nat) : UtxoEntry :=
-  { value := out.value
-  , covenantType := out.covenantType
-  , covenantData := out.covenantData
-  , creationHeight := height
-  , createdByCoinbase := true }
 
 /-- coinbaseEntryList is exactly filter+map with coinbaseUtxoEntry (rfl). -/
 theorem coinbaseEntryList_uses_shared_constructor
