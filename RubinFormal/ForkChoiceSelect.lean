@@ -69,6 +69,15 @@ def forkSelect (lhsWork rhsWork : Nat) (lhsHash rhsHash : List UInt8) : ForkResu
 
 /-! ## Determinism proofs -/
 
+/-- Trivial case: identical chains → Left (default, no fork to resolve).
+    Completes the exhaustive coverage: forkSelect_total_det handles
+    distinguishable pairs (lw ≠ rw ∨ lh ≠ rh), this handles lw = rw ∧ lh = rh.
+    Together they cover ALL possible inputs. -/
+theorem forkSelect_equal_chains (w : Nat) (h : List UInt8) :
+    forkSelect w w h h = .Left := by
+  unfold forkSelect
+  simp [Nat.lt_irrefl, bytesLT_irrefl]
+
 /-- Heavier chain always wins regardless of hash. -/
 theorem forkSelect_heavier (lw rw : Nat) (lh rh : List UInt8) (h : lw > rw) :
     forkSelect lw rw lh rh = .Left := by
