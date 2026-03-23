@@ -94,6 +94,46 @@ def powCheck (h : BlockHeader) : Except String Unit := do
   let _ ← RubinFormal.PowV1.powCheck (headerBytes h) h.target
   pure ()
 
+  /-- Tx-kind validation from parseTxFromCursor (line 130).
+      LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def validateTxKind (tk : Nat) : Except String Unit := do
+    if !(tk == 0x00 || tk == 0x01 || tk == 0x02) then throw "TX_ERR_PARSE"
+    pure ()
+
+  /-- Input count minimality from parseTxFromCursor (line 139).
+      LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def validateInputCountMin (minIn : Bool) : Except String Unit := do
+    if !minIn then throw "TX_ERR_PARSE"
+    pure ()
+
+  /-- Output count minimality from parseTxFromCursor (line 147).
+      LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def validateOutputCountMin (minOut : Bool) : Except String Unit := do
+    if !minOut then throw "TX_ERR_PARSE"
+    pure ()
+
+  /-- Witness-section error checks extracted from parseTxFromCursor (lines 143-147).
+      This is a LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def applyWitnessChecks (ws : TxWeightV2.WitnessSectionResult) : Except String Unit := do
+    let witBytes := ws.endOff - ws.startOff
+    if witBytes > TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
+    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
+    if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
+    if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+    pure ()
+
+  /-- DA-payload length checks from parseTxFromCursor (lines 158-164).
+      LIVE sub-function: parseTxFromCursor calls it directly. -/
+  def applyDaLenChecks (tk : Nat) (daLen : Nat) (minDa : Bool) : Except String Unit := do
+    if !minDa then throw "TX_ERR_PARSE"
+    if tk == 0x00 then
+      if daLen != 0 then throw "TX_ERR_PARSE"
+    else if tk == 0x01 then
+      if daLen > DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX then throw "TX_ERR_PARSE"
+    else
+      if daLen < 1 || daLen > DaCoreV1.CHUNK_BYTES then throw "TX_ERR_PARSE"
+    pure ()
+
   def parseTxFromCursor (c : Cursor) : Except String (Nat × Bytes × Bytes × Bytes × Cursor) := do
   let start := c.off
   let (ver, c1) ←
@@ -105,7 +145,7 @@ def powCheck (h : BlockHeader) : Except String Unit := do
     | none => throw "BLOCK_ERR_PARSE"
     | some x => pure x
   let tk := tkB.toNat
-  if !(tk == 0x00 || tk == 0x01 || tk == 0x02) then throw "TX_ERR_PARSE"
+  validateTxKind tk
   let (_, c3) ←
     match c2.getU64le? with
     | none => throw "BLOCK_ERR_PARSE"
@@ -114,7 +154,7 @@ def powCheck (h : BlockHeader) : Except String Unit := do
     match c3.getCompactSize? with
     | none => throw "BLOCK_ERR_PARSE"
     | some x => pure x
-  if !minIn then throw "TX_ERR_PARSE"
+  validateInputCountMin minIn
   match RubinFormal.TxWeightV2.parseInputsSkip c4 inCount with
   | none => throw "BLOCK_ERR_PARSE"
   | some c5 =>
@@ -122,7 +162,7 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       match c5.getCompactSize? with
       | none => throw "BLOCK_ERR_PARSE"
       | some x => pure x
-    if !minOut then throw "TX_ERR_PARSE"
+    validateOutputCountMin minOut
     let (c7, _anchorBytes) ←
       match RubinFormal.TxWeightV2.parseOutputsForAnchor c6 outCount with
       | none => throw "BLOCK_ERR_PARSE"
@@ -140,22 +180,12 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
       | none => throw "TX_ERR_PARSE"
       | some x => pure x
-    let witBytes := ws.endOff - ws.startOff
-    if witBytes > RubinFormal.TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
-    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-    if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
-    if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+    applyWitnessChecks ws
     let (daLen, c10, minDa) ←
       match ws.cursor.getCompactSize? with
       | none => throw "BLOCK_ERR_PARSE"
       | some x => pure x
-    if !minDa then throw "TX_ERR_PARSE"
-    if tk == 0x00 then
-      if daLen != 0 then throw "TX_ERR_PARSE"
-    else if tk == 0x01 then
-      if daLen > RubinFormal.DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX then throw "TX_ERR_PARSE"
-    else
-      if daLen < 1 || daLen > RubinFormal.DaCoreV1.CHUNK_BYTES then throw "TX_ERR_PARSE"
+    applyDaLenChecks tk daLen minDa
     let (_, c11) ←
       match c10.getBytes? daLen with
       | none => throw "BLOCK_ERR_PARSE"

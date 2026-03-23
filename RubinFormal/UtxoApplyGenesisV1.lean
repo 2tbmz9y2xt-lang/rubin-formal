@@ -168,6 +168,116 @@ def vaultSpendOutputsAllowed
     (outs : List UtxoBasicV1.TxOut) : Bool :=
   outs.all (vaultSpendOutputAllowed whitelist)
 
+/-- Per-input structural checks from the for-loop (lines 218-220).
+    LIVE sub-function: called from applyNonCoinbaseTxBasicNoCrypto per-input loop.
+    Ordering: scriptSig non-empty → sequence invalid → coinbase prevout. -/
+def validateInputStructural (i : UtxoBasicV1.TxIn) : Except String Unit := do
+  if i.scriptSig.size != 0 then throw "TX_ERR_PARSE"
+  if i.sequence > 0x7fffffff then throw "TX_ERR_SEQUENCE_INVALID"
+  if UtxoBasicV1.isCoinbasePrevout i then throw "TX_ERR_PARSE"
+  pure ()
+
+/-- Post-loop witness cursor check.
+    LIVE sub-function: called after per-input loop in applyNonCoinbaseTxBasicNoCrypto. -/
+def validateWitnessCursorComplete (cursor witnessLen : Nat) : Except String Unit :=
+  if cursor != witnessLen then Except.error "TX_ERR_PARSE" else Except.ok ()
+
+/-- Per-input UTXO lookup and pre-covenant checks.
+    LIVE sub-function: called from applyNonCoinbaseTxBasicNoCrypto per-input loop.
+    Ordering: duplicate → missing UTXO → anchor/DA → coinbase maturity.
+    Written without do-notation to avoid join points for formal proofs. -/
+def validateInputUtxoLookup
+    (isDuplicate : Bool)
+    (utxoEntry : Option UtxoBasicV1.UtxoEntry)
+    (height : Nat) : Except String UtxoBasicV1.UtxoEntry :=
+  if isDuplicate then Except.error "TX_ERR_PARSE"
+  else match utxoEntry with
+    | none => Except.error "TX_ERR_MISSING_UTXO"
+    | some e =>
+      if e.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR ||
+         e.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT then
+        Except.error "TX_ERR_MISSING_UTXO"
+      else if e.createdByCoinbase then
+        if height < e.creationHeight + UtxoBasicV1.COINBASE_MATURITY then
+          Except.error "TX_ERR_COINBASE_IMMATURE"
+        else Except.ok e
+      else Except.ok e
+
+/-- Pre-input semantic checks: parse, nonce, output covenants.
+    LIVE sub-function: applyNonCoinbaseTxBasicNoCrypto calls it directly.
+    Ordering: TX_ERR_PARSE (empty inputs) → TX_ERR_TX_NONCE_INVALID →
+    TX_ERR_COVENANT_TYPE_INVALID (output validation) → per-input checks. -/
+def applyTxPreInputChecks
+    (tx : UtxoBasicV1.Tx)
+    (height : Nat) : Except String Unit := do
+  if tx.inputs.length == 0 then throw "TX_ERR_PARSE"
+  if tx.txNonce == 0 then throw "TX_ERR_TX_NONCE_INVALID"
+  for o in tx.outputs do
+    CovenantGenesisV1.validateOutGenesis
+      { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData }
+      tx.txKind height
+
+/-- Value conservation check. LIVE sub-function: called from
+    applyNonCoinbaseTxBasicNoCrypto after output summation.
+    Written without do-notation. -/
+def validateValueConservation
+    (sumOut sumIn : Nat)
+    (vaultInputCount sumInVault : Nat) : Except String Unit :=
+  if sumOut > sumIn then Except.error "TX_ERR_VALUE_CONSERVATION"
+  else if vaultInputCount == 1 && sumOut < sumInVault then
+    Except.error "TX_ERR_VALUE_CONSERVATION"
+  else Except.ok ()
+
+/-- Per-input covenant dispatch — parallel model of the inline if/else chain
+    in `applyNonCoinbaseTxBasicNoCrypto` for-loop body (lines 308-349).
+    NOT directly called from the for-loop (inline code has mutable state updates
+    that this function doesn't model). Written without do-notation to enable
+    formal dispatch ordering proofs. The inline code's covenant-type checks
+    are structurally identical to this function's if/else chain.
+    Ordering: P2PK → Multisig → Vault → HTLC → TX_ERR_COVENANT_TYPE_INVALID. -/
+def dispatchCovenantValidation
+    (e : UtxoBasicV1.UtxoEntry)
+    (tx : UtxoBasicV1.Tx)
+    (witnessCursor : Nat)
+    (height blockMtp : Nat) : Except String Nat :=
+  if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then
+    match WITNESS_SLOTS e.covenantType e.covenantData with
+    | .error err => Except.error err
+    | .ok slots =>
+      if slots != 1 then Except.error "TX_ERR_PARSE"
+      else if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+      else Except.ok (witnessCursor + 1)
+  else if e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG then
+    match CovenantGenesisV1.parseMultisigCovenantData e.covenantData with
+    | .error err => Except.error err
+    | .ok _ =>
+      match WITNESS_SLOTS e.covenantType e.covenantData with
+      | .error err => Except.error err
+      | .ok slots =>
+        if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+        else Except.ok (witnessCursor + slots)
+  else if e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
+    match CovenantGenesisV1.parseVaultCovenantData e.covenantData with
+    | .error err => Except.error err
+    | .ok _ =>
+      match WITNESS_SLOTS e.covenantType e.covenantData with
+      | .error err => Except.error err
+      | .ok slots =>
+        if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+        else Except.ok (witnessCursor + slots)
+  else if e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC then
+    match CovenantGenesisV1.parseHtlcCovenantData e.covenantData with
+    | .error err => Except.error err
+    | .ok _ =>
+      match WITNESS_SLOTS e.covenantType e.covenantData with
+      | .error err => Except.error err
+      | .ok slots =>
+        if slots != 2 then Except.error "TX_ERR_PARSE"
+        else if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+        else Except.ok (witnessCursor + 2)
+  else
+    Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+
 def applyNonCoinbaseTxBasicNoCrypto
     (txBytes : Bytes)
     (utxos : List (Outpoint × UtxoEntry))
@@ -178,14 +288,7 @@ def applyNonCoinbaseTxBasicNoCrypto
   let _ := chainId
   let tx ← UtxoBasicV1.parseTx txBytes
 
-  if tx.inputs.length == 0 then throw "TX_ERR_PARSE"
-  if tx.txNonce == 0 then throw "TX_ERR_TX_NONCE_INVALID"
-
-  -- output covenant validity
-  for o in tx.outputs do
-    CovenantGenesisV1.validateOutGenesis
-      { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData }
-      tx.txKind height
+  applyTxPreInputChecks tx height
 
   -- build lookup
   let utxoMap := UtxoBasicV1.buildUtxoMap utxos
@@ -208,23 +311,11 @@ def applyNonCoinbaseTxBasicNoCrypto
 
   for inputIndex in [0:tx.inputs.length] do
     let i := tx.inputs.get! inputIndex
-    if i.scriptSig.size != 0 then throw "TX_ERR_PARSE"
-    if i.sequence > 0x7fffffff then throw "TX_ERR_SEQUENCE_INVALID"
-    if UtxoBasicV1.isCoinbasePrevout i then throw "TX_ERR_PARSE"
+    validateInputStructural i
     let op : Outpoint := { txid := i.prevTxid, vout := i.prevVout }
-    if seen.contains op then throw "TX_ERR_PARSE"
+    let isDup := seen.contains op
     seen := seen.insert op
-
-    let e? := next.find? op
-    let e ← match e? with
-      | none => throw "TX_ERR_MISSING_UTXO"
-      | some x => pure x
-    if e.covenantType == CovenantGenesisV1.COV_TYPE_ANCHOR || e.covenantType == CovenantGenesisV1.COV_TYPE_DA_COMMIT then
-      throw "TX_ERR_MISSING_UTXO"
-
-    if e.createdByCoinbase then
-      if height < e.creationHeight + UtxoBasicV1.COINBASE_MATURITY then
-        throw "TX_ERR_COINBASE_IMMATURE"
+    let e ← validateInputUtxoLookup isDup (next.find? op) height
 
     -- spend covenant structural validity (parsers)
     if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then
@@ -276,8 +367,7 @@ def applyNonCoinbaseTxBasicNoCrypto
     sumIn := sumIn + e.value
     next := next.erase op
 
-  if witnessCursor != tx.witness.length then
-    throw "TX_ERR_PARSE"
+  validateWitnessCursorComplete witnessCursor tx.witness.length
 
   -- outputs: add to UTXO (excluding non-spendable)
   let mut sumOut : Nat := 0
@@ -321,10 +411,7 @@ def applyNonCoinbaseTxBasicNoCrypto
     if !vaultSpendOutputsAllowed vaultWhitelist tx.outputs then
       throw "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
 
-  if sumOut > sumIn then
-    throw "TX_ERR_VALUE_CONSERVATION"
-  if vaultInputCount == 1 && sumOut < sumInVault then
-    throw "TX_ERR_VALUE_CONSERVATION"
+  validateValueConservation sumOut sumIn vaultInputCount sumInVault
 
   let fee := sumIn - sumOut
   pure (fee, next.size)
