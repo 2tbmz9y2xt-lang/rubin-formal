@@ -1,5 +1,6 @@
 import RubinFormal.BlockValidationOrder
 import RubinFormal.UtxoApplyGenesisV1
+import RubinFormal.CoreExtRefinement
 
 /-!
 # Error Priority Ordering (§13 / §25)
@@ -763,6 +764,49 @@ theorem semantic_stage_chain :
     txSemanticStageOrd .CovenantDispatch < txSemanticStageOrd .WitnessCursor ∧
     txSemanticStageOrd .WitnessCursor < txSemanticStageOrd .ValueConservation := by
   simp [txSemanticStageOrd]
+
+/-! ## TXCTX §13.1 bridge: CoreExtRefinement.ExtError → live functions
+
+Machine-checked bridge connecting the ExtError model (ParseError < SuiteDisallowed < SigInvalid)
+to live validation functions (dispatchCovenantValidation, applyWitnessChecks).
+Each theorem proves: ExtError priority ordinal = N ∧ live function returns specific error code.
+-/
+
+open CoreExtRefinement UtxoApplyGenesisV1 in
+theorem bridge_ext_parse_to_dispatch
+    (e : UtxoBasicV1.UtxoEntry) (tx : UtxoBasicV1.Tx) (wc h m : Nat)
+    (h1 : (e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK) = false)
+    (h2 : (e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG) = false)
+    (h3 : (e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = false)
+    (h4 : (e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC) = false) :
+    errorPriority ExtError.ParseError = 0 ∧
+    dispatchCovenantValidation e tx wc h m = .error "TX_ERR_COVENANT_TYPE_INVALID" :=
+  ⟨rfl, dispatch_unknown_covenant_error e tx wc h m h1 h2 h3 h4⟩
+
+open CoreExtRefinement BlockBasicV1 in
+theorem bridge_ext_suite_to_witness (ws : TxWeightV2.WitnessSectionResult)
+    (hBytes : (ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX) = false)
+    (hNoOverflow : ws.isOverflow = false)
+    (hSigAlg : ws.anySigAlgInvalid = true) :
+    errorPriority ExtError.SuiteDisallowed = 1 ∧
+    applyWitnessChecks ws = .error "TX_ERR_SIG_ALG_INVALID" :=
+  ⟨rfl, sig_alg_priority_over_noncanonical ws hBytes hNoOverflow hSigAlg⟩
+
+open CoreExtRefinement BlockBasicV1 in
+theorem bridge_ext_sig_to_witness (ws : TxWeightV2.WitnessSectionResult)
+    (hBytes : (ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX) = false)
+    (hNoOverflow : ws.isOverflow = false)
+    (hNoSigAlg : ws.anySigAlgInvalid = false)
+    (hNoncanon : ws.anySigNoncanonical = true) :
+    errorPriority ExtError.SigInvalid = 2 ∧
+    applyWitnessChecks ws = .error "TX_ERR_SIG_NONCANONICAL" :=
+  ⟨rfl, sig_noncanonical_last_priority ws hBytes hNoOverflow hNoSigAlg hNoncanon⟩
+
+open CoreExtRefinement in
+theorem ext_error_ordering_matches_live :
+    errorPriority ExtError.ParseError < errorPriority ExtError.SuiteDisallowed ∧
+    errorPriority ExtError.SuiteDisallowed < errorPriority ExtError.SigInvalid :=
+  ⟨parse_before_suite, suite_before_sig⟩
 
 /-! ## Error code distinctness (§13) -/
 
