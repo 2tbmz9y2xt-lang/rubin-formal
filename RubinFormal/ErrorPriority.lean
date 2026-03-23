@@ -412,6 +412,15 @@ theorem dalen_kind1_overflow
     applyDaLenChecks 0x01 daLen true = .error "TX_ERR_PARSE" := by
   unfold applyDaLenChecks; simp [h]; rfl
 
+open BlockBasicV1 in
+theorem dalen_kind2_bounds
+    (tk daLen : Nat)
+    (hNotZero : (tk == 0x00) = false)
+    (hNotOne : (tk == 0x01) = false)
+    (h : (daLen < 1 || daLen > DaCoreV1.CHUNK_BYTES) = true) :
+    applyDaLenChecks tk daLen true = .error "TX_ERR_PARSE" := by
+  unfold applyDaLenChecks; simp [hNotZero, hNotOne, h]; rfl
+
 /-! ## Per-input structural ordering (validateInputStructural)
 
 LIVE sub-function called from applyNonCoinbaseTxBasicNoCrypto per-input loop.

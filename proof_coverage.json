@@ -255,7 +255,8 @@
         "RubinFormal.dalen_kind1_overflow",
         "RubinFormal.input_scriptsig_priority",
         "RubinFormal.input_sequence_priority",
-        "RubinFormal.input_coinbase_prevout_priority"
+        "RubinFormal.input_coinbase_prevout_priority",
+        "RubinFormal.dalen_kind2_bounds"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -321,7 +322,8 @@
         "RubinFormal.dalen_kind1_overflow": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.input_scriptsig_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.input_sequence_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.input_coinbase_prevout_priority": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.input_coinbase_prevout_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.dalen_kind2_bounds": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
       "notes": "Block-level: direct error propagation on live validateBlockBasic for ALL 6 stages including merkle at TOP LEVEL (4 combos). Tx parse: applyWitnessChecks (LIVE) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence. applyDaLenChecks (LIVE) — 3 DA-len checks proved. Tx semantic: applyTxPreInputChecks (LIVE) — empty inputs → nonce invalid → output covenant. validateInputStructural (LIVE, per-input loop) — scriptSig → sequence → coinbase prevout. ALL sub-functions are LIVE (called from real validation paths).",
       "limitations": [
