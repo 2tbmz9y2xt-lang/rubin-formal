@@ -208,7 +208,7 @@ theorem coinbase_processed_after_noncoinbase
 
 /-- Structural correspondence between Lean connectBlockFull and
     Go ConnectBlockBasicInMemory / Rust connect_block_basic.
-    This is an EXPLICIT cryptographic-level assumption, not a sorry.
+    This is an EXPLICIT cryptographic-level assumption (axiom).
     Lean cannot import Go/Rust code — equivalence is verified by
     manual structural inspection (same match/if chain, same error codes,
     same UTXO update logic, same coinbase processing order). -/
