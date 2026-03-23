@@ -146,4 +146,46 @@ theorem connectBlockFull_no_vault
         · -- any vault ≠ true → any vault = false (Bool)
           exact Bool.eq_false_iff.mpr (fun h => hAny h)
 
+/-! ## Error branch proofs (Checklist 4.2) -/
+
+/-- Non-coinbase tx failure → full connect rejected with same error. -/
+theorem connectBlockFull_rejects_bad_txs
+    (nonCoinbaseTxs : List Bytes) (coinbaseOutputs : List CovenantGenesisV1.TxOut)
+    (coinbaseTxid : Bytes) (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes) (subsidy : Nat) (err : String)
+    (hFail : connectBlockTxs nonCoinbaseTxs utxoMap height blockTimestamp chainId = .error err) :
+    connectBlockFull nonCoinbaseTxs coinbaseOutputs coinbaseTxid
+      utxoMap height blockTimestamp chainId subsidy = .error err := by
+  simp [connectBlockFull, hFail]
+
+/-- Coinbase exceeds subsidy+fees → full connect rejected. -/
+theorem connectBlockFull_rejects_oversized_coinbase
+    (nonCoinbaseTxs : List Bytes) (coinbaseOutputs : List CovenantGenesisV1.TxOut)
+    (coinbaseTxid : Bytes) (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes) (subsidy : Nat)
+    (sumFees : Nat) (postTxUtxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (hTxs : connectBlockTxs nonCoinbaseTxs utxoMap height blockTimestamp chainId =
+            .ok (sumFees, postTxUtxos))
+    (hOver : sumCoinbaseOutputs coinbaseOutputs > subsidy + sumFees) :
+    connectBlockFull nonCoinbaseTxs coinbaseOutputs coinbaseTxid
+      utxoMap height blockTimestamp chainId subsidy =
+    .error "BLOCK_ERR_SUBSIDY_EXCEEDED" := by
+  simp [connectBlockFull, hTxs, validateCoinbaseValueBound, hOver]
+
+/-- CORE_VAULT in coinbase → full connect rejected. -/
+theorem connectBlockFull_rejects_vault_coinbase
+    (nonCoinbaseTxs : List Bytes) (coinbaseOutputs : List CovenantGenesisV1.TxOut)
+    (coinbaseTxid : Bytes) (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (height blockTimestamp : Nat) (chainId : Bytes) (subsidy : Nat)
+    (sumFees : Nat) (postTxUtxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (hTxs : connectBlockTxs nonCoinbaseTxs utxoMap height blockTimestamp chainId =
+            .ok (sumFees, postTxUtxos))
+    (hBound : ¬(sumCoinbaseOutputs coinbaseOutputs > subsidy + sumFees))
+    (hVault : coinbaseOutputs.any (·.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = true) :
+    connectBlockFull nonCoinbaseTxs coinbaseOutputs coinbaseTxid
+      utxoMap height blockTimestamp chainId subsidy =
+    .error "BLOCK_ERR_COINBASE_INVALID" := by
+  simp [connectBlockFull, hTxs, validateCoinbaseValueBound, hBound,
+        validateCoinbaseApplyOutputs, hVault]
+
 end RubinFormal
