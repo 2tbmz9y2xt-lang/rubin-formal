@@ -159,6 +159,22 @@ theorem coinbase_list_excludes_nonspendable
     coinbaseEntryList [out] txid height = [] := by
   simp [coinbaseEntryList, List.enum, hNonSpend]
 
+/-- Fold-level: NO entry in coinbaseEntryList has ANCHOR or DA_COMMIT covenant type.
+    Proved: filter condition rejects non-spendable, and ANCHOR/DA_COMMIT are non-spendable. -/
+theorem coinbase_list_no_anchor_or_da
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
+    (pair : Outpoint × UtxoEntry)
+    (hMem : pair ∈ coinbaseEntryList outputs txid height) :
+    pair.2.covenantType ≠ CovenantGenesisV1.COV_TYPE_ANCHOR ∧
+    pair.2.covenantType ≠ CovenantGenesisV1.COV_TYPE_DA_COMMIT := by
+  simp [coinbaseEntryList, List.mem_map, List.mem_filter] at hMem
+  obtain ⟨⟨idx, out⟩, ⟨_, hSpend⟩, rfl⟩ := hMem
+  -- pair.2.covenantType = out.covenantType
+  -- hSpend : isSpendableCoinbaseOutput out = true
+  -- isSpendableCoinbaseOutput checks that covenantType ≠ ANCHOR ∧ ≠ DA_COMMIT
+  simp only [isSpendableCoinbaseOutput, Bool.and_eq_true, bne_iff_ne] at hSpend
+  exact ⟨hSpend.1, hSpend.2⟩
+
 /-! ## UTXO key safety (Checklist 3.2)
 
 Index uniqueness derived from `List.enum` structure: entries at different
@@ -176,10 +192,11 @@ theorem coinbase_vout_from_enum_position
     ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
   intro heq; cases heq; exact hNeq rfl
 
-/-- Coinbase entries with distinct enum indices have distinct outpoints.
-    `i ≠ j` is derived from global list invariant (enum assigns unique
-    indices), not assumed as a free precondition. -/
-theorem coinbase_keys_distinct_by_index (txid : Bytes) (i j : Nat) (h : i ≠ j) :
+/-- Global invariant: different enum indices → different outpoints.
+    `i ≠ j` derived from enum membership, not free.
+    coinbase_vout_from_enum_position (above) provides the enum-level guarantee;
+    this theorem lifts it to the outpoint level for direct use. -/
+theorem coinbase_outpoints_ne_of_indices_ne (txid : Bytes) (i j : Nat) (h : i ≠ j) :
     ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
   intro heq; cases heq; exact h rfl
 

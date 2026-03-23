@@ -67,6 +67,35 @@ theorem buildTxContext_some_when_active (ids : List Nat) (h : ids.length > 0) :
   · rename_i heq; omega
   · rfl
 
+/-- Structural correctness: returned bundle contains EXACTLY the active ext_ids,
+    in the same order, with no duplicates introduced and no ids dropped.
+    This is stronger than just `isSome` — it constrains the bundle FIELDS. -/
+theorem buildTxContext_bundle_ext_ids (ids : List Nat) (h : ids.length > 0)
+    (bundle : TxContextBundle)
+    (hEq : buildTxContextResult ids = some bundle) :
+    bundle.continuingExtIds = ids := by
+  simp only [buildTxContextResult] at hEq
+  split at hEq
+  · rename_i heq; omega
+  · cases hEq; rfl
+
+/-- If input ids have no duplicates, bundle ext_ids have no duplicates. -/
+theorem buildTxContext_preserves_nodup (ids : List Nat) (h : ids.length > 0)
+    (hNodup : ids.Nodup)
+    (bundle : TxContextBundle)
+    (hEq : buildTxContextResult ids = some bundle) :
+    bundle.continuingExtIds.Nodup := by
+  have := buildTxContext_bundle_ext_ids ids h bundle hEq
+  rw [this]; exact hNodup
+
+/-- Bundle ext_ids are a permutation of input ids (trivially equal). -/
+theorem buildTxContext_ext_ids_perm (ids : List Nat) (h : ids.length > 0)
+    (bundle : TxContextBundle)
+    (hEq : buildTxContextResult ids = some bundle) :
+    bundle.continuingExtIds.Perm ids := by
+  have := buildTxContext_bundle_ext_ids ids h bundle hEq
+  rw [this]
+
 /-- Continuing output count is bounded by MAX. -/
 theorem continuing_count_bounded (c : TxContextContinuing) :
     c.count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS :=
