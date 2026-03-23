@@ -206,6 +206,47 @@ theorem buildTxContextFromValues_value_conservation
   have hOut := buildTxContextFromValues_totalOut_real ids hLen inVals outVals ht cd bundle hEq
   omega
 
+/-! ## Live TxContext construction (§14 step 3c — R13 FULL)
+
+Models the LIVE BuildTxContext path from Go connect_block_parallel.go.
+Written as explicit match (no do) for formal proof access.
+rfl-equivalent to buildTxContext / buildTxContextFromValues. -/
+
+/-- Live TxContext construction: explicit bind with computed sums.
+    Mirrors Go BuildTxContext — takes actual value lists, computes
+    totalIn/totalOut via fold, returns bundle or none. -/
+def buildTxContextLive
+    (activeExtIds : List Nat)
+    (inputValues outputValues : List Nat)
+    (height : Nat)
+    (continuingData : List (Nat × TxContextContinuing))
+    : Option TxContextBundle :=
+  if activeExtIds.length = 0 then none
+  else
+    let totalIn := inputValues.foldl (· + ·) 0
+    let totalOut := outputValues.foldl (· + ·) 0
+    some {
+      base := { totalIn := totalIn, totalOut := totalOut, height := height }
+      continuingByExt := continuingData
+      continuingExtIds := activeExtIds
+    }
+
+/-- rfl equivalence: buildTxContextLive = buildTxContextFromValues. -/
+theorem buildTxContextLive_eq_fromValues
+    (ids : List Nat) (inVals outVals : List Nat) (h : Nat)
+    (cd : List (Nat × TxContextContinuing)) :
+    buildTxContextLive ids inVals outVals h cd =
+    buildTxContextFromValues ids inVals outVals h cd := by
+  simp [buildTxContextLive, buildTxContextFromValues, buildTxContext, sumInputValues, sumOutputValues]
+
+/-- rfl equivalence: buildTxContextLive = buildTxContext with computed sums. -/
+theorem buildTxContextLive_eq_buildTxContext
+    (ids : List Nat) (inVals outVals : List Nat) (h : Nat)
+    (cd : List (Nat × TxContextContinuing)) :
+    buildTxContextLive ids inVals outVals h cd =
+    buildTxContext ids (inVals.foldl (· + ·) 0) (outVals.foldl (· + ·) 0) h cd := by
+  simp [buildTxContextLive, buildTxContext]
+
 /-! ## Ext_id ordering
 
 Ext_id sort properties are already proved in TxContextFormal.lean:
