@@ -865,4 +865,22 @@ theorem err_ne_parse_ts_old : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_TIMEST
 theorem err_ne_parse_ts_future : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_TIMESTAMP_FUTURE" := by decide
 theorem err_ne_tx_parse_nonce : ("TX_ERR_PARSE" : String) ≠ "TX_ERR_NONCE_REPLAY" := by decide
 
+/-! ## Smoke tests: bridge lemmas with concrete inputs -/
+
+-- bridge_parse_dalen: minDa=false → error at stage 8
+example : txParseStageOrd .DaLenChecks = 8 ∧
+    BlockBasicV1.applyDaLenChecks 0 100 false = .error "TX_ERR_PARSE" :=
+  bridge_parse_dalen 0 100 false rfl
+
+-- bridge_semantic_witness_cursor: cursor ≠ witnessLen → error at stage 6
+example : txSemanticStageOrd .WitnessCursor = 6 ∧
+    UtxoApplyGenesisV1.validateWitnessCursorComplete 3 5 = .error "TX_ERR_PARSE" :=
+  bridge_semantic_witness_cursor 3 5 (by native_decide)
+
+-- ext_error_ordering: parse < suite < sig (concrete ordinals)
+open CoreExtRefinement in
+example : errorPriority .ParseError < errorPriority .SuiteDisallowed ∧
+    errorPriority .SuiteDisallowed < errorPriority .SigInvalid :=
+  ext_error_ordering_matches_live
+
 end RubinFormal
