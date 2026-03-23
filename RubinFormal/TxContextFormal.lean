@@ -45,11 +45,7 @@ private theorem limb_gt_implies_ge (hi_a lo_a hi_b lo_b B : Nat)
     hi_a * B + lo_a ≥ hi_b * B + lo_b := by
   have h1 : (hi_b + 1) * B ≤ hi_a * B := Nat.mul_le_mul_right B hgt
   have h3 : (hi_b + 1) * B = hi_b * B + B := Nat.succ_mul hi_b B
-  -- hi_b*B + B ≤ hi_a*B (from h1 rewritten via h3)
   have h4 : hi_b * B + B ≤ hi_a * B := h3 ▸ h1
-  -- hi_b*B + lo_b < hi_b*B + B  (from hlob)
-  -- hi_b*B + B ≤ hi_a*B ≤ hi_a*B + lo_a
-  -- So hi_b*B + lo_b < hi_a*B + lo_a
   have hlt : hi_b * B + lo_b < hi_a * B + lo_a :=
     calc hi_b * B + lo_b
         < hi_b * B + B := Nat.add_lt_add_left hlob _
@@ -91,16 +87,14 @@ private theorem hi_lt_implies_lt (a b : Uint128) (hlt : a.hi < b.hi) :
 theorem uint128GTE_native_equivalence (a b : Uint128) :
     uint128GTE a b ↔ a.toNat ≥ b.toNat := by
   constructor
-  · -- Forward
-    intro h
+  · intro h
     match h with
     | Or.inl hgt => exact hi_gt_implies_ge a b hgt
     | Or.inr ⟨heq, hge⟩ =>
       unfold Uint128.toNat
       rw [heq]
       exact Nat.add_le_add_left hge _
-  · -- Backward
-    intro h
+  · intro h
     by_cases hhi : a.hi > b.hi
     · exact Or.inl hhi
     · have hle : a.hi ≤ b.hi := Nat.le_of_not_lt hhi
@@ -137,12 +131,7 @@ theorem insertSorted_perm (x : Nat) (ys : List Nat) :
     simp only [insertSorted]
     split
     · exact List.Perm.refl _
-    · -- x > y: insertSorted x (y::ys) = y :: insertSorted x ys
-      -- Need: x :: y :: ys ~ y :: insertSorted x ys
-      -- swap gives: y :: x :: ys ~ x :: y :: ys
-      -- cons y ih gives: y :: x :: ys ~ y :: insertSorted x ys
-      -- We need: x :: y :: ys ~ y :: insertSorted x ys
-      exact (List.Perm.swap y x ys).trans (List.Perm.cons y ih)
+    · exact (List.Perm.swap y x ys).trans (List.Perm.cons y ih)
 
 /-- sortAscending produces a permutation of the input. -/
 theorem sortAscending_perm (xs : List Nat) :
@@ -191,16 +180,14 @@ where
     | cons y ys ih_ys =>
       simp only [insertSorted]
       split
-      · -- x ≤ y
-        rename_i hle
+      · rename_i hle
         exact List.pairwise_cons.mpr ⟨fun z hz => by
           rw [List.mem_cons] at hz
           match hz with
           | Or.inl heq => exact heq ▸ hle
           | Or.inr hmem => exact Nat.le_trans hle (List.rel_of_pairwise_cons h hmem),
           h⟩
-      · -- x > y
-        rename_i hnle
+      · rename_i hnle
         have hyx : y < x := Nat.lt_of_not_le hnle
         have hpw := List.pairwise_cons.mp h
         have ih_result := ih_ys hpw.2
@@ -211,13 +198,63 @@ where
           | Or.inr hmem => exact hpw.1 z hmem,
           ih_result⟩
 
+/-- Any two sorted permutations of the same ext_id multiset are equal.
+    This closes the missing uniqueness gap left by the earlier Perm+Sorted-only theorem. -/
+private theorem sorted_perm_unique_nat :
+    ∀ {xs ys : List Nat},
+      List.Pairwise (· ≤ ·) xs →
+      List.Pairwise (· ≤ ·) ys →
+      List.Perm xs ys →
+      xs = ys
+  | [], [], _, _, _ => rfl
+  | [], _ :: _, _, _, hperm => by
+      have hlen := hperm.length_eq
+      simp at hlen
+  | _ :: _, [], _, _, hperm => by
+      have hlen := hperm.length_eq
+      simp at hlen
+  | x :: xs, y :: ys, hxs, hys, hperm => by
+      have hx_mem : x ∈ y :: ys := hperm.mem_iff.mp (by simp)
+      have hy_mem : y ∈ x :: xs := hperm.symm.mem_iff.mp (by simp)
+      have hxy : x ≤ y := by
+        have hcons := List.pairwise_cons.mp hys
+        rw [List.mem_cons] at hx_mem
+        rcases hx_mem with rfl | hmem
+        · exact Nat.le_refl _
+        · exact hcons.1 x hmem
+      have hyx : y ≤ x := by
+        have hcons := List.pairwise_cons.mp hxs
+        rw [List.mem_cons] at hy_mem
+        rcases hy_mem with rfl | hmem
+        · exact Nat.le_refl _
+        · exact hcons.1 y hmem
+      have hEq : x = y := Nat.le_antisymm hxy hyx
+      subst hEq
+      have hperm_tail : List.Perm xs ys := List.Perm.cons_inv hperm
+      have hxs_tail : List.Pairwise (· ≤ ·) xs := (List.pairwise_cons.mp hxs).2
+      have hys_tail : List.Pairwise (· ≤ ·) ys := (List.pairwise_cons.mp hys).2
+      simpa using sorted_perm_unique_nat hxs_tail hys_tail hperm_tail
+
+/-- **extid_sort_unique_sorted_permutation** (§14):
+    uniqueness of sorted ext_id permutations. -/
+theorem extid_sort_unique_sorted_permutation (xs ys : List Nat)
+    (hperm : List.Perm xs ys)
+    (hxs : List.Pairwise (· ≤ ·) xs)
+    (hys : List.Pairwise (· ≤ ·) ys) :
+    xs = ys := by
+  exact sorted_perm_unique_nat hxs hys hperm
+
 /-- **extid_sort_deterministic** (§14, strengthened):
-    sortAscending produces a sorted permutation of the input.
-    This is the substantive property: any two implementations that produce
-    a sorted permutation of the same input yield identical results. -/
-theorem extid_sort_deterministic (xs : List Nat) :
-    List.Perm xs (sortAscending xs) ∧ List.Pairwise (· ≤ ·) (sortAscending xs) :=
-  ⟨sortAscending_perm xs, sortAscending_sorted_v2 xs⟩
+    the canonical sorted ext_id output is unique. Any sorted permutation of the
+    input must equal `sortAscending xs`. -/
+theorem extid_sort_deterministic (xs ys : List Nat)
+    (hperm : List.Perm xs ys)
+    (hsorted : List.Pairwise (· ≤ ·) ys) :
+    sortAscending xs = ys := by
+  apply extid_sort_unique_sorted_permutation
+  · exact (sortAscending_perm xs).symm.trans hperm
+  · exact sortAscending_sorted_v2 xs
+  · exact hsorted
 
 /-- Concrete verification: descending input [3, 1, 2] produces [1, 2, 3].
     Models CV-51/CV-84: ext_ids in descending wire order are still
@@ -289,11 +326,8 @@ theorem vault_sum_ignored_when_no_vault (totalIn totalOut vis : Nat) :
 -- §14 Theorem 7: parallel_error_equivalence
 -- ============================================================================
 
-/-- **parallel_error_equivalence** (§14, strengthened):
-    For any permutation of inputs, mapping a pure function f produces
-    a permutation of the original results. This is the real property:
-    reordering inputs (as happens in parallel scheduling) produces the
-    same multiset of results. -/
+/-- Auxiliary permutation invariance for pure result maps.
+    This is useful, but it is not by itself the full lowest-index error theorem. -/
 theorem parallel_error_equivalence {inputs₁ inputs₂ : List α} (f : α → Bool)
     (hperm : List.Perm inputs₁ inputs₂) :
     List.Perm (inputs₁.map f) (inputs₂.map f) :=
@@ -315,6 +349,105 @@ theorem parallel_any_fail_perm_invariant {inputs₁ inputs₂ : List α} (f : α
   obtain ⟨x, hx, hfx⟩ := hfail
   exact ⟨x, hperm.mem_iff.mp hx, hfx⟩
 
+/-- Sequential first failing index, offset by `start`. -/
+def firstErrorIndexFrom (start : Nat) : List Bool → Option Nat
+  | [] => none
+  | ok :: rest => if ok then firstErrorIndexFrom (start + 1) rest else some start
+
+/-- Sequential first failing index from zero. -/
+def sequentialErrorIndex (results : List Bool) : Option Nat :=
+  firstErrorIndexFrom 0 results
+
+/-- Tag validation results with the indices they occupy in sequential order. -/
+def indexedValidationResultsFrom (start : Nat) : List Bool → List (Nat × Bool)
+  | [] => []
+  | ok :: rest => (start, ok) :: indexedValidationResultsFrom (start + 1) rest
+
+/-- Indexed validation results from zero. -/
+def indexedValidationResults (results : List Bool) : List (Nat × Bool) :=
+  indexedValidationResultsFrom 0 results
+
+/-- Parallel reducer: return the lowest failing index, if any. -/
+def lowestFailIdx? : List (Nat × Bool) → Option Nat
+  | [] => none
+  | (idx, ok) :: rest =>
+      let tail := lowestFailIdx? rest
+      if ok then tail
+      else
+        match tail with
+        | none => some idx
+        | some j => some (Nat.min idx j)
+
+/-- Any sequential first-fail result is at or after the current start offset. -/
+private theorem firstErrorIndexFrom_lower_bound (start idx : Nat) (results : List Bool)
+    (h : firstErrorIndexFrom start results = some idx) :
+    start ≤ idx := by
+  induction results generalizing start idx with
+  | nil =>
+      simp [firstErrorIndexFrom] at h
+  | cons ok rest ih =>
+      cases ok with
+      | false =>
+          simp [firstErrorIndexFrom] at h
+          cases h
+          exact Nat.le_refl _
+      | true =>
+          simp [firstErrorIndexFrom] at h
+          exact Nat.le_trans (Nat.le_succ start) (ih (start + 1) idx h)
+
+/-- The tagged parallel reducer agrees with the sequential first-fail index on
+    canonically indexed results. -/
+private theorem lowestFailIdx_indexed_from (start : Nat) (results : List Bool) :
+    lowestFailIdx? (indexedValidationResultsFrom start results) =
+    firstErrorIndexFrom start results := by
+  induction results generalizing start with
+  | nil => rfl
+  | cons ok rest ih =>
+      cases ok with
+      | false =>
+          simp [indexedValidationResultsFrom, lowestFailIdx?, firstErrorIndexFrom]
+          rw [ih (start + 1)]
+          cases hrest : firstErrorIndexFrom (start + 1) rest with
+          | none =>
+              simp [hrest]
+          | some j =>
+              have hge1 : start + 1 ≤ j := firstErrorIndexFrom_lower_bound (start + 1) j rest hrest
+              have hge : start ≤ j := Nat.le_trans (Nat.le_succ start) hge1
+              simp [hrest, Nat.min_eq_left hge]
+      | true =>
+          simp [indexedValidationResultsFrom, lowestFailIdx?, firstErrorIndexFrom, ih (start + 1)]
+
+/-- Permuting tagged validation results does not change the lowest failing index. -/
+private theorem lowestFailIdx_perm_invariant {xs ys : List (Nat × Bool)}
+    (hperm : List.Perm xs ys) :
+    lowestFailIdx? xs = lowestFailIdx? ys := by
+  induction hperm with
+  | nil => rfl
+  | cons x hperm ih =>
+      simpa [lowestFailIdx?, ih]
+  | swap x y zs =>
+      cases x with
+      | mk i oki =>
+          cases y with
+          | mk j okj =>
+              cases oki <;> cases okj <;>
+                simp [lowestFailIdx?, Nat.min_assoc, Nat.min_left_comm, Nat.min_comm]
+  | trans h1 h2 ih1 ih2 =>
+      exact ih1.trans ih2
+
+/-- **parallel_error_index_priority** (§14): the lowest failing index chosen by
+    a parallel reducer over tagged results matches the first failing index in the
+    canonical sequential order. -/
+theorem parallel_error_index_priority (results : List Bool)
+    (parallel : List (Nat × Bool))
+    (hperm : List.Perm parallel (indexedValidationResults results)) :
+    lowestFailIdx? parallel = sequentialErrorIndex results := by
+  calc
+    lowestFailIdx? parallel
+        = lowestFailIdx? (indexedValidationResults results) := lowestFailIdx_perm_invariant hperm
+    _ = firstErrorIndexFrom 0 results := lowestFailIdx_indexed_from 0 results
+    _ = sequentialErrorIndex results := rfl
+
 -- ============================================================================
 -- §14 Theorem 8: sighash_policy_complete
 -- ============================================================================
@@ -324,14 +457,31 @@ def hasValidBaseType (sighashType : Nat) : Bool :=
   let baseType := sighashType &&& 0x7F
   baseType == 1 || baseType == 2 || baseType == 3
 
+/-- Bit-test helper for the allowed_sighash_set mask. -/
+private def bitSet (mask bit : Nat) : Bool :=
+  (mask &&& bit) == bit
+
 /-- Check if sighash is allowed by profile's allowed_sighash_set bitmask. -/
 def sighashAllowed (allowedSet : Nat) (sighashType : Nat) : Bool :=
-  let baseType := sighashType &&& 0x7F
-  let hasAcp := (sighashType &&& 0x80) != 0
-  let baseIdx := baseType - 1
-  let baseAllowed := (allowedSet >>> baseIdx) &&& 1 == 1
-  let acpAllowed := !hasAcp || ((allowedSet >>> 7) &&& 1 == 1)
-  baseAllowed && acpAllowed
+  let st := sighashType &&& 0xFF
+  let baseType := st &&& 0x7F
+  let hasAcp := (st &&& 0x80) != 0
+  let baseAllowed :=
+    (baseType == 1 && bitSet allowedSet 0x01) ||
+    (baseType == 2 && bitSet allowedSet 0x02) ||
+    (baseType == 3 && bitSet allowedSet 0x04)
+  hasValidBaseType st && baseAllowed && (!hasAcp || bitSet allowedSet 0x80)
+
+/-- Explicit spec for the 8-bit sighash policy space. -/
+private def sighashAllowedSpec (allowedSet sighashType : Nat) : Bool :=
+  let st := sighashType &&& 0xFF
+  let baseType := st &&& 0x7F
+  let hasAcp := (st &&& 0x80) != 0
+  let baseAllowed :=
+    (baseType == 1 && ((allowedSet &&& 0x01) == 0x01)) ||
+    (baseType == 2 && ((allowedSet &&& 0x02) == 0x02)) ||
+    (baseType == 3 && ((allowedSet &&& 0x04) == 0x04))
+  baseAllowed && (!hasAcp || ((allowedSet &&& 0x80) == 0x80))
 
 /-- **sighash_policy_complete** (§14): 0x87 allows all 6 valid combos. -/
 theorem sighash_policy_complete :
@@ -343,11 +493,20 @@ theorem sighash_policy_complete :
     sighashAllowed 0x87 0x83 = true := by
   native_decide
 
-/-- Invalid base types are rejected. -/
+/-- **sighash_policy_exhaustive_256x256** (§14): for all 256 allowed masks and
+    all 256 wire sighash bytes, the executable policy matches the explicit spec. -/
+theorem sighash_policy_exhaustive_256x256 :
+    ∀ (allowedSet sighashType : Fin 256),
+      sighashAllowed allowedSet.val sighashType.val =
+      sighashAllowedSpec allowedSet.val sighashType.val := by
+  native_decide
+
+/-- Invalid base types are rejected by the executable policy for every 8-bit mask. -/
 theorem sighash_invalid_base_rejected :
-    hasValidBaseType 0x00 = false ∧
-    hasValidBaseType 0x04 = false ∧
-    hasValidBaseType 0x80 = false := by
+    ∀ (allowedSet : Fin 256),
+      sighashAllowed allowedSet.val 0x00 = false ∧
+      sighashAllowed allowedSet.val 0x04 = false ∧
+      sighashAllowed allowedSet.val 0x80 = false := by
   native_decide
 
 end RubinFormal.TxContext
