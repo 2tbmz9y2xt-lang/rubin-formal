@@ -56,7 +56,11 @@ inductive ForkResult where
 deriving DecidableEq
 
 /-- Full fork-choice selector: chainwork first, tie-break by block hash.
-    Models the runtime fork_choice_select operation from §23. -/
+    Models the runtime fork_choice_select operation from §23.
+    Precondition: hashes must be 32 bytes (block header hashes).
+    The 32-byte requirement is NOT enforced in the function type
+    but IS required by the determinism proofs (bytesLT_total_of_ne
+    needs equal-length lists, provided by 32 = 32). -/
 def forkSelect (lhsWork rhsWork : Nat) (lhsHash rhsHash : List UInt8) : ForkResult :=
   if lhsWork > rhsWork then .Left
   else if rhsWork > lhsWork then .Right
@@ -70,8 +74,11 @@ theorem forkSelect_heavier (lw rw : Nat) (lh rh : List UInt8) (h : lw > rw) :
     forkSelect lw rw lh rh = .Left := by
   simp [forkSelect, h]
 
-/-- Equal-chainwork tie-break is deterministic: both sides agree on the winner.
-    If node A sees (lh, rh) and node B sees (rh, lh), they pick the same chain. -/
+/-- Equal-chainwork symmetric agreement: if node A sees (lh, rh) and node B
+    sees (rh, lh), they agree on which chain wins. This is the key fork-choice
+    property — two nodes seeing the same chains in different order will converge
+    to the same tip. NOT "determinism" in the trivial sense (pure function always
+    returns same output for same input), but AGREEMENT across asymmetric views. -/
 theorem forkSelect_tiebreak_det (w : Nat) (lh rh : List UInt8)
     (hL : lh.length = 32) (hR : rh.length = 32) (hNeq : lh ≠ rh) :
     (forkSelect w w lh rh = .Left ∧ forkSelect w w rh lh = .Right) ∨
@@ -91,8 +98,9 @@ theorem forkSelect_chainwork_bridge (lhs rhs : List Nat)
     ChainWorkV1.heavierChain lhs rhs = true :=
   ⟨forkSelect_heavier _ _ _ _ h, heavierChain_wins lhs rhs h⟩
 
-/-- Full end-to-end: for ANY two chains with different (work, hash) pairs,
-    forkSelect gives a deterministic result — both nodes agree on winner. -/
+/-- Full end-to-end symmetric agreement: for ANY two chains with different
+    (work, hash) pairs, two nodes seeing them in opposite order agree on
+    the winner. Subsumes both the chainwork and tie-break cases. -/
 theorem forkSelect_total_det (lw rw : Nat) (lh rh : List UInt8)
     (hL : lh.length = 32) (hR : rh.length = 32)
     (hDiff : lw ≠ rw ∨ lh ≠ rh) :
