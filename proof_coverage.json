@@ -308,7 +308,11 @@
         "RubinFormal.bridge_ext_parse_to_dispatch",
         "RubinFormal.bridge_ext_suite_to_witness",
         "RubinFormal.bridge_ext_sig_to_witness",
-        "RubinFormal.ext_error_ordering_matches_live"
+        "RubinFormal.ext_error_ordering_matches_live",
+        "RubinFormal.bridge_parse_dalen",
+        "RubinFormal.bridge_semantic_output_covenant",
+        "RubinFormal.bridge_semantic_scriptsig",
+        "RubinFormal.bridge_semantic_witness_cursor"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -427,9 +431,13 @@
         "RubinFormal.bridge_ext_parse_to_dispatch": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_ext_suite_to_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_ext_sig_to_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.ext_error_ordering_matches_live": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.ext_error_ordering_matches_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_parse_dalen": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_output_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_scriptsig": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_witness_cursor": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed. TXCTX §13.1: CORE_EXT error priority ordering proved via ExtError model in CoreExtRefinement.lean — parse_before_suite, suite_before_sig, error_selection_commutative, parse_always_wins. Machine-checked bridge lemmas connect enum stages (TxParseStage, TxSemanticStage) to live sub-functions via conjunction proofs: stageOrd = N ∧ live_function(args) = error. Stage ordering chains proved via simp. This closes the enum-to-live-function gap with machine-checked evidence.",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all enum stages bridged to live functions (TxKind, InputCountMin, OutputCountMin, WitnessChecks, DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error).",
       "limitations": []
     },
     {
