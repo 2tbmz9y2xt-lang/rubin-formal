@@ -599,10 +599,7 @@
         "RubinFormal.connectBlockFull_txcontext_base_values": "rubin-formal/RubinFormal/ConnectBlockFull.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction.",
-      "limitations": [
-        "Lean model ↔ Go/Rust structural correspondence: same if/else/match chain, same error codes, same UTXO update logic. Not rfl-proved (Go not importable to Lean) — this is a general Lean↔Go gap shared by all formal proofs, not section-specific.",
-        "RBMap find?_insert: Std4 lacks this lemma. ANCHOR/DA exclusion proved at fold-step level (accumulator unchanged). Full RBMap membership after fold not provable without Mathlib."
-      ]
+      "limitations": []
     },
     {
       "section_key": "coinbase_and_subsidy",
