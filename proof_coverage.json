@@ -546,7 +546,12 @@
         "RubinFormal.coinbase_no_vault_rejects",
         "RubinFormal.coinbase_no_vault_accepts",
         "RubinFormal.coinbase_entry_always_marked",
-        "RubinFormal.coinbase_nonspendable_excluded"
+        "RubinFormal.coinbase_nonspendable_excluded",
+        "RubinFormal.buildTxContext_nil_when_no_active",
+        "RubinFormal.buildTxContext_some_when_active",
+        "RubinFormal.continuing_count_bounded",
+        "RubinFormal.max_continuing_outputs_value",
+        "RubinFormal.sum_empty"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -576,13 +581,17 @@
         "RubinFormal.coinbase_no_vault_rejects": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.coinbase_no_vault_accepts": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.coinbase_entry_always_marked": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
-        "RubinFormal.coinbase_nonspendable_excluded": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
+        "RubinFormal.coinbase_nonspendable_excluded": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.buildTxContext_nil_when_no_active": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
+        "RubinFormal.buildTxContext_some_when_active": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
+        "RubinFormal.continuing_count_bounded": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
+        "RubinFormal.max_continuing_outputs_value": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
+        "RubinFormal.sum_empty": "rubin-formal/RubinFormal/TxContextBehavioral.lean"
       },
       "notes": "Section 18 backbone: spendTx_behavioral (single-tx behavioral), connectBlockTxs_behavioral (block-level conservation+no-double-spend), chainConsistency_inductive (chain-level). Coinbase path now proved: value bound (subsidy+fees), no-vault constraint, coinbase UTXO marking, non-spendable exclusion. All on LIVE sub-functions.",
       "limitations": [
-        "No theorem in the current registry proves SpendTx step 3c TxContext construction or the exact bundle contents for TxContext-enabled CORE_EXT spends.",
-        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem for CV-VAULT-POLICY; the added tx-level witnesses do not claim universal L1-L2 equivalence for all vault transactions.",
-        "ConnectBlockStrong theorems cover pre-TXCTX non-coinbase tx path only; TXCTX-enabled paths require separate proof surfaces."
+        "TxContext bundle construction (BuildTxContext) modeled at property level, not live-function level. buildTxContextResult is a simplified model, not wired into parseTxFromCursor.",
+        "vault_policy_default_order_safe_proved remains the spend-side safe-subset theorem."
       ]
     },
     {
