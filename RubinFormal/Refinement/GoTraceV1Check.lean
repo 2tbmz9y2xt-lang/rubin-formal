@@ -162,14 +162,28 @@ private def utxoApplyBasicExcludedIds : List String :=
 private def utxoApplyBasicBridgeRows : List UtxoBasicOut :=
   utxoBasicOuts.filter (fun o => !(utxoApplyBasicExcludedIds.contains o.id))
 
+/-- Exact supported id set for the current UTXO bridge.
+    This pins the replay coverage so a future trace regeneration cannot silently
+    narrow the contract while still leaving the theorem green. -/
+private def utxoApplyBasicExpectedIds : List String :=
+  ["CV-U-01", "CV-U-02", "CV-U-05", "CV-U-06", "CV-U-08", "CV-U-09", "CV-U-10",
+   "CV-U-11", "CV-U-12", "CV-U-13", "CV-U-14", "CV-U-15", "CV-U-17"]
+
+private def utxoApplyBasicBridgeRowIds : List String :=
+  utxoApplyBasicBridgeRows.map (fun o => o.id)
+
+private def utxoApplyBasicSupportedIdsOk : Bool :=
+  utxoApplyBasicBridgeRowIds == utxoApplyBasicExpectedIds
+
 /-- Narrow machine-checked bridge for the currently supported live UTXO apply path.
     Every included `CV-UTXO-BASIC` row in the generated Go trace v1 corpus is
     rechecked against Lean's executable `applyNonCoinbaseTxBasic` on the matching
     fixture id. This is a trace-backed executable contract over the supported row
-    subset, not a universal proof for every possible UTXO/input combination. -/
+    subset, not a universal proof for every possible UTXO/input combination. The
+    exact covered id set is pinned by `utxoApplyBasicExpectedIds`. -/
 def utxoApplyBasicGoTraceV1Pass : Bool :=
   let rows := utxoApplyBasicBridgeRows
-  !rows.isEmpty && rows.all checkUtxoBasic
+  utxoApplyBasicSupportedIdsOk && !rows.isEmpty && rows.all checkUtxoBasic
 
 private def blockSummary? (blockBytes : Bytes) : Except String (Bytes × Nat × Nat) := do
   let pb ← BlockBasicV1.parseBlock blockBytes
@@ -215,7 +229,7 @@ def allGoTraceV1Ok : Bool :=
   parseOuts.all checkParse &&
   sighashOuts.all checkSighash &&
   powOuts.all checkPow &&
-  utxoBasicOuts.all checkUtxoBasic &&
+  utxoApplyBasicGoTraceV1Pass &&
   blockBasicOuts.all checkBlockBasic
 
 def firstGoTraceV1Mismatch : Option String :=
@@ -229,11 +243,14 @@ def firstGoTraceV1Mismatch : Option String :=
           match powOuts.find? (fun o => !checkPow o) with
           | some o => mk "CV-POW" (o.id ++ "/" ++ o.op)
           | none =>
-              match utxoBasicOuts.find? (fun o => !checkUtxoBasic o) with
-              | some o => mk "CV-UTXO-BASIC" o.id
-              | none =>
-                  match blockBasicOuts.find? (fun o => !checkBlockBasic o) with
-                  | some o => mk "CV-BLOCK-BASIC" o.id
-                  | none => none
+              if !utxoApplyBasicSupportedIdsOk then
+                mk "CV-UTXO-BASIC" "ID-SET"
+              else
+                match utxoApplyBasicBridgeRows.find? (fun o => !checkUtxoBasic o) with
+                | some o => mk "CV-UTXO-BASIC" o.id
+                | none =>
+                    match blockBasicOuts.find? (fun o => !checkBlockBasic o) with
+                    | some o => mk "CV-BLOCK-BASIC" o.id
+                    | none => none
 
 end RubinFormal.Refinement
