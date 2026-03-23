@@ -195,4 +195,14 @@ theorem coinbase_bound_zero_subsidy (outputs : List CovenantGenesisV1.TxOut) (fe
     (h : ¬(sumCoinbaseOutputs outputs > 0 + fees)) :
     sumCoinbaseOutputs outputs ≤ fees := by omega
 
+/-- Empty coinbase outputs → always passes value bound. -/
+theorem coinbase_empty_outputs_passes (subsidy fees : Nat) :
+    validateCoinbaseValueBound [] subsidy fees = .ok () := by
+  simp [validateCoinbaseValueBound, sumCoinbaseOutputs]; omega
+
+/-- Empty coinbase outputs → zero entries in UTXO list. -/
+theorem coinbase_empty_outputs_no_entries (txid : Bytes) (height : Nat) :
+    coinbaseEntryList [] txid height = [] := by
+  simp [coinbaseEntryList, List.enum]
+
 end RubinFormal
