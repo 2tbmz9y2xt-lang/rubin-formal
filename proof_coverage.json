@@ -325,9 +325,10 @@
         "RubinFormal.input_coinbase_prevout_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.dalen_kind2_bounds": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation on live validateBlockBasic for ALL 6 stages including merkle at TOP LEVEL (4 combos). Tx parse: applyWitnessChecks (LIVE) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence. applyDaLenChecks (LIVE) — 3 DA-len checks proved. Tx semantic: applyTxPreInputChecks (LIVE) — empty inputs → nonce invalid → output covenant. validateInputStructural (LIVE, per-input loop) — scriptSig → sequence → coinbase prevout. ALL sub-functions are LIVE (called from real validation paths).",
+      "notes": "Block-level: direct error propagation on live validateBlockBasic for all 6 stages including merkle at top level (4 combos). Tx parse witness: applyWitnessChecks (LIVE sub-function called from parseTxFromCursor) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence with explicit-bind helper. Tx parse DA: applyDaLenChecks (LIVE sub-function called from parseTxFromCursor) — 4 DA-len checks proved (minimality, kind0, kind1, kind2). Tx semantic: applyTxPreInputChecks (LIVE) — empty inputs → nonce invalid → output covenant. validateInputStructural (LIVE, per-input loop) — scriptSig → sequence → coinbase prevout. Explicit-bind helpers (merkleWitnessTailExplicit, applyWitnessChecksExplicit) are proof-only, not called from live code.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
+        "parseTxFromCursor header/bounds stages (lines 108-139) not decomposed — all throw TX_ERR_PARSE so inter-stage ordering is trivially uninteresting.",
         "Per-input UTXO lookup / duplicate / covenant-type ordering within for-loop body not decomposed (mutable state dependency)."
       ]
     },
