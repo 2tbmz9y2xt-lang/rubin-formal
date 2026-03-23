@@ -503,6 +503,17 @@ theorem utxo_coinbase_immature (e : UtxoBasicV1.UtxoEntry) (height : Nat)
     validateInputUtxoLookup false (some e) height = .error "TX_ERR_COINBASE_IMMATURE" := by
   simp [validateInputUtxoLookup, hNotAnchor, hCoinbase, hImmature]
 
+/-! ## Post-loop witness cursor (validateWitnessCursorComplete)
+
+LIVE sub-function: validates all witness items consumed after per-input loop.
+-/
+
+open UtxoApplyGenesisV1 in
+theorem witness_cursor_incomplete (cursor witnessLen : Nat)
+    (h : (cursor != witnessLen) = true) :
+    validateWitnessCursorComplete cursor witnessLen = .error "TX_ERR_PARSE" := by
+  simp [validateWitnessCursorComplete, h]
+
 /-! ## Block-level error code distinctness (§13) -/
 
 theorem err_ne_block_tx_parse : ("BLOCK_ERR_PARSE" : String) ≠ "TX_ERR_PARSE" := by decide

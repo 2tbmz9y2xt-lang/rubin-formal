@@ -268,7 +268,8 @@
         "RubinFormal.err_ne_tx_parse_seq",
         "RubinFormal.err_ne_tx_parse_coinbase",
         "RubinFormal.err_ne_tx_missing_coinbase",
-        "RubinFormal.err_ne_tx_parse_nonce_invalid"
+        "RubinFormal.err_ne_tx_parse_nonce_invalid",
+        "RubinFormal.witness_cursor_incomplete"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -347,13 +348,14 @@
         "RubinFormal.err_ne_tx_parse_seq": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_coinbase": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_missing_coinbase": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.err_ne_tx_parse_nonce_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.err_ne_tx_parse_nonce_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.witness_cursor_incomplete": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation on live validateBlockBasic for all 6 stages including merkle at top level. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin (LIVE, header/bounds). applyWitnessChecks (LIVE, witness ordering). applyDaLenChecks (LIVE, DA checks). Tx semantic: applyTxPreInputChecks (LIVE, empty inputs → nonce → covenants). validateInputStructural (LIVE, per-input scriptSig → sequence → coinbase prevout). validateInputUtxoLookup (LIVE, per-input duplicate → missing → anchor/DA → coinbase maturity). All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed to enable formal ordering proofs.",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete — all LIVE. Per-input covenant dispatch: each branch already a separate live function (validateP2PKSpendPreSig, validateThresholdSigSpendNoCrypto, etc.). Full error code distinctness.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
-        "Per-input covenant dispatch (P2PK→Multisig→Vault→HTLC→else) ordering: each branch calls existing live sub-functions (validateP2PKSpendPreSig etc.), dispatch is a match/if-else chain in the for-loop body.",
-        "Post-loop witness cursor check and value conservation not decomposed."
+        "Per-input covenant dispatch ordering (P2PK→Multisig→Vault→HTLC→else match) not separately proved — branches call existing live sub-functions.",
+        "Value conservation (sumOut <= sumIn) not covered — different error category (TX_ERR_VALUE)."
       ]
     },
     {

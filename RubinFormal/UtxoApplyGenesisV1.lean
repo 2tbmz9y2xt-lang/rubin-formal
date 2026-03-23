@@ -177,6 +177,11 @@ def validateInputStructural (i : UtxoBasicV1.TxIn) : Except String Unit := do
   if UtxoBasicV1.isCoinbasePrevout i then throw "TX_ERR_PARSE"
   pure ()
 
+/-- Post-loop witness cursor check.
+    LIVE sub-function: called after per-input loop in applyNonCoinbaseTxBasicNoCrypto. -/
+def validateWitnessCursorComplete (cursor witnessLen : Nat) : Except String Unit :=
+  if cursor != witnessLen then Except.error "TX_ERR_PARSE" else Except.ok ()
+
 /-- Per-input UTXO lookup and pre-covenant checks.
     LIVE sub-function: called from applyNonCoinbaseTxBasicNoCrypto per-input loop.
     Ordering: duplicate → missing UTXO → anchor/DA → coinbase maturity.
@@ -301,8 +306,7 @@ def applyNonCoinbaseTxBasicNoCrypto
     sumIn := sumIn + e.value
     next := next.erase op
 
-  if witnessCursor != tx.witness.length then
-    throw "TX_ERR_PARSE"
+  validateWitnessCursorComplete witnessCursor tx.witness.length
 
   -- outputs: add to UTXO (excluding non-spendable)
   let mut sumOut : Nat := 0
