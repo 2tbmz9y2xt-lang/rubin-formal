@@ -193,6 +193,28 @@ theorem coinbase_list_excludes_nonspendable
     coinbaseEntryList [out] txid height = [] := by
   simp [coinbaseEntryList, List.enum, hNonSpend]
 
+/-- RBMap fold step: ANCHOR output → accumulator UNCHANGED (no insert). -/
+theorem addCoinbaseOutputs_skip_anchor
+    (acc : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (out : CovenantGenesisV1.TxOut) (txid : Bytes) (height idx : Nat)
+    (hAnchor : out.covenantType = CovenantGenesisV1.COV_TYPE_ANCHOR) :
+    (if isSpendableCoinbaseOutput out then
+      acc.insert { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
+    else acc) = acc := by
+  have : isSpendableCoinbaseOutput out = false := by simp [isSpendableCoinbaseOutput, hAnchor]
+  simp [this]
+
+/-- RBMap fold step: DA_COMMIT output → accumulator UNCHANGED (no insert). -/
+theorem addCoinbaseOutputs_skip_da_commit
+    (acc : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (out : CovenantGenesisV1.TxOut) (txid : Bytes) (height idx : Nat)
+    (hDA : out.covenantType = CovenantGenesisV1.COV_TYPE_DA_COMMIT) :
+    (if isSpendableCoinbaseOutput out then
+      acc.insert { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
+    else acc) = acc := by
+  have : isSpendableCoinbaseOutput out = false := by simp [isSpendableCoinbaseOutput, hDA]
+  simp [this]
+
 /-- Fold-level: NO entry in coinbaseEntryList has ANCHOR or DA_COMMIT covenant type.
     Proved: filter condition rejects non-spendable, and ANCHOR/DA_COMMIT are non-spendable. -/
 theorem coinbase_list_no_anchor_or_da

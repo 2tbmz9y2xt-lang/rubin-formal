@@ -473,64 +473,18 @@ theorem valid_block_end_to_end_no_extids
    connectBlockFull_no_vault _ _ _ _ _ _ _ _ _ _ _ _ _ hOk,
    connectBlockFull_no_txcontext_when_empty _ _ _ _ _ _ _ _ _ _ _ _ hOk⟩
 
-/-! ## Per-tx TxContext with per-tx parameters (Gap 3)
+/-! ## Per-tx TxContext
 
 In Go, BuildTxContext is called PER-TX with per-tx totalIn/totalOut.
-buildPerTxContext models this exactly — same function, per-tx inputs. -/
-
-/-- Per-tx TxContext construction — same as buildTxContext but named
-    to emphasize per-tx scope vs block-level aggregation. -/
-def buildPerTxContext
-    (txActiveExtIds : List Nat) (txTotalIn txTotalOut height : Nat)
-    (txCd : List (Nat × TxContextContinuing)) : Option TxContextBundle :=
-  buildTxContext txActiveExtIds txTotalIn txTotalOut height txCd
-
-/-- Per-tx TxContext has correct per-tx base values. -/
-theorem perTx_context_base_values
-    (txIds : List Nat) (hIds : txIds.length > 0)
-    (txIn txOut height : Nat) (txCd : List (Nat × TxContextContinuing))
-    (bundle : TxContextBundle)
-    (hEq : buildPerTxContext txIds txIn txOut height txCd = some bundle) :
-    bundle.base.totalIn = txIn ∧ bundle.base.totalOut = txOut ∧ bundle.base.height = height :=
-  buildTxContext_base_values txIds hIds txIn txOut height txCd bundle hEq
-
-/-- Per-tx TxContext has correct per-tx ext_ids. -/
-theorem perTx_context_ext_ids
-    (txIds : List Nat) (hIds : txIds.length > 0)
-    (txIn txOut height : Nat) (txCd : List (Nat × TxContextContinuing))
-    (bundle : TxContextBundle)
-    (hEq : buildPerTxContext txIds txIn txOut height txCd = some bundle) :
-    bundle.continuingExtIds = txIds :=
-  buildTxContext_ext_ids txIds hIds txIn txOut height txCd bundle hEq
+Use buildTxContext directly — no alias needed. Per-tx properties
+(base values, ext_ids) are already proved in TxContextBehavioral.lean. -/
 
 /-! ## Vault error propagation (R14 integration)
 
 Vault rules are enforced per-tx inside connectBlockTxs → applyNonCoinbaseTxBasicState →
-applyNonCoinbaseTxBasicNoCrypto → validateVaultSpend.
-connectBlockFull_rejects_bad_txs ALREADY propagates ALL tx errors including vault.
-These corollaries make the vault integration explicit for the requirement matrix. -/
-
-/-- Vault owner auth failure propagates to block level. -/
-theorem connectBlockFull_vault_owner_auth_propagates
-    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
-    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
-    (h bt : Nat) (cid : Bytes) (sub : Nat)
-    (ids : List Nat) (tin tout : Nat) (cd : List (Nat × TxContextContinuing))
-    (hFail : connectBlockTxs nctxs utxos h bt cid = .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED") :
-    connectBlockFull nctxs couts ctxid utxos h bt cid sub ids tin tout cd =
-    .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED" :=
-  connectBlockFull_rejects_bad_txs nctxs couts ctxid utxos h bt cid sub ids tin tout cd _ hFail
-
-/-- Vault whitelist failure propagates to block level. -/
-theorem connectBlockFull_vault_whitelist_propagates
-    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
-    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
-    (h bt : Nat) (cid : Bytes) (sub : Nat)
-    (ids : List Nat) (tin tout : Nat) (cd : List (Nat × TxContextContinuing))
-    (hFail : connectBlockTxs nctxs utxos h bt cid = .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED") :
-    connectBlockFull nctxs couts ctxid utxos h bt cid sub ids tin tout cd =
-    .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED" :=
-  connectBlockFull_rejects_bad_txs nctxs couts ctxid utxos h bt cid sub ids tin tout cd _ hFail
+applyNonCoinbaseTxBasicNoCrypto → validateVaultSpend (LIVE, line 472).
+All vault errors propagate to block level via connectBlockFull_rejects_bad_txs
+(generic error propagation). No separate vault-specific wrappers needed. -/
 
 /-! ## Guard lemma
 
