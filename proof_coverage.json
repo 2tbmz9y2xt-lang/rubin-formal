@@ -250,7 +250,12 @@
         "RubinFormal.error_priority_merkle_top_ss",
         "RubinFormal.preinput_empty_inputs_priority",
         "RubinFormal.preinput_nonce_zero_priority",
-        "RubinFormal.dalen_minimality_priority"
+        "RubinFormal.dalen_minimality_priority",
+        "RubinFormal.dalen_kind0_nonzero",
+        "RubinFormal.dalen_kind1_overflow",
+        "RubinFormal.input_scriptsig_priority",
+        "RubinFormal.input_sequence_priority",
+        "RubinFormal.input_coinbase_prevout_priority"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -311,12 +316,17 @@
         "RubinFormal.error_priority_merkle_top_ss": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.preinput_empty_inputs_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.preinput_nonce_zero_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.dalen_minimality_priority": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.dalen_minimality_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.dalen_kind0_nonzero": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.dalen_kind1_overflow": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.input_scriptsig_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.input_sequence_priority": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.input_coinbase_prevout_priority": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: direct error propagation on live validateBlockBasic for ALL 6 stages including merkle at top-level (4 target/linkage combos). Tx parse: applyWitnessChecks (LIVE, called from parseTxFromCursor) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence. applyDaLenChecks (LIVE, called from parseTxFromCursor) — all TX_ERR_PARSE. Tx semantic: applyTxPreInputChecks (LIVE, called from applyNonCoinbaseTxBasicNoCrypto) — empty inputs → TX_ERR_PARSE, zero nonce → TX_ERR_TX_NONCE_INVALID, then output covenant loop → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths), not proof-only.",
+      "notes": "Block-level: direct error propagation on live validateBlockBasic for ALL 6 stages including merkle at TOP LEVEL (4 combos). Tx parse: applyWitnessChecks (LIVE) — OVERFLOW→SIG_ALG→NONCANONICAL via rfl equivalence. applyDaLenChecks (LIVE) — 3 DA-len checks proved. Tx semantic: applyTxPreInputChecks (LIVE) — empty inputs → nonce invalid → output covenant. validateInputStructural (LIVE, per-input loop) — scriptSig → sequence → coinbase prevout. ALL sub-functions are LIVE (called from real validation paths).",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
-        "Per-input semantic loop (duplicate→missing→covenant→suite→sig) ordering not decomposed — for-loop in do block."
+        "Per-input UTXO lookup / duplicate / covenant-type ordering within for-loop body not decomposed (mutable state dependency)."
       ]
     },
     {

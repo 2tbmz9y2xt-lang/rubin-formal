@@ -398,6 +398,50 @@ theorem dalen_minimality_priority
     applyDaLenChecks tk daLen minDa = .error "TX_ERR_PARSE" := by
   unfold applyDaLenChecks; rw [h]; rfl
 
+open BlockBasicV1 in
+theorem dalen_kind0_nonzero
+    (daLen : Nat)
+    (h : (daLen != 0) = true) :
+    applyDaLenChecks 0x00 daLen true = .error "TX_ERR_PARSE" := by
+  unfold applyDaLenChecks; simp [h]; rfl
+
+open BlockBasicV1 in
+theorem dalen_kind1_overflow
+    (daLen : Nat)
+    (h : (daLen > DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX) = true) :
+    applyDaLenChecks 0x01 daLen true = .error "TX_ERR_PARSE" := by
+  unfold applyDaLenChecks; simp [h]; rfl
+
+/-! ## Per-input structural ordering (validateInputStructural)
+
+LIVE sub-function called from applyNonCoinbaseTxBasicNoCrypto per-input loop.
+Ordering: scriptSig → sequence → coinbase prevout.
+-/
+
+open UtxoApplyGenesisV1 in
+theorem input_scriptsig_priority
+    (i : UtxoBasicV1.TxIn)
+    (h : (i.scriptSig.size != 0) = true) :
+    validateInputStructural i = .error "TX_ERR_PARSE" := by
+  unfold validateInputStructural; rw [h]; rfl
+
+open UtxoApplyGenesisV1 in
+theorem input_sequence_priority
+    (i : UtxoBasicV1.TxIn)
+    (hSS : (i.scriptSig.size != 0) = false)
+    (h : (i.sequence > 0x7fffffff) = true) :
+    validateInputStructural i = .error "TX_ERR_SEQUENCE_INVALID" := by
+  simp [validateInputStructural, hSS, h]; rfl
+
+open UtxoApplyGenesisV1 in
+theorem input_coinbase_prevout_priority
+    (i : UtxoBasicV1.TxIn)
+    (hSS : (i.scriptSig.size != 0) = false)
+    (hSeq : (i.sequence > 0x7fffffff) = false)
+    (h : UtxoBasicV1.isCoinbasePrevout i = true) :
+    validateInputStructural i = .error "TX_ERR_PARSE" := by
+  simp [validateInputStructural, hSS, hSeq, h]; rfl
+
 /-! ## Block-level error code distinctness (§13) -/
 
 theorem err_ne_parse_target : ("BLOCK_ERR_PARSE" : String) ≠ "BLOCK_ERR_TARGET_INVALID" := by decide

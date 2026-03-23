@@ -168,6 +168,15 @@ def vaultSpendOutputsAllowed
     (outs : List UtxoBasicV1.TxOut) : Bool :=
   outs.all (vaultSpendOutputAllowed whitelist)
 
+/-- Per-input structural checks from the for-loop (lines 218-220).
+    LIVE sub-function: called from applyNonCoinbaseTxBasicNoCrypto per-input loop.
+    Ordering: scriptSig non-empty → sequence invalid → coinbase prevout. -/
+def validateInputStructural (i : UtxoBasicV1.TxIn) : Except String Unit := do
+  if i.scriptSig.size != 0 then throw "TX_ERR_PARSE"
+  if i.sequence > 0x7fffffff then throw "TX_ERR_SEQUENCE_INVALID"
+  if UtxoBasicV1.isCoinbasePrevout i then throw "TX_ERR_PARSE"
+  pure ()
+
 /-- Pre-input semantic checks: parse, nonce, output covenants.
     LIVE sub-function: applyNonCoinbaseTxBasicNoCrypto calls it directly.
     Ordering: TX_ERR_PARSE (empty inputs) → TX_ERR_TX_NONCE_INVALID →
@@ -215,9 +224,7 @@ def applyNonCoinbaseTxBasicNoCrypto
 
   for inputIndex in [0:tx.inputs.length] do
     let i := tx.inputs.get! inputIndex
-    if i.scriptSig.size != 0 then throw "TX_ERR_PARSE"
-    if i.sequence > 0x7fffffff then throw "TX_ERR_SEQUENCE_INVALID"
-    if UtxoBasicV1.isCoinbasePrevout i then throw "TX_ERR_PARSE"
+    validateInputStructural i
     let op : Outpoint := { txid := i.prevTxid, vout := i.prevVout }
     if seen.contains op then throw "TX_ERR_PARSE"
     seen := seen.insert op
