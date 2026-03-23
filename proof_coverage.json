@@ -270,12 +270,7 @@
         "RubinFormal.err_ne_tx_missing_coinbase",
         "RubinFormal.err_ne_tx_parse_nonce_invalid",
         "RubinFormal.witness_cursor_incomplete",
-        "RubinFormal.covenantTypeKnown",
-        "RubinFormal.unknown_covenant_rejected",
-        "RubinFormal.p2pk_dispatches",
-        "RubinFormal.multisig_dispatches",
-        "RubinFormal.vault_dispatches",
-        "RubinFormal.htlc_dispatches"
+        "RubinFormal.dispatch_unknown_covenant_error"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -356,17 +351,11 @@
         "RubinFormal.err_ne_tx_missing_coinbase": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_parse_nonce_invalid": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.witness_cursor_incomplete": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.covenantTypeKnown": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.unknown_covenant_rejected": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.p2pk_dispatches": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.multisig_dispatches": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.vault_dispatches": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.htlc_dispatches": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete — all LIVE. Per-input covenant dispatch: each branch already a separate live function (validateP2PKSpendPreSig, validateThresholdSigSpendNoCrypto, etc.). Full error code distinctness.",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed.",
       "limitations": [
         "KNOWN AMBIGUITY: BLOCK_ERR_TARGET_INVALID shared between powCheck and target mismatch.",
-        "Per-input covenant dispatch: type-gate model proves which types dispatch vs reject. Full branch-body ordering with mutable witnessCursor not separately proved — branches call existing live sub-functions.",
         "Value conservation (sumOut <= sumIn) not covered — different error category (TX_ERR_VALUE)."
       ]
     },

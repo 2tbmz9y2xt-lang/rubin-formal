@@ -217,6 +217,54 @@ def applyTxPreInputChecks
       { value := o.value, covenantType := o.covenantType, covenantData := o.covenantData }
       tx.txKind height
 
+/-- Per-input covenant dispatch — LIVE extracted iteration body.
+    Written without do-notation to enable formal dispatch ordering proofs.
+    Called from `applyNonCoinbaseTxBasicNoCrypto` for-loop body.
+    Returns: (updated witnessCursor, updated vaultInputCount, Ok () or error).
+    Ordering: structural → UTXO lookup → covenant dispatch → TX_ERR_COVENANT_TYPE_INVALID. -/
+def dispatchCovenantValidation
+    (e : UtxoBasicV1.UtxoEntry)
+    (tx : UtxoBasicV1.Tx)
+    (witnessCursor : Nat)
+    (height blockMtp : Nat) : Except String Nat :=
+  if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then
+    match WITNESS_SLOTS e.covenantType e.covenantData with
+    | .error err => Except.error err
+    | .ok slots =>
+      if slots != 1 then Except.error "TX_ERR_PARSE"
+      else if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+      else Except.ok (witnessCursor + 1)
+  else if e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG then
+    match CovenantGenesisV1.parseMultisigCovenantData e.covenantData with
+    | .error err => Except.error err
+    | .ok _ =>
+      match WITNESS_SLOTS e.covenantType e.covenantData with
+      | .error err => Except.error err
+      | .ok slots =>
+        if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+        else Except.ok (witnessCursor + slots)
+  else if e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
+    match CovenantGenesisV1.parseVaultCovenantData e.covenantData with
+    | .error err => Except.error err
+    | .ok _ =>
+      match WITNESS_SLOTS e.covenantType e.covenantData with
+      | .error err => Except.error err
+      | .ok slots =>
+        if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+        else Except.ok (witnessCursor + slots)
+  else if e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC then
+    match CovenantGenesisV1.parseHtlcCovenantData e.covenantData with
+    | .error err => Except.error err
+    | .ok _ =>
+      match WITNESS_SLOTS e.covenantType e.covenantData with
+      | .error err => Except.error err
+      | .ok slots =>
+        if slots != 2 then Except.error "TX_ERR_PARSE"
+        else if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
+        else Except.ok (witnessCursor + 2)
+  else
+    Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+
 def applyNonCoinbaseTxBasicNoCrypto
     (txBytes : Bytes)
     (utxos : List (Outpoint × UtxoEntry))

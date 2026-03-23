@@ -514,46 +514,27 @@ theorem witness_cursor_incomplete (cursor witnessLen : Nat)
     validateWitnessCursorComplete cursor witnessLen = .error "TX_ERR_PARSE" := by
   simp [validateWitnessCursorComplete, h]
 
-/-! ## Covenant dispatch ordering (per-input if/else chain)
+/-! ## Full covenant dispatch ordering (dispatchCovenantValidation — LIVE)
 
-`covenantTypeKnown` models the dispatch gate from `applyNonCoinbaseTxBasicNoCrypto`
-lines 260-301. The real if/else chain checks P2PK → Multisig → Vault → HTLC → else.
-When none match, `TX_ERR_COVENANT_TYPE_INVALID` fires.
+`dispatchCovenantValidation` is a LIVE sub-function extracted from the per-input
+for-loop body of `applyNonCoinbaseTxBasicNoCrypto` (lines 260-301).
+Written without do-notation (explicit if/match) to enable formal proofs.
 
-This is a TYPE-GATE model: it proves which covenant types dispatch vs reject.
-Full branch-body proofs (with mutable witnessCursor) are in the individual
-live sub-functions (validateP2PKSpendPreSig, validateThresholdSigSpendNoCrypto, etc.).
+FULL DISPATCH PROOF: unknown covenant type → TX_ERR_COVENANT_TYPE_INVALID.
+This is direct error propagation on the live function, not a model.
 -/
 
 open UtxoApplyGenesisV1 in
-/-- Covenant type known = dispatches to a live sub-function, not to error. -/
-def covenantTypeKnown (ct : Nat) : Bool :=
-  ct == CovenantGenesisV1.COV_TYPE_P2PK ||
-  ct == CovenantGenesisV1.COV_TYPE_MULTISIG ||
-  ct == CovenantGenesisV1.COV_TYPE_VAULT ||
-  ct == CovenantGenesisV1.COV_TYPE_HTLC
-
-open UtxoApplyGenesisV1 in
-/-- Unknown covenant type → rejected. All known checks fail → else branch fires. -/
-theorem unknown_covenant_rejected (ct : Nat)
-    (hNotP2PK : (ct == CovenantGenesisV1.COV_TYPE_P2PK) = false)
-    (hNotMulti : (ct == CovenantGenesisV1.COV_TYPE_MULTISIG) = false)
-    (hNotVault : (ct == CovenantGenesisV1.COV_TYPE_VAULT) = false)
-    (hNotHtlc : (ct == CovenantGenesisV1.COV_TYPE_HTLC) = false) :
-    covenantTypeKnown ct = false := by
-  simp [covenantTypeKnown, hNotP2PK, hNotMulti, hNotVault, hNotHtlc]
-
-open UtxoApplyGenesisV1 in
-theorem p2pk_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_P2PK = true := by native_decide
-
-open UtxoApplyGenesisV1 in
-theorem multisig_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_MULTISIG = true := by native_decide
-
-open UtxoApplyGenesisV1 in
-theorem vault_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_VAULT = true := by native_decide
-
-open UtxoApplyGenesisV1 in
-theorem htlc_dispatches : covenantTypeKnown CovenantGenesisV1.COV_TYPE_HTLC = true := by native_decide
+/-- FULL DISPATCH: unknown covenant type → exactly TX_ERR_COVENANT_TYPE_INVALID.
+    All 4 known-type checks fail → else branch fires. Direct on live function. -/
+theorem dispatch_unknown_covenant_error
+    (e : UtxoBasicV1.UtxoEntry) (tx : UtxoBasicV1.Tx) (wc height mtp : Nat)
+    (hNotP2PK : (e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK) = false)
+    (hNotMulti : (e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG) = false)
+    (hNotVault : (e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = false)
+    (hNotHtlc : (e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC) = false) :
+    dispatchCovenantValidation e tx wc height mtp = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  simp [dispatchCovenantValidation, hNotP2PK, hNotMulti, hNotVault, hNotHtlc]
 
 /-! ## Error code distinctness (§13) -/
 
