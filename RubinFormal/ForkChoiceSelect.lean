@@ -53,7 +53,7 @@ theorem bytesLT_antisym : ∀ (xs ys : List UInt8),
 inductive ForkResult where
   | Left   -- lhs chain wins
   | Right  -- rhs chain wins
-deriving DecidableEq
+deriving DecidableEq, Repr
 
 /-- Full fork-choice selector: chainwork first, tie-break by block hash.
     Models the runtime fork_choice_select operation from §23.
@@ -121,5 +121,45 @@ theorem forkSelect_total_det (lw rw : Nat) (lh rh : List UInt8)
         · exact absurd rfl h
         · exact h
       exact forkSelect_tiebreak_det lw lh rh hL hR hNeq
+
+/-! ## Convenience: explicit heavier-loses theorem -/
+
+/-- If lhs is heavier, rhs loses when seen from the other side. -/
+theorem forkSelect_lighter_loses (lw rw : Nat) (lh rh : List UInt8) (h : lw > rw) :
+    forkSelect rw lw rh lh = .Right := by
+  unfold forkSelect; simp [show ¬ (rw > lw) from by omega, h]
+
+/-! ## Concrete eval checks (smoke tests) -/
+
+-- Heavier chain: work 100 vs 50 → Left wins
+#eval forkSelect 100 50 [1] [2]  -- .Left
+-- Lighter chain: work 50 vs 100 → Right wins
+#eval forkSelect 50 100 [1] [2]  -- .Right
+-- Equal work, lh < rh → Right wins (tie-break)
+#eval forkSelect 100 100 [0] [1]  -- .Right
+-- Equal work, lh > rh → Left wins (tie-break)
+#eval forkSelect 100 100 [1] [0]  -- .Left
+
+/-! ## Go/Rust code reference
+
+Go (chainstate.go):
+```
+if lhsWork > rhsWork { return lhs }
+if rhsWork > lhsWork { return rhs }
+if bytes.Compare(lhsHash[:], rhsHash[:]) < 0 { return rhs }
+return lhs
+```
+
+Rust (sync.rs):
+```
+match lhs_work.cmp(&rhs_work) {
+    Ordering::Greater => lhs,
+    Ordering::Less => rhs,
+    Ordering::Equal => if lhs_hash < rhs_hash { rhs } else { lhs },
+}
+```
+
+forkSelect exactly models this: chainwork first, bytesLT tie-break.
+-/
 
 end RubinFormal

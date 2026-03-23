@@ -645,7 +645,8 @@
         "RubinFormal.forkSelect_heavier",
         "RubinFormal.forkSelect_tiebreak_det",
         "RubinFormal.forkSelect_chainwork_bridge",
-        "RubinFormal.forkSelect_total_det"
+        "RubinFormal.forkSelect_total_det",
+        "RubinFormal.forkSelect_lighter_loses"
       ],
       "file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
       "theorem_files": {
@@ -657,7 +658,8 @@
         "RubinFormal.forkSelect_heavier": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
         "RubinFormal.forkSelect_tiebreak_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
         "RubinFormal.forkSelect_chainwork_bridge": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
-        "RubinFormal.forkSelect_total_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
+        "RubinFormal.forkSelect_total_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_lighter_loses": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
       },
       "notes": "Full fork-choice selector modeled with machine-checked symmetric agreement. bytesLT proved irreflexive, total, and antisymmetric. forkSelect_heavier: unequal chainwork → heavier wins. forkSelect_tiebreak_det: equal chainwork + different 32-byte hashes → nodes seeing chains in opposite order agree on winner (symmetric agreement, not trivial determinism). forkSelect_chainwork_bridge: connects forkSelect to heavierChain via chainWork composition. forkSelect_total_det: subsumes both cases — any distinguishable chain pair → symmetric agreement.",
       "limitations": [
