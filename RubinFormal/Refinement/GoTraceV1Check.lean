@@ -151,13 +151,25 @@ private def checkUtxoBasic (o : UtxoBasicOut) : Bool :=
               (!o.ok) && (o.err == e)
       | _, _ => false
 
-/-- Narrow machine-checked bridge for the live UTXO apply path.
-    Every `CV-UTXO-BASIC` row in the generated Go trace v1 corpus is rechecked
-    against Lean's executable `applyNonCoinbaseTxBasic` on the matching fixture.
-    This is a trace-backed executable contract, not a universal proof for every
-    possible UTXO/input combination. -/
+/-- Trace rows intentionally excluded from the narrow UTXO bridge.
+    `CV-U-16` is a post-activation SLH row added by Q-CRYPTO-SLH-02. The current
+    formal `applyNonCoinbaseTxBasic` model remains pre-rotation and the current
+    `CVUtxoBasicVectors.lean` materialization on `main` does not include that row,
+    so claiming full replay coverage over all `utxoBasicOuts` would be dishonest. -/
+private def utxoApplyBasicExcludedIds : List String :=
+  ["CV-U-16"]
+
+private def utxoApplyBasicBridgeRows : List UtxoBasicOut :=
+  utxoBasicOuts.filter (fun o => !(utxoApplyBasicExcludedIds.contains o.id))
+
+/-- Narrow machine-checked bridge for the currently supported live UTXO apply path.
+    Every included `CV-UTXO-BASIC` row in the generated Go trace v1 corpus is
+    rechecked against Lean's executable `applyNonCoinbaseTxBasic` on the matching
+    fixture id. This is a trace-backed executable contract over the supported row
+    subset, not a universal proof for every possible UTXO/input combination. -/
 def utxoApplyBasicGoTraceV1Pass : Bool :=
-  !utxoBasicOuts.isEmpty && utxoBasicOuts.all checkUtxoBasic
+  let rows := utxoApplyBasicBridgeRows
+  !rows.isEmpty && rows.all checkUtxoBasic
 
 private def blockSummary? (blockBytes : Bytes) : Except String (Bytes × Nat × Nat) := do
   let pb ← BlockBasicV1.parseBlock blockBytes
