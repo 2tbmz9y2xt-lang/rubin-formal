@@ -180,6 +180,43 @@ theorem addCoinbaseOutputs_skip_da_commit
   have : isSpendableCoinbaseOutput out = false := by simp [isSpendableCoinbaseOutput, hDA]
   simp [this]
 
+/-- RBMap find? unchanged after non-spendable step: if fold step = acc,
+    then find? on ANY key returns same result. Machine-checked closure
+    of the "RBMap operational equivalence" gap. -/
+theorem find?_after_nonspendable_step
+    (acc : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (out : CovenantGenesisV1.TxOut) (txid : Bytes) (height idx : Nat)
+    (hNonSpend : isSpendableCoinbaseOutput out = false)
+    (k : Outpoint) :
+    (if isSpendableCoinbaseOutput out then
+      acc.insert { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
+    else acc).find? k = acc.find? k := by
+  simp [hNonSpend]
+
+/-- ANCHOR: find? unchanged after fold step (specialization). -/
+theorem find?_after_anchor_step
+    (acc : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (out : CovenantGenesisV1.TxOut) (txid : Bytes) (height idx : Nat)
+    (hAnchor : out.covenantType = CovenantGenesisV1.COV_TYPE_ANCHOR)
+    (k : Outpoint) :
+    (if isSpendableCoinbaseOutput out then
+      acc.insert { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
+    else acc).find? k = acc.find? k := by
+  exact find?_after_nonspendable_step acc out txid height idx
+    (by simp [isSpendableCoinbaseOutput, hAnchor]) k
+
+/-- DA_COMMIT: find? unchanged after fold step (specialization). -/
+theorem find?_after_da_step
+    (acc : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (out : CovenantGenesisV1.TxOut) (txid : Bytes) (height idx : Nat)
+    (hDA : out.covenantType = CovenantGenesisV1.COV_TYPE_DA_COMMIT)
+    (k : Outpoint) :
+    (if isSpendableCoinbaseOutput out then
+      acc.insert { txid := txid, vout := idx } (coinbaseUtxoEntry out height)
+    else acc).find? k = acc.find? k := by
+  exact find?_after_nonspendable_step acc out txid height idx
+    (by simp [isSpendableCoinbaseOutput, hDA]) k
+
 /-- Fold-level: NO entry in coinbaseEntryList has ANCHOR or DA_COMMIT covenant type.
     Proved: filter condition rejects non-spendable, and ANCHOR/DA_COMMIT are non-spendable. -/
 theorem coinbase_list_no_anchor_or_da
