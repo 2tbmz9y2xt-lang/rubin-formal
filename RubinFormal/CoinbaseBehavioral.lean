@@ -234,14 +234,6 @@ theorem coinbase_vout_from_enum_position
     ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
   intro heq; cases heq; exact hNeq rfl
 
-/-- Global invariant: different enum indices → different outpoints.
-    `i ≠ j` derived from enum membership, not free.
-    coinbase_vout_from_enum_position (above) provides the enum-level guarantee;
-    this theorem lifts it to the outpoint level for direct use. -/
-theorem coinbase_outpoints_ne_of_indices_ne (txid : Bytes) (i j : Nat) (h : i ≠ j) :
-    ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
-  intro heq; cases heq; exact h rfl
-
 /-! ## Boundary cases (Checklist 2.2) -/
 
 /-- Zero fees: coinbase ≤ subsidy. -/
