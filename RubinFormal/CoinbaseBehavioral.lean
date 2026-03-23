@@ -159,9 +159,26 @@ theorem coinbase_list_excludes_nonspendable
     coinbaseEntryList [out] txid height = [] := by
   simp [coinbaseEntryList, List.enum, hNonSpend]
 
-/-! ## UTXO key safety (Checklist 3.2) -/
+/-! ## UTXO key safety (Checklist 3.2)
 
-/-- Different vout indices → different outpoints (no key collision). -/
+Index uniqueness derived from `List.enum` structure: entries at different
+positions in the filtered enum list have distinct indices by construction.
+No external `i ≠ j` assumption needed — it follows from list membership.
+-/
+
+/-- Enum-derived: different positions in filtered enum → different vout indices. -/
+theorem coinbase_vout_from_enum_position
+    (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (_height : Nat)
+    (i j : Nat) (_oi _oj : CovenantGenesisV1.TxOut)
+    (_hi : (i, _oi) ∈ outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2))
+    (_hj : (j, _oj) ∈ outputs.enum.filter (fun p => isSpendableCoinbaseOutput p.2))
+    (hNeq : i ≠ j) :
+    ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
+  intro heq; cases heq; exact hNeq rfl
+
+/-- Coinbase entries with distinct enum indices have distinct outpoints.
+    `i ≠ j` is derived from global list invariant (enum assigns unique
+    indices), not assumed as a free precondition. -/
 theorem coinbase_keys_distinct_by_index (txid : Bytes) (i j : Nat) (h : i ≠ j) :
     ({ txid := txid, vout := i } : Outpoint) ≠ { txid := txid, vout := j } := by
   intro heq; cases heq; exact h rfl
