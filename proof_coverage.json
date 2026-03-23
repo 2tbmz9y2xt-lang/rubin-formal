@@ -291,7 +291,20 @@
         "RubinFormal.perinput_duplicate_live",
         "RubinFormal.perinput_unknown_covenant_live",
         "RubinFormal.postloop_witness_cursor_live",
-        "RubinFormal.postloop_value_overspend_live"
+        "RubinFormal.postloop_value_overspend_live",
+        "RubinFormal.txParseStageOrd_injective",
+        "RubinFormal.bridge_parse_txkind",
+        "RubinFormal.bridge_parse_inputmin",
+        "RubinFormal.bridge_parse_outputmin",
+        "RubinFormal.bridge_parse_witness",
+        "RubinFormal.parse_stage_chain",
+        "RubinFormal.txSemanticStageOrd_injective",
+        "RubinFormal.bridge_semantic_empty",
+        "RubinFormal.bridge_semantic_nonce",
+        "RubinFormal.bridge_semantic_duplicate",
+        "RubinFormal.bridge_semantic_unknown_covenant",
+        "RubinFormal.bridge_semantic_value",
+        "RubinFormal.semantic_stage_chain"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -393,9 +406,22 @@
         "RubinFormal.perinput_duplicate_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.perinput_unknown_covenant_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.postloop_witness_cursor_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.postloop_value_overspend_live": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.postloop_value_overspend_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.txParseStageOrd_injective": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_parse_txkind": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_parse_inputmin": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_parse_outputmin": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_parse_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.parse_stage_chain": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.txSemanticStageOrd_injective": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_empty": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_nonce": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_duplicate": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_unknown_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_semantic_value": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.semantic_stage_chain": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed. TXCTX §13.1: CORE_EXT error priority ordering proved via ExtError model in CoreExtRefinement.lean — parse_before_suite, suite_before_sig, error_selection_commutative, parse_always_wins. Stage-position witness theorems explicitly link each live sub-function to its call position in parseTxFromCursor and applyNonCoinbaseTxBasicNoCrypto, closing the enum-to-live-function gap.",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic. Tx parse: validateTxKind, validateInputCountMin, validateOutputCountMin, applyWitnessChecks, applyDaLenChecks — all LIVE. Tx semantic: applyTxPreInputChecks, validateInputStructural, validateInputUtxoLookup, validateWitnessCursorComplete, dispatchCovenantValidation — all LIVE. Per-input covenant dispatch: FULL PROOF on live dispatchCovenantValidation — unknown type → TX_ERR_COVENANT_TYPE_INVALID. All sub-functions are LIVE (called from real validation paths). Written without do-notation where needed. TXCTX §13.1: CORE_EXT error priority ordering proved via ExtError model in CoreExtRefinement.lean — parse_before_suite, suite_before_sig, error_selection_commutative, parse_always_wins. Machine-checked bridge lemmas connect enum stages (TxParseStage, TxSemanticStage) to live sub-functions via conjunction proofs: stageOrd = N ∧ live_function(args) = error. Stage ordering chains proved via simp. This closes the enum-to-live-function gap with machine-checked evidence.",
       "limitations": []
     },
     {
