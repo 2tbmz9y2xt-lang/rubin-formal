@@ -648,19 +648,33 @@
         "RubinFormal.ForkChoiceV1.overLimitTarget_rejected",
         "RubinFormal.bytesLT_irrefl",
         "RubinFormal.bytesLT_total_of_ne",
-        "RubinFormal.fork_choice_tiebreak_deterministic"
+        "RubinFormal.fork_choice_tiebreak_deterministic",
+        "RubinFormal.bytesLT_antisym",
+        "RubinFormal.forkSelect_heavier",
+        "RubinFormal.forkSelect_tiebreak_det",
+        "RubinFormal.forkSelect_total_det",
+        "RubinFormal.forkSelect_lighter_loses",
+        "RubinFormal.forkSelect_chainwork_bridge",
+        "RubinFormal.forkSelect_equal_chains"
       ],
       "file": "rubin-formal/RubinFormal/ForkChoiceV1.lean",
       "theorem_files": {
         "RubinFormal.Conformance.cv_fork_choice_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVForkChoiceReplay.lean",
         "RubinFormal.bytesLT_irrefl": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
         "RubinFormal.bytesLT_total_of_ne": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
-        "RubinFormal.fork_choice_tiebreak_deterministic": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean"
+        "RubinFormal.fork_choice_tiebreak_deterministic": "rubin-formal/RubinFormal/ForkChoiceTiebreak.lean",
+        "RubinFormal.bytesLT_antisym": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_heavier": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_tiebreak_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_total_det": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_lighter_loses": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_chainwork_bridge": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
+        "RubinFormal.forkSelect_equal_chains": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
       },
-      "notes": "bytesLT proved irreflexive and total on same-length lists, giving deterministic tie-break for equal-chainwork fork choice. Combined with existing heavierChain_wins for strict chainwork ordering.",
+      "notes": "Fork-choice selector with full determinism proof. forkSelect_equal_chains covers identical-chain trivial case. forkSelect_total_det covers all distinguishable pairs. Together: exhaustive input coverage. bytesLT_antisym + bytesLT_total_of_ne provide tie-break properties. block_hash_collision_resistance axiom justifies hNeq derivation from distinct headers.",
       "limitations": [
-        "Tie-break proof covers bytesLT comparator on arbitrary same-length byte lists. Runtime fork-choice selector composition (chainwork comparison + tie-break fallback) not proved as a single end-to-end theorem.",
-        "No machine-checked bridge for fork_choice_select beyond baseline registry linkage."
+        "forkSelect models the runtime fork_choice_select. Go/Rust code follows identical if/else chain. Structural equivalence evident from inspection but not proved via rfl (Go/Rust not importable to Lean).",
+        "Determinism proofs require 32-byte hashes (documented in forkSelect docstring). Runtime block hashes are always 32 bytes by SHA3-256 construction."
       ]
     },
     {
