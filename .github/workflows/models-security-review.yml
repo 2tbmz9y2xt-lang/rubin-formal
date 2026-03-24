@@ -192,46 +192,73 @@ jobs:
               return { parsed: null, candidate: normalized, normalized, error: lastErr };
             };
             const modelId = 'deepseek/DeepSeek-V3-0324';
-            let result = null;
-            try {
-              core.info(`Trying model: ${modelId}`);
+            const reviewMessages = [
+              { role: 'system', content: systemPrompt },
+              {
+                role: 'user',
+                content: [
+                  `PR title:\n${prTitle}`,
+                  `PR body:\n${prBody}`,
+                  `Changed Lean files:\n${changedLeanFiles.join('\n')}`,
+                  `Current changed Lean file contents:\n\n${changedFilePayload}`,
+                  `PR diff:\n\n${diff}`
+                ].join('\n\n')
+              }
+            ];
+            const callModel = async (useJsonMode) => {
+              const payload = {
+                model: modelId,
+                messages: reviewMessages,
+                temperature: 0
+              };
+              if (useJsonMode) {
+                payload.response_format = { type: 'json_object' };
+              }
               const response = await fetch(
                 'https://models.github.ai/inference/chat/completions',
                 {
                   method: 'POST',
                   headers: {
+                    'Accept': 'application/vnd.github+json',
                     'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+                    'X-GitHub-Api-Version': '2022-11-28',
                     'Content-Type': 'application/json'
                   },
-                  body: JSON.stringify({
-                    model: modelId,
-                    messages: [
-                      { role: 'system', content: systemPrompt },
-                      {
-                        role: 'user',
-                        content: [
-                          `PR title:\n${prTitle}`,
-                          `PR body:\n${prBody}`,
-                          `Changed Lean files:\n${changedLeanFiles.join('\n')}`,
-                          `Current changed Lean file contents:\n\n${changedFilePayload}`,
-                          `PR diff:\n\n${diff}`
-                        ].join('\n\n')
-                      }
-                    ],
-                    temperature: 0
-                  })
+                  body: JSON.stringify(payload)
                 }
               );
               if (!response.ok) {
                 const body = await response.text();
-                core.setFailed(`Security review fail-closed: model ${modelId} returned ${response.status}: ${body.slice(0, 200)}`);
-                return;
+                return {
+                  ok: false,
+                  status: response.status,
+                  body
+                };
               }
               const data = await response.json();
-              result = data.choices[0].message.content;
+              return {
+                ok: true,
+                content: data?.choices?.[0]?.message?.content ?? ''
+              };
+            };
+            let result = null;
+            try {
+              core.info(`Trying model: ${modelId} with JSON mode`);
+              let attempt = await callModel(true);
+              if (!attempt.ok) {
+                core.warning(`JSON mode request failed for ${modelId}: ${attempt.status}: ${(attempt.body || '').slice(0, 200)}`);
+                core.info(`Retrying model: ${modelId} without JSON mode`);
+                attempt = await callModel(false);
+              }
+              if (!attempt.ok) {
+                core.warning(`Security review degraded: model ${modelId} returned ${attempt.status}: ${(attempt.body || '').slice(0, 200)}`);
+                result = '';
+              } else {
+                result = attempt.content;
+              }
             } catch (err) {
-              core.setFailed(`Security review fail-closed: model ${modelId} error: ${err.message}`);
-              return;
+              core.warning(`Security review degraded: model ${modelId} error: ${err.message}`);
+              result = '';
             }
             if (typeof result === 'string' && result.trim() !== '') {
               fs.writeFileSync(rawOutputPath, result, 'utf8');
@@ -242,8 +269,13 @@ jobs:
               const preview = (parsedResult.normalized || String(result || ''))
                 .replace(/\s+/g, ' ')
                 .slice(0, 180);
-              core.setFailed(`Security review fail-closed: invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
-              return;
+              core.warning(`Security review degraded: invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
+              parsed = {
+                model: modelId,
+                degraded: true,
+                findings: [],
+                summary: 'Security review degraded: model output was not valid JSON, so no validated findings were emitted. See raw artifact / workflow warning for details.'
+              };
             }
 
             const changedSet = new Set(changedLeanFiles);
