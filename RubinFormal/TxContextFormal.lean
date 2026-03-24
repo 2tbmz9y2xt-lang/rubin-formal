@@ -201,8 +201,7 @@ private theorem sorted_perm_unique_when_both_sorted :
         · exact hcons.1 y hmem
       have hEq : x = y := Nat.le_antisymm hxy hyx
       subst hEq
-      have hperm_tail : List.Perm xs ys := by
-        simpa using hperm
+      have hperm_tail : List.Perm xs ys := List.Perm.cons_inv hperm
       have hxs_tail : List.Pairwise (· ≤ ·) xs := (List.pairwise_cons.mp hxs).2
       have hys_tail : List.Pairwise (· ≤ ·) ys := (List.pairwise_cons.mp hys).2
       simpa using sorted_perm_unique_when_both_sorted hxs_tail hys_tail hperm_tail
