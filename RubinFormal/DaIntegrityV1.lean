@@ -287,8 +287,7 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
   for (daId, cinfo) in commits.toList do
     let set? := chunks.find? daId
     let set ← match set? with | none => throw "BLOCK_ERR_DA_INCOMPLETE" | some m => pure m
-    if set.size != cinfo.chunkCount then
-      throw "BLOCK_ERR_DA_INCOMPLETE"
+    validateChunkCountMatch set.size cinfo.chunkCount
     let mut concat : Bytes := ByteArray.empty
     for i in [0:cinfo.chunkCount] do
       let ch? := set.find? i
@@ -296,17 +295,7 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
       concat := concat ++ ch.payload
     let payloadCommit := SHA3.sha3_256 concat
 
-    let mut daCommitOutputs : Nat := 0
-    let mut got : Bytes := ByteArray.empty
-    for o in cinfo.outputs do
-      if o.covenantType == COV_TYPE_DA_COMMIT then
-        daCommitOutputs := daCommitOutputs + 1
-        if o.covenantData.size == 32 then
-          got := o.covenantData
-    if daCommitOutputs != 1 then
-      throw "BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID"
-    if got != payloadCommit then
-      throw "BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID"
+    validateCommitOutput cinfo.outputs payloadCommit
 
   pure ()
 
