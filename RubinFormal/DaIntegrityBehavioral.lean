@@ -6,8 +6,12 @@ import RubinFormal.Conformance.CVDaIntegrityReplay
 
 LIVE behavioral proofs on `validateDASetIntegrity` and `validateDaIntegrityGate`
 (DaIntegrityV1.lean). All DA sub-functions extracted and wired LIVE.
-Evidence level: machine_checked_contract with documented residual gaps
-(foldlM induction + parseDATx general errors). Combines:
+Evidence level: refined_model. All DA sub-functions extracted and wired LIVE,
+but three residual gaps prevent machine_checked_contract:
+(1) foldlM+range induction for collectChunkPayloads not in Std4,
+(2) parseDATx general errors not in DA theorem set,
+(3) validateNoOrphanChunks List.find? vs for-loop no rfl equiv.
+Combines:
 
 1. Conformance replay: `cv_da_integrity_vectors_pass` (native_decide on real vectors)
 2. Gate error propagation: each gate step's error flows to the output deterministically
@@ -273,7 +277,7 @@ theorem da_gate_ok_full (blockBytes : Bytes) (ph pt : Option Bytes)
 cv_da_integrity_vectors_pass (CVDaIntegrityReplay.lean):
 Proves that ALL conformance vectors from CV-DA pass through
 validateDaIntegrityGate via native_decide. Combined with error
-propagation theorems, this provides machine_checked_contract evidence.
+propagation theorems, this provides refined_model evidence.
 Does NOT cover BLOCK_ERR_DA_BATCH_EXCEEDED (no CV vector with >128 batches).
 -/
 
