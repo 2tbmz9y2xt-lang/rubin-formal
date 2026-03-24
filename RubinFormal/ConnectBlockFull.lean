@@ -1,6 +1,7 @@
 import RubinFormal.ConnectBlockStrong
 import RubinFormal.CoinbaseBehavioral
 import RubinFormal.TxContextBehavioral
+import RubinFormal.SighashV1
 
 /-!
 # Full Block Connection with Coinbase + TxContext (§18/§19/§14)
@@ -32,6 +33,29 @@ structure TxContextInputData where
   outputValues : List Nat
   activeExtIds : List Nat
   continuingData : List (Nat × TxContextContinuing)
+  continuingCounts : List Nat
+  allowedSighashSet : UInt8
+  sighashType : UInt8
+
+/-- Validate all raw continuing-output counts before packing the TxContext bundle.
+    This wires the K-overflow reject helper into the live computed TxContext path. -/
+def validateTxContextContinuingCounts : List Nat → Except String Unit
+  | [] => .ok ()
+  | count :: rest =>
+      match validateContinuingOutputCount count with
+      | .error err => .error err
+      | .ok () => validateTxContextContinuingCounts rest
+
+/-- Validate the txcontext sighash gate before building the bundle.
+    Invalid base types map to `TX_ERR_SIGHASH_TYPE_INVALID`; disallowed but
+    well-formed types map to `TX_ERR_SIG_ALG_INVALID`. -/
+def validateTxContextSighashGate (allowedSet sighashType : UInt8) : Except String Unit :=
+  if !SighashV1.hasValidBaseType sighashType then
+    .error "TX_ERR_SIGHASH_TYPE_INVALID"
+  else if SighashV1.checkSighashPolicy allowedSet sighashType then
+    .ok ()
+  else
+    .error "TX_ERR_SIG_ALG_INVALID"
 
 /-- Full block connection pipeline.
     TxContext parameters are threaded through for backward compatibility
@@ -80,12 +104,21 @@ def connectBlockFullComputed
       match validateCoinbaseApplyOutputs coinbaseOutputs with
       | .error e => .error e
       | .ok () =>
-        let txCtx := match txCtxData with
-          | none => none
-          | some d => buildTxContextLive d.activeExtIds d.inputValues d.outputValues height d.continuingData
-        .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
-            , sumFees := sumFees
-            , txContext := txCtx }
+        match txCtxData with
+        | none =>
+            .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
+                , sumFees := sumFees
+                , txContext := none }
+        | some d =>
+            match validateTxContextContinuingCounts d.continuingCounts with
+            | .error e => .error e
+            | .ok () =>
+                match validateTxContextSighashGate d.allowedSighashSet d.sighashType with
+                | .error e => .error e
+                | .ok () =>
+                    .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
+                        , sumFees := sumFees
+                        , txContext := buildTxContextLive d.activeExtIds d.inputValues d.outputValues height d.continuingData }
 
 /-- Equivalence: connectBlockFullComputed with Some data = connectBlockFull
     with computed sums. This bridges the two signatures. -/
@@ -93,10 +126,13 @@ theorem connectBlockFullComputed_eq_connectBlockFull
     (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
     (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData) :
+    validateTxContextContinuingCounts d.continuingCounts = .ok () →
+    validateTxContextSighashGate d.allowedSighashSet d.sighashType = .ok () →
     connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) =
     connectBlockFull nctxs couts ctxid utxos h bt cid sub
       d.activeExtIds (sumInputValues d.inputValues) (sumOutputValues d.outputValues) d.continuingData := by
-  simp [connectBlockFullComputed, connectBlockFull, buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
+  intro hCounts hSighash
+  simp [connectBlockFullComputed, connectBlockFull, buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues, hCounts, hSighash]
 
 /-- connectBlockFullComputed with None = connectBlockFull with empty ext_ids. -/
 theorem connectBlockFullComputed_none_eq
@@ -131,11 +167,20 @@ theorem connectBlockFullComputed_txcontext_correct
       match hV : validateCoinbaseApplyOutputs couts with
       | .error _ => simp [hV] at hOk
       | .ok () =>
-        simp [hV] at hOk; cases hOk
-        simp [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
-        split
-        · rename_i heq; omega
-        · exact ⟨_, rfl, rfl, rfl, rfl⟩
+        simp [hV] at hOk
+        match hCounts : validateTxContextContinuingCounts d.continuingCounts with
+        | .error _ => simp [hCounts] at hOk
+        | .ok () =>
+          simp [hCounts] at hOk
+          match hSighash : validateTxContextSighashGate d.allowedSighashSet d.sighashType with
+          | .error _ => simp [hSighash] at hOk
+          | .ok () =>
+            simp [hSighash] at hOk
+            cases hOk
+            simp [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
+            split
+            · rename_i heq; omega
+            · exact ⟨_, rfl, rfl, rfl, rfl⟩
 
 /-! ## Helper: extract connectBlockTxs success -/
 
