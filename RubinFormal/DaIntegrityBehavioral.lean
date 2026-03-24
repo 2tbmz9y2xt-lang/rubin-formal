@@ -452,6 +452,46 @@ theorem da_verify_step_ok
 theorem da_integrity_empty :
     validateDASetIntegrity [] = .ok () := rfl
 
+/-! ## Top-level composition (LIVE on validateDASetIntegrity)
+
+All 4 stages of validateDASetIntegrity proved:
+accumulate → batch count → orphan check → verify integrity -/
+
+/-- Accumulation fails → validateDASetIntegrity returns same error. -/
+theorem da_integrity_accumulate_error (txs : List Bytes) (err : String)
+    (hFail : accumulateDATxs txs Std.RBMap.empty Std.RBMap.empty = .error err) :
+    validateDASetIntegrity txs = .error err := by
+  simp only [validateDASetIntegrity, hFail]
+
+/-- Batch count exceeded → BLOCK_ERR_DA_BATCH_EXCEEDED. -/
+theorem da_integrity_batch_error (txs : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (hAcc : accumulateDATxs txs Std.RBMap.empty Std.RBMap.empty = .ok (commits, chunks))
+    (hBatch : commits.size > MAX_DA_BATCHES_PER_BLOCK) :
+    validateDASetIntegrity txs = .error "BLOCK_ERR_DA_BATCH_EXCEEDED" := by
+  simp only [validateDASetIntegrity, hAcc, validateDaBatchCount, hBatch, ite_true]
+
+/-- Orphan chunks → error propagates. -/
+theorem da_integrity_orphan_error (txs : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (hAcc : accumulateDATxs txs Std.RBMap.empty Std.RBMap.empty = .ok (commits, chunks))
+    (hBatch : ¬(commits.size > MAX_DA_BATCHES_PER_BLOCK))
+    (err : String) (hOrphan : validateNoOrphanChunks chunks.toList commits = .error err) :
+    validateDASetIntegrity txs = .error err := by
+  simp only [validateDASetIntegrity, hAcc, validateDaBatchCount, hBatch, ite_false, hOrphan]
+
+/-- All pre-checks pass → result = verifyCommitIntegrity. -/
+theorem da_integrity_verify_result (txs : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (hAcc : accumulateDATxs txs Std.RBMap.empty Std.RBMap.empty = .ok (commits, chunks))
+    (hBatch : ¬(commits.size > MAX_DA_BATCHES_PER_BLOCK))
+    (hOrphan : validateNoOrphanChunks chunks.toList commits = .ok ()) :
+    validateDASetIntegrity txs = verifyCommitIntegrity commits.toList chunks := by
+  simp only [validateDASetIntegrity, hAcc, validateDaBatchCount, hBatch, ite_false, hOrphan]
+
 /-! ## Gate error propagation (LIVE)
 
 validateDaIntegrityGate = validateBlockBasic >> parseBlock >> validateDASetIntegrity.
