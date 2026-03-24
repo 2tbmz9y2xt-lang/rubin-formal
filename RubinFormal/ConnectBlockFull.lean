@@ -40,7 +40,7 @@ structure TxContextInputData where
     will later be packed into the computed TxContext. This avoids validating
     detached metadata. -/
 def continuingCountsFromData (continuingData : List (Nat × TxContextContinuing)) : List Nat :=
-  continuingData.map fun pair => pair.2.count
+  continuingData.map fun pair => pair.2.outputs.length
 
 /-- Extract the actual sighash byte from a witness item.
     Empty signatures fail before the policy gate runs. -/

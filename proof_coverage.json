@@ -956,6 +956,8 @@
         "RubinFormal.buildTxContext_ext_ids",
         "RubinFormal.compareUint128_native_equivalence",
         "RubinFormal.continuing_output_count_rejects_overflow",
+        "RubinFormal.continuing_outputs_length_is_invariant",
+        "RubinFormal.buildTxContext_all_continuings_outputs_bounded",
         "RubinFormal.vault_bridge_no_vault",
         "RubinFormal.vault_bridge_with_vault",
         "RubinFormal.SighashV1.checkSighashPolicy_exhaustive_256x256",
@@ -967,12 +969,14 @@
         "RubinFormal.buildTxContext_ext_ids": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.compareUint128_native_equivalence": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.continuing_output_count_rejects_overflow": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
+        "RubinFormal.continuing_outputs_length_is_invariant": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
+        "RubinFormal.buildTxContext_all_continuings_outputs_bounded": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.vault_bridge_no_vault": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.vault_bridge_with_vault": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.SighashV1.checkSighashPolicy_exhaustive_256x256": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.checkSighashPolicy_invalid_base_rejected": "rubin-formal/RubinFormal/SighashV1.lean"
       },
-      "notes": "§14 pre-activation gate closure on the live Lean helper/computed TxContext surface. 8 closure theorems: ext_id ordering is wired into buildTxContext/buildTxContextLive via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. The computed block helper derives continuing counts from the same continuingData it packs and extracts the sighash byte from a witness item instead of detached metadata. The legacy aggregate connectBlockFull wrapper remains compatibility surface and is not itself counted as the live gate path. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure.",
+      "notes": "§14 pre-activation gate closure on the live Lean helper/computed TxContext surface. 10 closure theorems: ext_id ordering is wired into buildTxContext/buildTxContextLive via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, the carried continuing outputs list itself is bounded both at the TxContextContinuing type and at the built-bundle surface, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. The computed block helper derives continuing counts from the actual carried outputs inside the same continuingData bundle and extracts the sighash byte from a witness item instead of detached metadata. The legacy aggregate connectBlockFull wrapper remains compatibility surface and is not itself counted as the live gate path. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure.",
       "limitations": []
     }
   ],
