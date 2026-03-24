@@ -5,8 +5,9 @@ import RubinFormal.Conformance.CVDaIntegrityReplay
 # DA Set Integrity Behavioral + Refinement Proofs (§21)
 
 LIVE behavioral proofs on `validateDASetIntegrity` and `validateDaIntegrityGate`
-(DaIntegrityV1.lean). Upgrades evidence_level from `baseline` to
-`machine_checked_contract` by combining:
+(DaIntegrityV1.lean). All DA sub-functions extracted and wired LIVE.
+Evidence level: machine_checked_contract with documented residual gaps
+(foldlM induction + parseDATx general errors). Combines:
 
 1. Conformance replay: `cv_da_integrity_vectors_pass` (native_decide on real vectors)
 2. Gate error propagation: each gate step's error flows to the output deterministically
@@ -150,7 +151,7 @@ theorem da_commit_output_ok (outputs : List TxOut) (payloadCommit : Bytes)
 /-! ## Chunk collection (LIVE on collectChunkPayloads) -/
 
 /-- Empty range → empty payload. -/
-theorem da_collect_empty :
+theorem da_collect_empty (s : Std.RBMap Nat DaChunkInfo compare) :
     collectChunkPayloads s 0 = .ok ByteArray.empty := by
   unfold collectChunkPayloads; rfl
 
