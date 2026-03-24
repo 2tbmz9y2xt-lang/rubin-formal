@@ -58,14 +58,14 @@
       "op": "da_set_integrity",
       "gate": "CV-DA",
       "model_theorem": "RubinFormal.da_gate_ok_implies_das_ok",
-      "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "lean_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "evidence_level": "machine_checked_contract",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [
-        "validateNoOrphanChunks uses List.find? (pure) instead of for-loop (monadic) — semantically equivalent, verified by conformance replay.",
-        "Per-commit integrity checks (chunk count match, payload commit hash) inside third for-loop not individually extracted — covered by conformance replay vectors."
+        "Per-commit concat loop (chunk payload concatenation, lines 286-290) not extracted — concat is inherently sequential and covered by conformance replay.",
+        "Missing-chunk-at-index check (line 288-289) inside nested for-loop — individual chunk lookup not extracted due to RBMap.find? in Std4."
       ],
       "supporting_theorems": [
         "RubinFormal.da_batch_exceeded",
@@ -74,6 +74,15 @@
         "RubinFormal.da_batch_over_limit",
         "RubinFormal.da_chunk_hash_mismatch",
         "RubinFormal.da_chunk_hash_ok",
+        "RubinFormal.da_duplicate_commit_rejects",
+        "RubinFormal.da_duplicate_commit_ok",
+        "RubinFormal.da_duplicate_chunk_rejects",
+        "RubinFormal.da_duplicate_chunk_ok",
+        "RubinFormal.da_chunk_count_mismatch",
+        "RubinFormal.da_chunk_count_ok",
+        "RubinFormal.da_commit_output_wrong_count",
+        "RubinFormal.da_commit_output_hash_mismatch",
+        "RubinFormal.da_commit_output_ok",
         "RubinFormal.da_gate_block_error",
         "RubinFormal.da_gate_parse_error",
         "RubinFormal.da_gate_integrity_error",

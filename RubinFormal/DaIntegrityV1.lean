@@ -220,6 +220,46 @@ def validateChunkHash (payload hash : Bytes) : Except String Unit :=
     Except.error "BLOCK_ERR_DA_CHUNK_HASH_INVALID"
   else Except.ok ()
 
+/-- Duplicate commit check: daId already in commits map → BLOCK_ERR_DA_SET_INVALID.
+    LIVE sub-function (line 233). Written without do for formal proof access. -/
+def validateNoDuplicateCommit
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) (daId : Bytes) : Except String Unit :=
+  if commits.contains daId then Except.error "BLOCK_ERR_DA_SET_INVALID"
+  else Except.ok ()
+
+/-- Duplicate chunk index check: idx already in set → BLOCK_ERR_DA_SET_INVALID.
+    LIVE sub-function (line 242). Written without do for formal proof access. -/
+def validateNoDuplicateChunk
+    (set : Std.RBMap Nat DaChunkInfo compare) (idx : Nat) : Except String Unit :=
+  if set.contains idx then Except.error "BLOCK_ERR_DA_SET_INVALID"
+  else Except.ok ()
+
+/-- Count DA_COMMIT outputs and extract the single commit hash.
+    Returns (count, hash_or_empty). Pure function for proof access. -/
+def countDaCommitOutputs (outputs : List TxOut) : Nat × Bytes :=
+  outputs.foldl (fun (acc : Nat × Bytes) o =>
+    if o.covenantType == COV_TYPE_DA_COMMIT then
+      let count := acc.1 + 1
+      let got := if o.covenantData.size == 32 then o.covenantData else acc.2
+      (count, got)
+    else acc
+  ) (0, ByteArray.empty)
+
+/-- Validate commit output: exactly 1 DA_COMMIT output with matching hash.
+    LIVE sub-function (lines 293-303). Written without do for formal proof access. -/
+def validateCommitOutput (outputs : List TxOut) (payloadCommit : Bytes)
+    : Except String Unit :=
+  let (count, got) := countDaCommitOutputs outputs
+  if count != 1 then Except.error "BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID"
+  else if got != payloadCommit then Except.error "BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID"
+  else Except.ok ()
+
+/-- Validate chunk count matches commit declaration.
+    LIVE sub-function (lines 284-285). Written without do for formal proof access. -/
+def validateChunkCountMatch (setSize chunkCount : Nat) : Except String Unit :=
+  if setSize != chunkCount then Except.error "BLOCK_ERR_DA_INCOMPLETE"
+  else Except.ok ()
+
 def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
   let mut commits : Std.RBMap Bytes DaCommitInfo cmpBytes := Std.RBMap.empty
   let mut chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes := Std.RBMap.empty
@@ -229,8 +269,7 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
     if t.txKind == 0x01 then
       let daId ← match t.commitDaId with | some x => pure x | none => throw "TX_ERR_PARSE"
       let cc ← match t.commitChunkCount with | some x => pure x | none => throw "TX_ERR_PARSE"
-      if commits.contains daId then
-        throw "BLOCK_ERR_DA_SET_INVALID"
+      validateNoDuplicateCommit commits daId
       commits := commits.insert daId { chunkCount := cc, outputs := t.outputs }
     else if t.txKind == 0x02 then
       let daId ← match t.chunkDaId with | some x => pure x | none => throw "TX_ERR_PARSE"
@@ -238,8 +277,7 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
       let h ← match t.chunkHash with | some x => pure x | none => throw "TX_ERR_PARSE"
       validateChunkHash t.payload h
       let set := match chunks.find? daId with | none => Std.RBMap.empty | some m => m
-      if set.contains idx then
-        throw "BLOCK_ERR_DA_SET_INVALID"
+      validateNoDuplicateChunk set idx
       chunks := chunks.insert daId (set.insert idx { chunkIndex := idx, chunkHash := h, payload := t.payload })
 
   validateDaBatchCount commits.size

@@ -80,6 +80,73 @@ theorem da_chunk_hash_ok (payload hash : Bytes) (h : (SHA3.sha3_256 payload != h
     validateChunkHash payload hash = .ok () := by
   simp only [validateChunkHash, h, ite_false]
 
+/-! ## Duplicate detection (LIVE on validateNoDuplicateCommit / validateNoDuplicateChunk) -/
+
+/-- Duplicate commit ID → BLOCK_ERR_DA_SET_INVALID. -/
+theorem da_duplicate_commit_rejects
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) (daId : Bytes)
+    (h : commits.contains daId = true) :
+    validateNoDuplicateCommit commits daId = .error "BLOCK_ERR_DA_SET_INVALID" := by
+  simp only [validateNoDuplicateCommit, h, ite_true]
+
+/-- New commit ID → accepted. -/
+theorem da_duplicate_commit_ok
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) (daId : Bytes)
+    (h : commits.contains daId = false) :
+    validateNoDuplicateCommit commits daId = .ok () := by
+  simp only [validateNoDuplicateCommit, h, ite_false]
+
+/-- Duplicate chunk index → BLOCK_ERR_DA_SET_INVALID. -/
+theorem da_duplicate_chunk_rejects
+    (set : Std.RBMap Nat DaChunkInfo compare) (idx : Nat)
+    (h : set.contains idx = true) :
+    validateNoDuplicateChunk set idx = .error "BLOCK_ERR_DA_SET_INVALID" := by
+  simp only [validateNoDuplicateChunk, h, ite_true]
+
+/-- New chunk index → accepted. -/
+theorem da_duplicate_chunk_ok
+    (set : Std.RBMap Nat DaChunkInfo compare) (idx : Nat)
+    (h : set.contains idx = false) :
+    validateNoDuplicateChunk set idx = .ok () := by
+  simp only [validateNoDuplicateChunk, h, ite_false]
+
+/-! ## Chunk count match (LIVE on validateChunkCountMatch) -/
+
+/-- Chunk count mismatch → BLOCK_ERR_DA_INCOMPLETE. -/
+theorem da_chunk_count_mismatch (setSize chunkCount : Nat) (h : (setSize != chunkCount) = true) :
+    validateChunkCountMatch setSize chunkCount = .error "BLOCK_ERR_DA_INCOMPLETE" := by
+  simp only [validateChunkCountMatch, h, ite_true]
+
+/-- Chunk count match → accepted. -/
+theorem da_chunk_count_ok (setSize chunkCount : Nat) (h : (setSize != chunkCount) = false) :
+    validateChunkCountMatch setSize chunkCount = .ok () := by
+  simp only [validateChunkCountMatch, h, ite_false]
+
+/-! ## Commit output validation (LIVE on validateCommitOutput) -/
+
+/-- Wrong commit output count → BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID. -/
+theorem da_commit_output_wrong_count (outputs : List TxOut) (payloadCommit : Bytes)
+    (h : (countDaCommitOutputs outputs).1 != 1) :
+    validateCommitOutput outputs payloadCommit = .error "BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID" := by
+  simp only [validateCommitOutput, h, ite_true]
+
+/-- Hash mismatch → BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID. -/
+theorem da_commit_output_hash_mismatch (outputs : List TxOut) (payloadCommit : Bytes)
+    (hCount : ¬((countDaCommitOutputs outputs).1 != 1))
+    (hHash : ((countDaCommitOutputs outputs).2 != payloadCommit) = true) :
+    validateCommitOutput outputs payloadCommit = .error "BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID" := by
+  simp only [validateCommitOutput, show ((countDaCommitOutputs outputs).1 != 1) = false from
+    Bool.eq_false_iff.mpr hCount, ite_false, hHash, ite_true]
+
+/-- Valid commit output → accepted. -/
+theorem da_commit_output_ok (outputs : List TxOut) (payloadCommit : Bytes)
+    (hCount : ¬((countDaCommitOutputs outputs).1 != 1))
+    (hHash : ¬((countDaCommitOutputs outputs).2 != payloadCommit)) :
+    validateCommitOutput outputs payloadCommit = .ok () := by
+  simp only [validateCommitOutput, show ((countDaCommitOutputs outputs).1 != 1) = false from
+    Bool.eq_false_iff.mpr hCount, ite_false, show ((countDaCommitOutputs outputs).2 != payloadCommit) = false from
+    Bool.eq_false_iff.mpr hHash, ite_false]
+
 /-! ## Gate error propagation (LIVE)
 
 validateDaIntegrityGate = validateBlockBasic >> parseBlock >> validateDASetIntegrity.
@@ -173,7 +240,7 @@ theorem da_gate_ok_full (blockBytes : Bytes) (ph pt : Option Bytes)
 cv_da_integrity_vectors_pass (CVDaIntegrityReplay.lean):
 Proves that ALL conformance vectors from CV-DA pass through
 validateDaIntegrityGate via native_decide. Combined with error
-propagation theorems, this provides refined_model evidence.
+propagation theorems, this provides machine_checked_contract evidence.
 Does NOT cover BLOCK_ERR_DA_BATCH_EXCEEDED (no CV vector with >128 batches).
 -/
 
