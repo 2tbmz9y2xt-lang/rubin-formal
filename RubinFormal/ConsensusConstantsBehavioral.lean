@@ -140,10 +140,10 @@ theorem witness_validation_exhaustive (w : WI) (h : Nat) :
   by_cases hSent : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = true
   · simp only [hSent, ite_true]
     by_cases hBad : ((w.pubkey.size != 0) || (w.signature.size != 0)) = true
-    · simp only [hBad, ite_true]; simp
+    · simp only [hBad, ite_true]; exact Or.inl trivial -- TX_ERR_PARSE
     · have : ((w.pubkey.size != 0) || (w.signature.size != 0)) = false :=
         Bool.eq_false_iff.mpr (fun h => by rw [h] at hBad; exact hBad rfl)
-      simp only [this, ite_false]; simp
+      simp only [this, ite_false]; exact Or.inr (Or.inr (Or.inr trivial)) -- .ok ()
   · have hSF : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = false :=
       Bool.eq_false_iff.mpr (fun h => by rw [h] at hSent; exact hSent rfl)
     simp only [hSF, ite_false]
@@ -151,13 +151,13 @@ theorem witness_validation_exhaustive (w : WI) (h : Nat) :
     · simp only [hMl, ite_true]
       by_cases hBad : (w.pubkey.size != PUB_BYTES || w.signature.size = 0 ||
                         w.signature.size > SIG_BYTES + 1) = true
-      · simp only [hBad, ite_true]; simp
+      · simp only [hBad, ite_true]; exact Or.inr (Or.inl trivial) -- TX_ERR_SIG_NONCANONICAL
       · have : (w.pubkey.size != PUB_BYTES || w.signature.size = 0 ||
                 w.signature.size > SIG_BYTES + 1) = false :=
           Bool.eq_false_iff.mpr (fun h => by rw [h] at hBad; exact hBad rfl)
-        simp only [this, ite_false]; simp
+        simp only [this, ite_false]; exact Or.inr (Or.inr (Or.inr trivial)) -- .ok ()
     · have hMF : (w.suiteId == ML_DSA) = false :=
         Bool.eq_false_iff.mpr (fun h => by rw [h] at hMl; exact hMl rfl)
-      simp only [hMF, ite_false]; simp
+      simp only [hMF, ite_false]; exact Or.inr (Or.inr (Or.inl trivial)) -- TX_ERR_SIG_ALG_INVALID
 
 end RubinFormal
