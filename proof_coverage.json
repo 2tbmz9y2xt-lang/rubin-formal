@@ -161,7 +161,6 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_sighash_vectors_pass",
-        "RubinFormal.digestV1_deterministic",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
         "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs",
         "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input",
@@ -175,11 +174,14 @@
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_locktime",
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_input_context",
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_output_context",
-        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields"
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields",
+        "RubinFormal.selectHashPrevouts_invalid_returns_none",
+        "RubinFormal.selectHashSequences_invalid_returns_none",
+        "RubinFormal.selectHashOutputs_invalid_returns_none",
+        "RubinFormal.hasValidBaseType_exhaustive"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.digestV1_deterministic": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input": "rubin-formal/RubinFormal/SighashV1.lean",
@@ -193,9 +195,13 @@
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_locktime": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_input_context": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.buildPreimageFrameParts_commits_output_context": "rubin-formal/RubinFormal/SighashV1.lean",
-        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields": "rubin-formal/RubinFormal/SighashV1.lean"
+        "RubinFormal.SighashV1.buildPreimageFrameParts_commits_declared_tx_fields": "rubin-formal/RubinFormal/SighashV1.lean",
+        "RubinFormal.selectHashPrevouts_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
+        "RubinFormal.selectHashSequences_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
+        "RubinFormal.selectHashOutputs_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
+        "RubinFormal.hasValidBaseType_exhaustive": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean"
       },
-      "notes": "Claim is limited to executable replay on the current CV-SIGHASH fixture subset plus a stronger spec-level theorem surface for the typed preimage-frame builder. TXCTX now broadens the pinned sighash surface through the TxContext-aware verify_sig_ext path and allowed_sighash_set policy, so this entry remains intentionally stated until the TXCTX-specific sighash proofs land.",
+      "notes": "Tautological digestV1_deterministic (f x = f x) and weak digestV1_empty_tx_fails removed. Replaced with universal invalid-type rejection for all 3 selectHash functions + hasValidBaseType 256-value exhaustive partition. digestV1 injectivity requires SHA3 collision resistance (external assumption). buildPreimageFrameParts_injective (in SighashV1.lean) proves frame-level injectivity.",
       "limitations": [
         "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
         "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
