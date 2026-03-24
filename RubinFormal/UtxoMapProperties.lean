@@ -526,14 +526,15 @@ After `addCoinbaseOutputs utxo txid outputs height`, entries with keys
 different from the newly-inserted outpoints are still findable.
 Follows from rbmap_find_insert_of_ne applied inductively. -/
 
-/-- Generic foldl preservation: each step either skips or inserts with a different key. -/
+/-- Generic foldl preservation: each step either skips (non-spendable) or inserts
+    with a different key. Premise only requires non-collision for SPENDABLE outputs. -/
 private theorem foldl_insert_preserves_find
     (pairs : List (Nat × CovenantGenesisV1.TxOut))
     (txid : Bytes) (height : Nat)
     (acc : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (k : Outpoint) (v : UtxoEntry)
     (hfind : acc.find? k = some v)
-    (hne : ∀ p ∈ pairs, cmpOutpoint k ⟨txid, p.1⟩ ≠ .eq) :
+    (hne : ∀ p ∈ pairs, isSpendableCoinbaseOutput p.2 → cmpOutpoint k ⟨txid, p.1⟩ ≠ .eq) :
     (pairs.foldl (fun acc' (p : Nat × CovenantGenesisV1.TxOut) =>
       if isSpendableCoinbaseOutput p.2 then
         acc'.insert ⟨txid, p.1⟩ (coinbaseUtxoEntry p.2 height)
@@ -542,24 +543,25 @@ private theorem foldl_insert_preserves_find
   | nil => exact hfind
   | cons p rest ih =>
     simp only [List.foldl]
-    have hne_p := hne p (List.mem_cons_self _ _)
-    have hne_rest : ∀ q ∈ rest, cmpOutpoint k ⟨txid, q.1⟩ ≠ .eq :=
-      fun q hq => hne q (List.mem_cons_of_mem _ hq)
+    have hne_rest : ∀ q ∈ rest, isSpendableCoinbaseOutput q.2 → cmpOutpoint k ⟨txid, q.1⟩ ≠ .eq :=
+      fun q hq hsp => hne q (List.mem_cons_of_mem _ hq) hsp
     by_cases hsp : isSpendableCoinbaseOutput p.2
     · simp only [hsp, ite_true]
+      have hne_p := hne p (List.mem_cons_self _ _) hsp
       exact ih (acc.insert ⟨txid, p.1⟩ _)
         (by rw [rbmap_find_insert_of_ne k ⟨txid, p.1⟩ _ acc hne_p]; exact hfind)
         hne_rest
     · simp only [hsp, ite_false]; exact ih acc hfind hne_rest
 
 /-- **GAP C (composition):** After the full `addCoinbaseOutputs` foldl loop,
-    any entry with key `k` not matching any inserted outpoint is preserved. -/
+    any entry with key `k` not matching any *spendable* inserted outpoint is preserved.
+    Non-spendable outputs are skipped by `addCoinbaseOutputs` and don't require non-collision. -/
 theorem addCoinbaseOutputs_preserves_full
     (outputs : List CovenantGenesisV1.TxOut) (txid : Bytes) (height : Nat)
     (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (k : Outpoint) (v : UtxoEntry)
     (hfind : utxos.find? k = some v)
-    (hne : ∀ p ∈ outputs.enum, cmpOutpoint k ⟨txid, p.1⟩ ≠ .eq) :
+    (hne : ∀ p ∈ outputs.enum, isSpendableCoinbaseOutput p.2 → cmpOutpoint k ⟨txid, p.1⟩ ≠ .eq) :
     (addCoinbaseOutputs outputs txid height utxos).find? k = some v :=
   foldl_insert_preserves_find outputs.enum txid height utxos k v hfind hne
 
