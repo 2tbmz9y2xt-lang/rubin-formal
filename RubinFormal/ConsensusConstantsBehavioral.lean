@@ -128,19 +128,23 @@ validateWitnessItemLengths handles exactly three cases:
 
 This is exhaustive: every possible suiteId maps to exactly one outcome. -/
 
-/-- Exhaustive: every WitnessItem gets exactly one of three error codes or .ok. -/
+/-- Exhaustive with CONSTRAINED error codes: every WitnessItem results in
+    one of exactly three error codes or .ok. Regression-safe: adding a new
+    error string would break this theorem. -/
 theorem witness_validation_exhaustive (w : WI) (h : Nat) :
-    (∃ e, UtxoApplyGenesisV1.validateWitnessItemLengths w h = .error e) ∨
+    UtxoApplyGenesisV1.validateWitnessItemLengths w h = .error "TX_ERR_PARSE" ∨
+    UtxoApplyGenesisV1.validateWitnessItemLengths w h = .error "TX_ERR_SIG_NONCANONICAL" ∨
+    UtxoApplyGenesisV1.validateWitnessItemLengths w h = .error "TX_ERR_SIG_ALG_INVALID" ∨
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .ok () := by
   rw [validateWitnessItemLengths_eq_explicit]
   simp only [validateWitnessExplicit]
   by_cases hSent : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = true
   · simp only [hSent, ite_true]
     by_cases hBad : ((w.pubkey.size != 0) || (w.signature.size != 0)) = true
-    · simp only [hBad, ite_true]; left; exact ⟨_, rfl⟩
+    · simp only [hBad, ite_true]; simp
     · have : ((w.pubkey.size != 0) || (w.signature.size != 0)) = false :=
         Bool.eq_false_iff.mpr (fun h => by rw [h] at hBad; exact hBad rfl)
-      simp only [this, ite_false]; exact Or.inr trivial
+      simp only [this, ite_false]; simp
   · have hSF : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = false :=
       Bool.eq_false_iff.mpr (fun h => by rw [h] at hSent; exact hSent rfl)
     simp only [hSF, ite_false]
@@ -148,13 +152,13 @@ theorem witness_validation_exhaustive (w : WI) (h : Nat) :
     · simp only [hMl, ite_true]
       by_cases hBad : (w.pubkey.size != PUB_BYTES || w.signature.size = 0 ||
                         w.signature.size > SIG_BYTES + 1) = true
-      · simp only [hBad, ite_true]; left; exact ⟨_, rfl⟩
+      · simp only [hBad, ite_true]; simp
       · have : (w.pubkey.size != PUB_BYTES || w.signature.size = 0 ||
                 w.signature.size > SIG_BYTES + 1) = false :=
           Bool.eq_false_iff.mpr (fun h => by rw [h] at hBad; exact hBad rfl)
-        simp only [this, ite_false]; exact Or.inr trivial
+        simp only [this, ite_false]; simp
     · have hMF : (w.suiteId == ML_DSA) = false :=
         Bool.eq_false_iff.mpr (fun h => by rw [h] at hMl; exact hMl rfl)
-      simp only [hMF, ite_false]; left; exact ⟨_, rfl⟩
+      simp only [hMF, ite_false]; simp
 
 end RubinFormal
