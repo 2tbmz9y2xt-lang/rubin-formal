@@ -198,9 +198,10 @@ where
           | Or.inr hmem => exact hpw.1 z hmem,
           ih_result⟩
 
-/-- Any two sorted permutations of the same ext_id multiset are equal.
-    This closes the missing uniqueness gap left by the earlier Perm+Sorted-only theorem. -/
-private theorem sorted_perm_unique_nat :
+/-- Any two lists that are both sorted and permutations of the same ext_id
+    multiset are equal. This is the uniqueness fact needed by the canonical
+    sorter theorem below. -/
+private theorem sorted_perm_unique_when_both_sorted :
     ∀ {xs ys : List Nat},
       List.Pairwise (· ≤ ·) xs →
       List.Pairwise (· ≤ ·) ys →
@@ -210,9 +211,11 @@ private theorem sorted_perm_unique_nat :
   | [], _ :: _, _, _, hperm => by
       have hlen := hperm.length_eq
       simp at hlen
+      cases hlen
   | _ :: _, [], _, _, hperm => by
       have hlen := hperm.length_eq
       simp at hlen
+      cases hlen
   | x :: xs, y :: ys, hxs, hys, hperm => by
       have hx_mem : x ∈ y :: ys := hperm.mem_iff.mp (by simp)
       have hy_mem : y ∈ x :: xs := hperm.symm.mem_iff.mp (by simp)
@@ -233,16 +236,7 @@ private theorem sorted_perm_unique_nat :
       have hperm_tail : List.Perm xs ys := List.Perm.cons_inv hperm
       have hxs_tail : List.Pairwise (· ≤ ·) xs := (List.pairwise_cons.mp hxs).2
       have hys_tail : List.Pairwise (· ≤ ·) ys := (List.pairwise_cons.mp hys).2
-      simpa using sorted_perm_unique_nat hxs_tail hys_tail hperm_tail
-
-/-- **extid_sort_unique_sorted_permutation** (§14):
-    uniqueness of sorted ext_id permutations. -/
-theorem extid_sort_unique_sorted_permutation (xs ys : List Nat)
-    (hperm : List.Perm xs ys)
-    (hxs : List.Pairwise (· ≤ ·) xs)
-    (hys : List.Pairwise (· ≤ ·) ys) :
-    xs = ys := by
-  exact sorted_perm_unique_nat hxs hys hperm
+      simpa using sorted_perm_unique_when_both_sorted hxs_tail hys_tail hperm_tail
 
 /-- **extid_sort_deterministic** (§14, strengthened):
     the canonical sorted ext_id output is unique. Any sorted permutation of the
@@ -251,10 +245,8 @@ theorem extid_sort_deterministic (xs ys : List Nat)
     (hperm : List.Perm xs ys)
     (hsorted : List.Pairwise (· ≤ ·) ys) :
     sortAscending xs = ys := by
-  apply extid_sort_unique_sorted_permutation
-  · exact (sortAscending_perm xs).symm.trans hperm
-  · exact sortAscending_sorted_v2 xs
-  · exact hsorted
+  exact sorted_perm_unique_when_both_sorted (sortAscending_sorted_v2 xs) hsorted
+    ((sortAscending_perm xs).symm.trans hperm)
 
 /-- Concrete verification: descending input [3, 1, 2] produces [1, 2, 3].
     Models CV-51/CV-84: ext_ids in descending wire order are still
@@ -323,12 +315,11 @@ theorem vault_sum_ignored_when_no_vault (totalIn totalOut vis : Nat) :
   simp [checkValueConservation]
 
 -- ============================================================================
--- §14 Theorem 7: parallel_error_equivalence
+-- §14 Theorem 7: parallel error selection
 -- ============================================================================
 
-/-- Auxiliary permutation invariance for pure result maps.
-    This is useful, but it is not by itself the full lowest-index error theorem. -/
-theorem parallel_error_equivalence {inputs₁ inputs₂ : List α} (f : α → Bool)
+/-- Auxiliary permutation invariance for pure result maps. -/
+theorem parallel_result_permutation_invariant {inputs₁ inputs₂ : List α} (f : α → Bool)
     (hperm : List.Perm inputs₁ inputs₂) :
     List.Perm (inputs₁.map f) (inputs₂.map f) :=
   hperm.map f
@@ -435,10 +426,11 @@ private theorem lowestFailIdx_perm_invariant {xs ys : List (Nat × Bool)}
   | trans h1 h2 ih1 ih2 =>
       exact ih1.trans ih2
 
-/-- **parallel_error_index_priority** (§14): the lowest failing index chosen by
-    a parallel reducer over tagged results matches the first failing index in the
-    canonical sequential order. -/
-theorem parallel_error_index_priority (results : List Bool)
+/-- **parallel_error_index_priority_of_tagged_permutation** (§14):
+    if the parallel worker output is a permutation of the canonical tagged
+    sequential results, the reducer selects the same lowest failing index as the
+    sequential path. -/
+theorem parallel_error_index_priority_of_tagged_permutation (results : List Bool)
     (parallel : List (Nat × Bool))
     (hperm : List.Perm parallel (indexedValidationResults results)) :
     lowestFailIdx? parallel = sequentialErrorIndex results := by
@@ -481,7 +473,7 @@ private def sighashAllowedSpec (allowedSet sighashType : Nat) : Bool :=
     (baseType == 1 && ((allowedSet &&& 0x01) == 0x01)) ||
     (baseType == 2 && ((allowedSet &&& 0x02) == 0x02)) ||
     (baseType == 3 && ((allowedSet &&& 0x04) == 0x04))
-  baseAllowed && (!hasAcp || ((allowedSet &&& 0x80) == 0x80))
+  hasValidBaseType st && baseAllowed && (!hasAcp || ((allowedSet &&& 0x80) == 0x80))
 
 /-- **sighash_policy_complete** (§14): 0x87 allows all 6 valid combos. -/
 theorem sighash_policy_complete :
