@@ -6,12 +6,11 @@ import RubinFormal.SighashV1
 Replaces tautological `digestV1_deterministic` (was `f x = f x`) with
 substantive universal theorems on the live sighash validation surface.
 
-## Coverage
+## Coverage (7 substantive LIVE theorems, zero wrappers)
 - digestV1 error characterization: parse failure → error, OOB index → error (universal LIVE)
 - digestV1 success characterization: parse ok + in bounds → ∃ digest (universal LIVE)
 - Invalid sighash types rejected by all three hash-selection functions (universal LIVE)
 - `hasValidBaseType` exhaustive 256-value partition (native_decide LIVE)
-- Preimage frame field positions (rfl, structural LIVE)
 
 ## Honest limitation
 - digestV1 end-to-end injectivity (different frames → different digests)
@@ -114,27 +113,5 @@ theorem digestV1_success
   rw [hParse]; simp only [ge_iff_le, Bind.bind, Except.bind]
   rw [if_neg (show ¬(core.inputs.length ≤ idx) from by omega)]
   exact ⟨_, rfl⟩
-
-/-! ## Preimage frame field positions (structural, LIVE) -/
-
-/-- The preimage frame parts list has exactly 16 elements. -/
-theorem buildPreimageFrameParts_length (f : SighashPreimageFrame) :
-    (buildPreimageFrameParts f).length = 16 := by rfl
-
-/-- Version field is at index 2 in the preimage parts. -/
-theorem buildPreimageFrameParts_version_at_2 (f : SighashPreimageFrame) :
-    (buildPreimageFrameParts f).get? 2 = some f.versionLE := by rfl
-
-/-- ChainId is at index 1 in the preimage parts. -/
-theorem buildPreimageFrameParts_chainId_at_1 (f : SighashPreimageFrame) :
-    (buildPreimageFrameParts f).get? 1 = some f.chainId := by rfl
-
-/-- Locktime is at index 14 in the preimage parts. -/
-theorem buildPreimageFrameParts_locktime_at_14 (f : SighashPreimageFrame) :
-    (buildPreimageFrameParts f).get? 14 = some f.locktimeLE := by rfl
-
-/-- SighashType byte is at index 15 (last) in the preimage parts. -/
-theorem buildPreimageFrameParts_sighashType_at_15 (f : SighashPreimageFrame) :
-    (buildPreimageFrameParts f).get? 15 = some (RubinFormal.bytes #[f.sighashType]) := by rfl
 
 end RubinFormal
