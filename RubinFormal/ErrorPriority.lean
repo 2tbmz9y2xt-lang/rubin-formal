@@ -27,8 +27,8 @@ linkage → merkle (via explicit-bind equivalence) → witness (existing).
 - Error code distinctness: all block + tx codes via `by decide` (35 theorems).
 
 ## §13 Contract summary
-- `consensus_error_ordering_complete`: block-level totality + priority + success-chain.
-- `tx_parse_pipeline_deterministic`: tx parse stage ordering is strict + all 9 stages bridged to live.
+- `consensus_error_ordering_parse_pow`: block-level totality + parse/pow dominance + success-chain.
+- `tx_parse_pipeline_deterministic`: tx parse model ordering strict + injective (live bridges separate).
 - `tx_semantic_pipeline_deterministic`: tx semantic stage ordering is strict + bridged to live.
 -/
 
@@ -730,27 +730,63 @@ def readLocktimeField (c : Cursor) : Except String (Nat × Cursor) :=
   | none => .error "BLOCK_ERR_PARSE"
   | some x => .ok x
 
--- Bridge: HeaderRead (stage 0) — if header read fails, error is BLOCK_ERR_PARSE
-theorem bridge_parse_header (c : Cursor) (h : readTxHeader c = .error e) :
-    txParseStageOrd .HeaderRead = 0 ∧ readTxHeader c = .error e :=
-  ⟨rfl, h⟩
+-- Bridge: HeaderRead (stage 0) — insufficient bytes for version read → error
+theorem bridge_parse_header_version_short (c : Cursor)
+    (h : c.getU32le? = none) :
+    txParseStageOrd .HeaderRead = 0 ∧
+    readTxHeader c = .error "BLOCK_ERR_PARSE" := by
+  constructor
+  · rfl
+  · simp [readTxHeader, h]
 
--- Bridge: InputParse (stage 3) — if input parsing fails, error is BLOCK_ERR_PARSE
-theorem bridge_parse_inputs (c : Cursor) (n : Nat)
-    (h : readInputsField c n = .error e) :
-    txParseStageOrd .InputParse = 3 ∧ readInputsField c n = .error e :=
-  ⟨rfl, h⟩
+-- Bridge: HeaderRead (stage 0) — version ok but insufficient bytes for txkind → error
+theorem bridge_parse_header_txkind_short (c : Cursor) (ver : Nat) (c1 : Cursor)
+    (hVer : c.getU32le? = some (ver, c1))
+    (hTk : c1.getU8? = none) :
+    txParseStageOrd .HeaderRead = 0 ∧
+    readTxHeader c = .error "BLOCK_ERR_PARSE" := by
+  constructor
+  · rfl
+  · simp [readTxHeader, hVer, hTk]
 
--- Bridge: OutputParse (stage 5) — if output parsing fails, error is BLOCK_ERR_PARSE
-theorem bridge_parse_outputs (c : Cursor) (n : Nat)
-    (h : readOutputsField c n = .error e) :
-    txParseStageOrd .OutputParse = 5 ∧ readOutputsField c n = .error e :=
-  ⟨rfl, h⟩
+-- Bridge: HeaderRead (stage 0) — version+txkind ok but insufficient for nonce → error
+theorem bridge_parse_header_nonce_short (c : Cursor) (ver : Nat) (c1 : Cursor)
+    (tkB : UInt8) (c2 : Cursor)
+    (hVer : c.getU32le? = some (ver, c1))
+    (hTk : c1.getU8? = some (tkB, c2))
+    (hNonce : c2.getU64le? = none) :
+    txParseStageOrd .HeaderRead = 0 ∧
+    readTxHeader c = .error "BLOCK_ERR_PARSE" := by
+  constructor
+  · rfl
+  · simp [readTxHeader, hVer, hTk, hNonce]
 
--- Bridge: Locktime (stage 6) — if locktime read fails, error is BLOCK_ERR_PARSE
-theorem bridge_parse_locktime (c : Cursor) (h : readLocktimeField c = .error e) :
-    txParseStageOrd .Locktime = 6 ∧ readLocktimeField c = .error e :=
-  ⟨rfl, h⟩
+-- Bridge: InputParse (stage 3) — parseInputsSkip returns none → error
+theorem bridge_parse_inputs_fail (c : Cursor) (n : Nat)
+    (h : RubinFormal.TxWeightV2.parseInputsSkip c n = none) :
+    txParseStageOrd .InputParse = 3 ∧
+    readInputsField c n = .error "BLOCK_ERR_PARSE" := by
+  constructor
+  · rfl
+  · simp [readInputsField, h]
+
+-- Bridge: OutputParse (stage 5) — parseOutputsForAnchor returns none → error
+theorem bridge_parse_outputs_fail (c : Cursor) (n : Nat)
+    (h : RubinFormal.TxWeightV2.parseOutputsForAnchor c n = none) :
+    txParseStageOrd .OutputParse = 5 ∧
+    readOutputsField c n = .error "BLOCK_ERR_PARSE" := by
+  constructor
+  · rfl
+  · simp [readOutputsField, h]
+
+-- Bridge: Locktime (stage 6) — insufficient bytes for U32LE → error
+theorem bridge_parse_locktime_short (c : Cursor)
+    (h : c.getU32le? = none) :
+    txParseStageOrd .Locktime = 6 ∧
+    readLocktimeField c = .error "BLOCK_ERR_PARSE" := by
+  constructor
+  · rfl
+  · simp [readLocktimeField, h]
 
 end StructuralBridges
 
@@ -951,16 +987,12 @@ success-chain results into unified §13 contract statements.  These are LIVE
 on `validateBlockBasic` and the tx sub-function pipeline — not model-only.
 -/
 
-/-- §13 Block-level contract (stages 1-2 + totality + success-chain):
-    (1) total (accept ∨ error),
-    (2) parse-error-dominant (parse failure wins unconditionally),
-    (3) pow-error-dominant (given parse ok, pow failure wins),
-    (4) success-implies-all-passed.
-    Stages 3-6 (target, linkage, merkle, witness) are proved individually
-    in `error_priority_target`, `error_priority_linkage_*`,
-    `error_priority_merkle_*` — not bundled here due to case-split
-    signatures (4 merkle cases × 2 linkage cases). -/
-theorem consensus_error_ordering_complete
+/-- §13 Block-level: totality + parse/pow dominance + success-chain.
+    Covers stages 1 (parse) and 2 (pow) directly. Stages 3-6 (target,
+    linkage, merkle, witness) proved individually in `error_priority_target`,
+    `error_priority_linkage_*`, `error_priority_merkle_*` — not bundled
+    here due to their conditional signatures (4 merkle × 2 linkage cases). -/
+theorem consensus_error_ordering_parse_pow
     (blockBytes : Bytes) (ph pt : Option Bytes) :
     -- (1) Totality
     (section25AcceptWitness blockBytes ph pt ∨
@@ -981,11 +1013,13 @@ theorem consensus_error_ordering_complete
   · intro pb err hParse hFail; exact error_priority_pow blockBytes ph pt pb err hParse hFail
   · intro h; exact validate_success_pow blockBytes ph pt h
 
-/-- Tx parse pipeline: all 9 stages bridged to live sub-functions.
-    Stage ordering is strict (all 8 adjacent pairs) + injective.
-    Bridges: readTxHeader (0), validateTxKind (1), validateInputCountMin (2),
-    readInputsField (3), validateOutputCountMin (4), readOutputsField (5),
-    readLocktimeField (6), applyWitnessChecks (7), applyDaLenChecks (8). -/
+/-- Tx parse pipeline: stage ordering is strict (all 8 adjacent pairs) +
+    injective. This theorem proves the MODEL ordering; live grounding is
+    provided by separate bridge theorems: `bridge_parse_header_*` (stage 0),
+    `bridge_parse_txkind` (1), `bridge_parse_inputmin` (2),
+    `bridge_parse_inputs_fail` (3), `bridge_parse_outputmin` (4),
+    `bridge_parse_outputs_fail` (5), `bridge_parse_locktime_short` (6),
+    `bridge_parse_witness` (7), `bridge_parse_dalen` (8). -/
 theorem tx_parse_pipeline_deterministic :
     -- Strict stage ordering (all 8 adjacent pairs, complete chain 0..8)
     (txParseStageOrd .HeaderRead < txParseStageOrd .TxKind ∧
