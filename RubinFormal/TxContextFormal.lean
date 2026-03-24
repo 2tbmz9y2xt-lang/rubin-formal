@@ -208,12 +208,23 @@ private theorem sorted_perm_unique_when_both_sorted :
       have hys_tail : List.Pairwise (· ≤ ·) ys := (List.pairwise_cons.mp hys).2
       simpa using sorted_perm_unique_when_both_sorted hxs_tail hys_tail hperm_tail
 
+/-- Any two sorted permutations of the same ext_id list are equal.
+theorem extid_sorted_permutation_unique (xs ys : List Nat)
+    (hperm : List.Perm xs ys)
+    (hxs : List.Pairwise (· ≤ ·) xs)
+    (hys : List.Pairwise (· ≤ ·) ys) :
+    xs = ys := by
+  exact sorted_perm_unique_when_both_sorted hxs hys hperm
+
+/-- `sortAscending` produces the unique sorted permutation of any input list. -/
 theorem extid_sort_deterministic (xs ys : List Nat)
     (hperm : List.Perm xs ys)
     (hsorted : List.Pairwise (· ≤ ·) ys) :
     sortAscending xs = ys := by
-  exact sorted_perm_unique_when_both_sorted (sortAscending_sorted_v2 xs) hsorted
+  exact extid_sorted_permutation_unique (sortAscending xs) ys
     ((sortAscending_perm xs).symm.trans hperm)
+    (sortAscending_sorted_v2 xs)
+    hsorted
 
 theorem extid_sort_concrete_321 :
     sortAscending [3, 1, 2] = [1, 2, 3] := by
@@ -250,6 +261,23 @@ theorem vault_conservation_no_double_count
     checkValueConservation totalIn totalOut vis1 hv =
     checkValueConservation totalIn totalOut vis2 hv := by
   intro hgt; simp [checkValueConservation, hgt]
+
+theorem vault_conservation_rejects_under_vault_sum
+    (totalIn totalOut vaultInputSum : Nat)
+    (hBound : totalOut ≤ totalIn)
+    (hVault : totalOut < vaultInputSum) :
+    checkValueConservation totalIn totalOut vaultInputSum true = false := by
+  have hNoOverflow : ¬ totalOut > totalIn := Nat.not_lt_of_ge hBound
+  simp [checkValueConservation, hNoOverflow, hVault]
+
+theorem vault_conservation_accepts_when_bounds_hold
+    (totalIn totalOut vaultInputSum : Nat)
+    (hBound : totalOut ≤ totalIn)
+    (hVault : vaultInputSum ≤ totalOut) :
+    checkValueConservation totalIn totalOut vaultInputSum true = true := by
+  have hNoOverflow : ¬ totalOut > totalIn := Nat.not_lt_of_ge hBound
+  have hNoVaultUnderflow : ¬ totalOut < vaultInputSum := Nat.not_lt_of_ge hVault
+  simp [checkValueConservation, hNoOverflow, hNoVaultUnderflow]
 
 theorem vault_sum_ignored_when_no_vault (totalIn totalOut vis : Nat) :
     checkValueConservation totalIn totalOut vis false =
