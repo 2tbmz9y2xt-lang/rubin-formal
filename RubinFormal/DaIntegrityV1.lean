@@ -206,13 +206,16 @@ def validateDaBatchCount (commitCount : Nat) : Except String Unit :=
     Except.error "BLOCK_ERR_DA_BATCH_EXCEEDED"
   else Except.ok ()
 
-/-- Orphan chunk check: every chunk daId must have a commit. LIVE sub-function (line 229-231). -/
+/-- Orphan chunk check: every chunk daId must have a commit. LIVE sub-function (line 229-231).
+    Recursive version for formal proof access. -/
 def validateNoOrphanChunks
-    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (chunkList : List (Bytes × Std.RBMap Nat DaChunkInfo compare))
     (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) : Except String Unit :=
-  match chunks.toList.find? (fun (daId, _) => !(commits.contains daId)) with
-  | some _ => Except.error "BLOCK_ERR_DA_SET_INVALID"
-  | none => Except.ok ()
+  match chunkList with
+  | [] => .ok ()
+  | (daId, _) :: rest =>
+    if !(commits.contains daId) then .error "BLOCK_ERR_DA_SET_INVALID"
+    else validateNoOrphanChunks rest commits
 
 /-- Chunk hash verification: sha3(payload) must match embedded hash. LIVE sub-function (line 219-220). -/
 def validateChunkHash (payload hash : Bytes) : Except String Unit :=
@@ -260,18 +263,19 @@ def validateChunkCountMatch (setSize chunkCount : Nat) : Except String Unit :=
   if setSize != chunkCount then Except.error "BLOCK_ERR_DA_INCOMPLETE"
   else Except.ok ()
 
-/-- Collect and concatenate chunk payloads in index order [0..count).
+/-- Collect and concatenate chunk payloads in index order [start..start+count).
     Returns error if any index missing. LIVE sub-function (lines 287-295).
-    Written without do for formal proof access. -/
+    Recursive version (no foldlM/List.range) for full formal proof access. -/
 def collectChunkPayloads
     (set : Std.RBMap Nat DaChunkInfo compare) (count : Nat)
+    (acc : Bytes := ByteArray.empty) (start : Nat := 0)
     : Except String Bytes :=
-  let indices := List.range count
-  indices.foldlM (fun acc i =>
-    match set.find? i with
-    | none => Except.error "BLOCK_ERR_DA_INCOMPLETE"
-    | some ch => Except.ok (acc ++ ch.payload)
-  ) ByteArray.empty
+  match count with
+  | 0 => .ok acc
+  | n + 1 =>
+    match set.find? start with
+    | none => .error "BLOCK_ERR_DA_INCOMPLETE"
+    | some ch => collectChunkPayloads set n (acc ++ ch.payload) (start + 1)
 
 def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
   let mut commits : Std.RBMap Bytes DaCommitInfo cmpBytes := Std.RBMap.empty
@@ -295,7 +299,7 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
 
   validateDaBatchCount commits.size
 
-  validateNoOrphanChunks chunks commits
+  validateNoOrphanChunks chunks.toList commits
 
   for (daId, cinfo) in commits.toList do
     let set? := chunks.find? daId

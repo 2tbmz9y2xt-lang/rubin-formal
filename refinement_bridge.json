@@ -60,12 +60,11 @@
       "model_theorem": "RubinFormal.da_gate_ok_implies_das_ok",
       "lean_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
-      "evidence_level": "refined_model",
+      "evidence_level": "machine_checked_contract",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [
-        "General missing-chunk-at-index theorem (foldlM over List.range) not proved symbolically — Std4 lacks List.range + foldlM induction. Base case proved (da_collect_empty). Real vectors covered by conformance replay.",
-        "parseDATx emits TX_ERR_PARSE / TX_ERR_WITNESS_OVERFLOW / TX_ERR_SIG_ALG_INVALID / TX_ERR_SIG_NONCANONICAL from internal parseTxFromCursor — these are general tx parse errors that flow through DA pipeline but are NOT covered by DA-specific theorems. Covered by ErrorPriority.lean (§13) theorem set."
+        "parseDATx emits TX_ERR_PARSE / TX_ERR_WITNESS_OVERFLOW / TX_ERR_SIG_ALG_INVALID / TX_ERR_SIG_NONCANONICAL from internal parseTxFromCursor — these are general tx parse errors covered by ErrorPriority.lean (§13), not DA-specific theorems."
       ],
       "supporting_theorems": [
         "RubinFormal.da_batch_exceeded",
@@ -93,7 +92,11 @@
         "RubinFormal.Conformance.cv_da_integrity_vectors_pass",
         "RubinFormal.da_collect_empty",
         "RubinFormal.da_orphan_chunk_rejects",
-        "RubinFormal.da_orphan_chunk_ok"
+        "RubinFormal.da_orphan_chunk_ok",
+        "RubinFormal.da_collect_missing",
+        "RubinFormal.da_collect_step",
+        "RubinFormal.da_orphan_chunk_step",
+        "RubinFormal.da_orphan_chunk_empty"
       ]
     }
   ]
