@@ -142,8 +142,12 @@ def connectBlockFullComputed
                         , sumFees := sumFees
                         , txContext := buildTxContextLive d.activeExtIds d.inputValues d.outputValues height d.continuingData }
 
-/-- Equivalence: connectBlockFullComputed with Some data = connectBlockFull
-    with computed sums. This bridges the two signatures. -/
+/-- Equivalence under the computed-path gate assumptions:
+    if the continuing-count and sighash validations succeed on the computed
+    TxContext input bundle, then `connectBlockFullComputed` reduces to the
+    aggregate compatibility wrapper `connectBlockFull` with computed sums.
+    This bridges the two signatures; it is not an unconditional theorem that
+    the wrapper itself enforces the extra gates. -/
 theorem connectBlockFullComputed_eq_connectBlockFull
     (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
     (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
