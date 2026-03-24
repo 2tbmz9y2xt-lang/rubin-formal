@@ -200,6 +200,26 @@ def parseDATx (tx : Bytes) : Except String ParsedDATx := do
     payload := payload
   }
 
+/-- Batch count limit check. LIVE sub-function (line 226-227). -/
+def validateDaBatchCount (commitCount : Nat) : Except String Unit :=
+  if commitCount > MAX_DA_BATCHES_PER_BLOCK then
+    Except.error "BLOCK_ERR_DA_BATCH_EXCEEDED"
+  else Except.ok ()
+
+/-- Orphan chunk check: every chunk daId must have a commit. LIVE sub-function (line 229-231). -/
+def validateNoOrphanChunks
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) : Except String Unit :=
+  match chunks.toList.find? (fun (daId, _) => !(commits.contains daId)) with
+  | some _ => Except.error "BLOCK_ERR_DA_SET_INVALID"
+  | none => Except.ok ()
+
+/-- Chunk hash verification: sha3(payload) must match embedded hash. LIVE sub-function (line 219-220). -/
+def validateChunkHash (payload hash : Bytes) : Except String Unit :=
+  if SHA3.sha3_256 payload != hash then
+    Except.error "BLOCK_ERR_DA_CHUNK_HASH_INVALID"
+  else Except.ok ()
+
 def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
   let mut commits : Std.RBMap Bytes DaCommitInfo cmpBytes := Std.RBMap.empty
   let mut chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes := Std.RBMap.empty
@@ -216,19 +236,15 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
       let daId ← match t.chunkDaId with | some x => pure x | none => throw "TX_ERR_PARSE"
       let idx ← match t.chunkIndex with | some x => pure x | none => throw "TX_ERR_PARSE"
       let h ← match t.chunkHash with | some x => pure x | none => throw "TX_ERR_PARSE"
-      if SHA3.sha3_256 t.payload != h then
-        throw "BLOCK_ERR_DA_CHUNK_HASH_INVALID"
+      validateChunkHash t.payload h
       let set := match chunks.find? daId with | none => Std.RBMap.empty | some m => m
       if set.contains idx then
         throw "BLOCK_ERR_DA_SET_INVALID"
       chunks := chunks.insert daId (set.insert idx { chunkIndex := idx, chunkHash := h, payload := t.payload })
 
-  if commits.size > MAX_DA_BATCHES_PER_BLOCK then
-    throw "BLOCK_ERR_DA_BATCH_EXCEEDED"
+  validateDaBatchCount commits.size
 
-  for (daId, _) in chunks.toList do
-    if !(commits.contains daId) then
-      throw "BLOCK_ERR_DA_SET_INVALID"
+  validateNoOrphanChunks chunks commits
 
   for (daId, cinfo) in commits.toList do
     let set? := chunks.find? daId

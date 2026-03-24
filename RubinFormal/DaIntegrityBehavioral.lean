@@ -6,7 +6,7 @@ import RubinFormal.Conformance.CVDaIntegrityReplay
 
 LIVE behavioral proofs on `validateDASetIntegrity` and `validateDaIntegrityGate`
 (DaIntegrityV1.lean). Upgrades evidence_level from `baseline` to
-`refined_model` by combining:
+`machine_checked_contract` by combining:
 
 1. Conformance replay: `cv_da_integrity_vectors_pass` (native_decide on real vectors)
 2. Gate error propagation: each gate step's error flows to the output deterministically
@@ -47,6 +47,38 @@ theorem da_empty_txs_accepted :
   unfold validateDASetIntegrity
   simp [List.forIn, Std.RBMap.empty, Std.RBMap.size]
   rfl
+
+/-! ## Batch count rejection (LIVE on validateDaBatchCount) -/
+
+/-- Exceeds batch limit → BLOCK_ERR_DA_BATCH_EXCEEDED. -/
+theorem da_batch_exceeded (n : Nat) (h : n > MAX_DA_BATCHES_PER_BLOCK) :
+    validateDaBatchCount n = .error "BLOCK_ERR_DA_BATCH_EXCEEDED" := by
+  simp only [validateDaBatchCount, h, ite_true]
+
+/-- Within batch limit → accepted. -/
+theorem da_batch_ok (n : Nat) (h : ¬(n > MAX_DA_BATCHES_PER_BLOCK)) :
+    validateDaBatchCount n = .ok () := by
+  simp only [validateDaBatchCount, h, ite_false]
+
+/-- Boundary: MAX (128) is ok. -/
+theorem da_batch_at_limit : validateDaBatchCount 128 = .ok () := by
+  simp [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK]
+
+/-- Boundary: MAX+1 (129) is rejected. -/
+theorem da_batch_over_limit : validateDaBatchCount 129 = .error "BLOCK_ERR_DA_BATCH_EXCEEDED" := by
+  simp [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK]
+
+/-! ## Chunk hash verification (LIVE on validateChunkHash) -/
+
+/-- Hash mismatch → BLOCK_ERR_DA_CHUNK_HASH_INVALID. -/
+theorem da_chunk_hash_mismatch (payload hash : Bytes) (h : (SHA3.sha3_256 payload != hash) = true) :
+    validateChunkHash payload hash = .error "BLOCK_ERR_DA_CHUNK_HASH_INVALID" := by
+  simp only [validateChunkHash, h, ite_true]
+
+/-- Hash match → accepted. -/
+theorem da_chunk_hash_ok (payload hash : Bytes) (h : (SHA3.sha3_256 payload != hash) = false) :
+    validateChunkHash payload hash = .ok () := by
+  simp only [validateChunkHash, h, ite_false]
 
 /-! ## Gate error propagation (LIVE)
 
