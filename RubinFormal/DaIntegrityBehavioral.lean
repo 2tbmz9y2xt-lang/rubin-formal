@@ -45,7 +45,7 @@ theorem da_cov_type_value : COV_TYPE_DA_COMMIT = 0x0103 := rfl
 theorem da_empty_txs_accepted :
     validateDASetIntegrity [] = .ok () := by
   unfold validateDASetIntegrity
-  simp [List.forIn, Std.RBMap.empty, Std.RBMap.size]
+  simp only [List.forIn, Std.RBMap.empty, Std.RBMap.size]
   rfl
 
 /-! ## Batch count rejection (LIVE on validateDaBatchCount) -/
@@ -62,11 +62,11 @@ theorem da_batch_ok (n : Nat) (h : ¬(n > MAX_DA_BATCHES_PER_BLOCK)) :
 
 /-- Boundary: MAX (128) is ok. -/
 theorem da_batch_at_limit : validateDaBatchCount 128 = .ok () := by
-  simp [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK]
+  simp only [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK, show ¬(128 > 128) from by omega, ite_false]
 
 /-- Boundary: MAX+1 (129) is rejected. -/
 theorem da_batch_over_limit : validateDaBatchCount 129 = .error "BLOCK_ERR_DA_BATCH_EXCEEDED" := by
-  simp [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK]
+  simp only [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK, show 129 > 128 from by omega, ite_true]
 
 /-! ## Chunk hash verification (LIVE on validateChunkHash) -/
 
@@ -137,7 +137,7 @@ theorem da_gate_ok_implies_block_ok (blockBytes : Bytes) (ph pt : Option Bytes)
   | error e =>
     exfalso; have : validateDaIntegrityGate blockBytes ph pt = .error e := by
       unfold validateDaIntegrityGate; rw [hBB]; rfl
-    simp [this] at hOk
+    simp only [this] at hOk
 
 /-- Gate success → parse ok AND DA integrity ok. -/
 theorem da_gate_ok_implies_das_ok (blockBytes : Bytes) (ph pt : Option Bytes)
@@ -151,7 +151,7 @@ theorem da_gate_ok_implies_das_ok (blockBytes : Bytes) (ph pt : Option Bytes)
       unfold validateDaIntegrityGate; rw [hB]
       show (do let pb ← BlockBasicV1.parseBlock blockBytes; validateDASetIntegrity pb.txs) = _
       rw [hP]; rfl
-    simp [this] at hOk
+    simp only [this] at hOk
   | ok pb =>
     refine ⟨pb, rfl, ?_⟩
     unfold validateDaIntegrityGate at hOk; rw [hB] at hOk
