@@ -92,7 +92,7 @@
         "RubinFormal.Conformance.cv_da_integrity_vectors_pass",
         "RubinFormal.da_collect_empty",
         "RubinFormal.da_orphan_chunk_rejects",
-        "RubinFormal.da_orphan_chunk_ok",
+        "RubinFormal.da_orphan_chunk_empty",
         "RubinFormal.da_collect_missing",
         "RubinFormal.da_collect_step",
         "RubinFormal.da_orphan_chunk_step",
