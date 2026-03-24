@@ -528,7 +528,16 @@
         "RubinFormal.sem002_mldsa_binding_proved",
         "RubinFormal.unknown_suite_0x05_rejected",
         "RubinFormal.sentinel_nonempty_pubkey_rejected",
-        "RubinFormal.sentinel_empty_accepted"
+        "RubinFormal.sentinel_empty_accepted",
+        "RubinFormal.unknown_suite_rejected_universal",
+        "RubinFormal.sentinel_nonempty_rejected_universal",
+        "RubinFormal.sentinel_empty_accepted_universal",
+        "RubinFormal.mldsa87_wrong_pubkey_rejected_universal",
+        "RubinFormal.mldsa87_empty_sig_rejected_universal",
+        "RubinFormal.mldsa87_sig_too_large_rejected_universal",
+        "RubinFormal.mldsa87_valid_accepted_universal",
+        "RubinFormal.threshold_wrong_count_rejected_universal",
+        "RubinFormal.threshold_unknown_suite_head_rejected"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -536,9 +545,18 @@
         "RubinFormal.core_ext_cursor_no_ambiguity_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.unknown_suite_0x05_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.sentinel_nonempty_pubkey_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
-        "RubinFormal.sentinel_empty_accepted": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
+        "RubinFormal.sentinel_empty_accepted": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.unknown_suite_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.sentinel_nonempty_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.sentinel_empty_accepted_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_wrong_pubkey_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_empty_sig_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_sig_too_large_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_valid_accepted_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.threshold_wrong_count_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.threshold_unknown_suite_head_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
       },
-      "notes": "Structural validation proved through concrete witness-item behavioral tests: unknown suite rejection, sentinel empty enforcement, sentinel nonempty rejection. Combined with existing cursor-no-ambiguity and ML-DSA binding proofs.",
+      "notes": "Universal behavioral theorems on live validateWitnessItemLengths (R1-R6) and validateThresholdSigSpendNoCrypto (R7-R8). Complete partition of validateWitnessItemLengths. R8 proves unknown suite rejection for ANY list length (cons case), not just singleton. Concrete regression tests retained.",
       "limitations": [
         "Universal quantified witness structural theorem not proved — concrete test cases only due to do-notation unfolding complexity."
       ]
