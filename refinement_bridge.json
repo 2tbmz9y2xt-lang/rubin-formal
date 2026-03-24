@@ -64,8 +64,7 @@
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [
-        "Per-commit concat loop (chunk payload concatenation, lines 286-290) not extracted — concat is inherently sequential and covered by conformance replay.",
-        "Missing-chunk-at-index check (line 288-289) inside nested for-loop — individual chunk lookup not extracted due to RBMap.find? in Std4."
+        "General missing-chunk-at-index theorem (foldlM over List.range) not proved symbolically — requires List.range + foldlM induction lemmas absent from Std4. Covered by conformance replay + collectChunkPayloads wired LIVE."
       ],
       "supporting_theorems": [
         "RubinFormal.da_batch_exceeded",
@@ -90,7 +89,8 @@
         "RubinFormal.da_gate_ok_implies_block_ok",
         "RubinFormal.da_gate_ok_implies_das_ok",
         "RubinFormal.da_empty_txs_accepted",
-        "RubinFormal.Conformance.cv_da_integrity_vectors_pass"
+        "RubinFormal.Conformance.cv_da_integrity_vectors_pass",
+        "RubinFormal.da_collect_empty"
       ]
     }
   ]

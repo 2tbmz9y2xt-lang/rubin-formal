@@ -260,6 +260,19 @@ def validateChunkCountMatch (setSize chunkCount : Nat) : Except String Unit :=
   if setSize != chunkCount then Except.error "BLOCK_ERR_DA_INCOMPLETE"
   else Except.ok ()
 
+/-- Collect and concatenate chunk payloads in index order [0..count).
+    Returns error if any index missing. LIVE sub-function (lines 287-295).
+    Written without do for formal proof access. -/
+def collectChunkPayloads
+    (set : Std.RBMap Nat DaChunkInfo compare) (count : Nat)
+    : Except String Bytes :=
+  let indices := List.range count
+  indices.foldlM (fun acc i =>
+    match set.find? i with
+    | none => Except.error "BLOCK_ERR_DA_INCOMPLETE"
+    | some ch => Except.ok (acc ++ ch.payload)
+  ) ByteArray.empty
+
 def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
   let mut commits : Std.RBMap Bytes DaCommitInfo cmpBytes := Std.RBMap.empty
   let mut chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes := Std.RBMap.empty
@@ -288,11 +301,7 @@ def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
     let set? := chunks.find? daId
     let set ← match set? with | none => throw "BLOCK_ERR_DA_INCOMPLETE" | some m => pure m
     validateChunkCountMatch set.size cinfo.chunkCount
-    let mut concat : Bytes := ByteArray.empty
-    for i in [0:cinfo.chunkCount] do
-      let ch? := set.find? i
-      let ch ← match ch? with | none => throw "BLOCK_ERR_DA_INCOMPLETE" | some x => pure x
-      concat := concat ++ ch.payload
+    let concat ← collectChunkPayloads set cinfo.chunkCount
     let payloadCommit := SHA3.sha3_256 concat
 
     validateCommitOutput cinfo.outputs payloadCommit
