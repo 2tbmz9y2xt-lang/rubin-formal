@@ -29,7 +29,7 @@ linkage → merkle (via explicit-bind equivalence) → witness (existing).
 ## §13 Contract summary
 - `consensus_error_ordering_parse_pow`: block-level totality + parse/pow dominance + success-chain.
 - `tx_parse_pipeline_deterministic`: tx parse model ordering strict + injective (live bridges separate).
-- `tx_semantic_pipeline_deterministic`: tx semantic stage ordering is strict + bridged to live.
+- `tx_semantic_pipeline_deterministic`: tx semantic model ordering strict + injective (live bridges separate).
 -/
 
 namespace RubinFormal
@@ -708,9 +708,12 @@ def readTxHeaderFields (c : Cursor) : Except String (Nat × UInt8 × Cursor) :=
     | none => .error "BLOCK_ERR_PARSE"
     | some (tkB, c2) => .ok (ver, tkB, c2)
 
-/-- Stage 1.5 (between TxKind validation and InputCountMin): read nonce (U64LE).
+/-- Nonce read (between TxKind validation and InputCountMin): U64LE.
     Mirrors line 148 of BlockBasicV1.parseTxFromCursor — happens AFTER
-    validateTxKind, BEFORE getCompactSize for input count. -/
+    validateTxKind, BEFORE getCompactSize for input count.
+    Not a separate TxParseStage enum member because its failure error
+    ("BLOCK_ERR_PARSE") is indistinguishable from HeaderRead failures —
+    no priority ambiguity. -/
 def readNonceField (c : Cursor) : Except String (UInt64 × Cursor) :=
   match c.getU64le? with
   | none => .error "BLOCK_ERR_PARSE"
@@ -1035,10 +1038,10 @@ theorem tx_parse_pipeline_deterministic :
     (∀ a b, txParseStageOrd a = txParseStageOrd b → a = b) := by
   exact ⟨parse_stage_chain, txParseStageOrd_injective⟩
 
-/-- Tx semantic pipeline: stage ordering is strict AND injective.
-    Combined with `bridge_semantic_*` theorems (each stage bridged to its live
-    function), this proves deterministic error selection across the tx semantic
-    validation path. -/
+/-- Tx semantic pipeline: model-level stage ordering is strict + injective.
+    Live grounding provided by separate bridge theorems: `bridge_semantic_*`
+    for most stages, plus `input_sequence_priority` and
+    `input_coinbase_prevout_priority` for InputStructural sub-checks. -/
 theorem tx_semantic_pipeline_deterministic :
     -- Strict stage ordering (complete chain, all 7 adjacent pairs)
     (txSemanticStageOrd .EmptyInputs < txSemanticStageOrd .Nonce ∧
