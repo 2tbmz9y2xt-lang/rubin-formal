@@ -712,9 +712,13 @@ theorem bridge_parse_dalen (tk daLen : Nat) (minDa : Bool)
   ⟨rfl, dalen_minimality_priority tk daLen minDa h⟩
 
 theorem parse_stage_chain :
+    txParseStageOrd .HeaderRead < txParseStageOrd .TxKind ∧
     txParseStageOrd .TxKind < txParseStageOrd .InputCountMin ∧
-    txParseStageOrd .InputCountMin < txParseStageOrd .OutputCountMin ∧
-    txParseStageOrd .OutputCountMin < txParseStageOrd .WitnessChecks ∧
+    txParseStageOrd .InputCountMin < txParseStageOrd .InputParse ∧
+    txParseStageOrd .InputParse < txParseStageOrd .OutputCountMin ∧
+    txParseStageOrd .OutputCountMin < txParseStageOrd .OutputParse ∧
+    txParseStageOrd .OutputParse < txParseStageOrd .Locktime ∧
+    txParseStageOrd .Locktime < txParseStageOrd .WitnessChecks ∧
     txParseStageOrd .WitnessChecks < txParseStageOrd .DaLenChecks := by
   simp [txParseStageOrd]
 
@@ -878,13 +882,15 @@ success-chain results into unified §13 contract statements.  These are LIVE
 on `validateBlockBasic` and the tx sub-function pipeline — not model-only.
 -/
 
-/-- §13 Block-level contract: the validation pipeline is
+/-- §13 Block-level contract (stages 1-2 + totality + success-chain):
     (1) total (accept ∨ error),
     (2) parse-error-dominant (parse failure wins unconditionally),
     (3) pow-error-dominant (given parse ok, pow failure wins),
     (4) success-implies-all-passed.
-    Combined with pairwise error-code distinctness (35 `err_ne_*` theorems),
-    this gives deterministic first-error semantics for §13. -/
+    Stages 3-6 (target, linkage, merkle, witness) are proved individually
+    in `error_priority_target`, `error_priority_linkage_*`,
+    `error_priority_merkle_*` — not bundled here due to case-split
+    signatures (4 merkle cases × 2 linkage cases). -/
 theorem consensus_error_ordering_complete
     (blockBytes : Bytes) (ph pt : Option Bytes) :
     -- (1) Totality
@@ -908,12 +914,17 @@ theorem consensus_error_ordering_complete
 
 /-- Tx parse pipeline: stage ordering is strict AND each stage is bridged to a
     live sub-function with a concrete error code.  The strict chain ensures that
-    if two parse stages would both fail, the earlier one's error is returned. -/
+    if two parse stages would both fail, the earlier one's error is returned.
+    All 8 adjacent pairs proved (HeaderRead through DaLenChecks). -/
 theorem tx_parse_pipeline_deterministic :
-    -- Strict stage ordering (each stage strictly before the next)
-    (txParseStageOrd .TxKind < txParseStageOrd .InputCountMin ∧
-     txParseStageOrd .InputCountMin < txParseStageOrd .OutputCountMin ∧
-     txParseStageOrd .OutputCountMin < txParseStageOrd .WitnessChecks ∧
+    -- Strict stage ordering (all 8 adjacent pairs, complete chain 0..8)
+    (txParseStageOrd .HeaderRead < txParseStageOrd .TxKind ∧
+     txParseStageOrd .TxKind < txParseStageOrd .InputCountMin ∧
+     txParseStageOrd .InputCountMin < txParseStageOrd .InputParse ∧
+     txParseStageOrd .InputParse < txParseStageOrd .OutputCountMin ∧
+     txParseStageOrd .OutputCountMin < txParseStageOrd .OutputParse ∧
+     txParseStageOrd .OutputParse < txParseStageOrd .Locktime ∧
+     txParseStageOrd .Locktime < txParseStageOrd .WitnessChecks ∧
      txParseStageOrd .WitnessChecks < txParseStageOrd .DaLenChecks) ∧
     -- Stage ordinals are injective (no two stages share an ordinal)
     (∀ a b, txParseStageOrd a = txParseStageOrd b → a = b) := by
