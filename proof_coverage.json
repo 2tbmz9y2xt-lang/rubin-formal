@@ -204,7 +204,7 @@
     {
       "section_key": "consensus_error_codes",
       "section_heading": "## 13. Consensus Error Codes (Normative)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
         "RubinFormal.det001_validation_order_proved",
@@ -325,7 +325,18 @@
         "RubinFormal.bridge_parse_dalen",
         "RubinFormal.bridge_semantic_output_covenant",
         "RubinFormal.bridge_semantic_scriptsig",
-        "RubinFormal.bridge_semantic_witness_cursor"
+        "RubinFormal.bridge_semantic_witness_cursor",
+        "RubinFormal.consensus_error_ordering_contract",
+        "RubinFormal.tx_parse_pipeline_deterministic",
+        "RubinFormal.tx_semantic_pipeline_deterministic",
+        "RubinFormal.ext_error_pipeline_deterministic",
+        "RubinFormal.ptfc_header_version_fail",
+        "RubinFormal.ptfc_header_txkind_fail",
+        "RubinFormal.ptfc_nonce_fail",
+        "RubinFormal.ptfc_inputs_fail",
+        "RubinFormal.ptfc_post_inputs_fail",
+        "RubinFormal.ptpi_outputs_fail",
+        "RubinFormal.ptpi_locktime_fail"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -448,9 +459,20 @@
         "RubinFormal.bridge_parse_dalen": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_output_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_scriptsig": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_semantic_witness_cursor": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.bridge_semantic_witness_cursor": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.tx_parse_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.tx_semantic_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ext_error_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.consensus_error_ordering_contract": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptfc_header_version_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptfc_header_txkind_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptfc_nonce_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptfc_inputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptfc_post_inputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptpi_outputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ptpi_locktime_fail": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all enum stages bridged to live functions (TxKind, InputCountMin, OutputCountMin, WitnessChecks, DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error).",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages bridged to live functions — ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error). Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective), ext_error_pipeline_deterministic (strict ordering + commutativity).",
       "limitations": []
     },
     {

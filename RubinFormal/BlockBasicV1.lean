@@ -134,43 +134,44 @@ def powCheck (h : BlockHeader) : Except String Unit := do
       if daLen < 1 || daLen > DaCoreV1.CHUNK_BYTES then throw "TX_ERR_PARSE"
     pure ()
 
-  def parseTxFromCursor (c : Cursor) : Except String (Nat × Bytes × Bytes × Bytes × Cursor) := do
-  let start := c.off
-  let (ver, c1) ←
-    match c.getU32le? with
-    | none => throw "BLOCK_ERR_PARSE"
-    | some x => pure x
-  let (tkB, c2) ←
-    match c1.getU8? with
-    | none => throw "BLOCK_ERR_PARSE"
-    | some x => pure x
-  let tk := tkB.toNat
-  validateTxKind tk
-  let (_, c3) ←
-    match c2.getU64le? with
-    | none => throw "BLOCK_ERR_PARSE"
-    | some x => pure x
-  let (inCount, c4, minIn) ←
-    match c3.getCompactSize? with
-    | none => throw "BLOCK_ERR_PARSE"
-    | some x => pure x
-  validateInputCountMin minIn
-  match RubinFormal.TxWeightV2.parseInputsSkip c4 inCount with
-  | none => throw "BLOCK_ERR_PARSE"
-  | some c5 =>
-    let (outCount, c6, minOut) ←
-      match c5.getCompactSize? with
-      | none => throw "BLOCK_ERR_PARSE"
-      | some x => pure x
+  /-- Parse all transaction inputs.
+      Extracted from parseTxFromCursor for bridge proofs. -/
+  @[irreducible] def readInputs (c4 : Cursor) (inCount : Nat) : Except String Cursor :=
+    match RubinFormal.TxWeightV2.parseInputsSkip c4 inCount with
+    | none => .error "BLOCK_ERR_PARSE"
+    | some c5 => .ok c5
+
+  /-- Read output count + validate minimality.
+      Extracted from parseTxFromCursor for bridge proofs. -/
+  @[irreducible] def readOutputCount (c5 : Cursor) : Except String (Nat × Cursor × Bool) :=
+    match c5.getCompactSize? with
+    | none => .error "BLOCK_ERR_PARSE"
+    | some (outCount, c6, minOut) => .ok (outCount, c6, minOut)
+
+  /-- Parse outputs (anchor extraction).
+      Extracted from parseTxFromCursor for bridge proofs. -/
+  @[irreducible] def readOutputs (c6 : Cursor) (outCount : Nat) : Except String (Cursor × Nat) :=
+    match RubinFormal.TxWeightV2.parseOutputsForAnchor c6 outCount with
+    | none => .error "BLOCK_ERR_PARSE"
+    | some x => .ok x
+
+  /-- Read locktime (U32LE).
+      Extracted from parseTxFromCursor for bridge proofs. -/
+  @[irreducible] def readLocktime (c7 : Cursor) : Except String (Nat × Cursor) :=
+    match c7.getU32le? with
+    | none => .error "BLOCK_ERR_PARSE"
+    | some x => .ok x
+
+  /-- Post-input parsing: outputs, locktime, DA core, witness, DA len.
+      Uses extracted sub-functions for outputs/locktime so that bridge
+      proofs can target them directly. -/
+  @[irreducible] def parseTxPostInputs (c : Cursor) (start : Nat) (tk : Nat)
+      (inCount : Nat) (c5 : Cursor) :
+      Except String (Nat × Bytes × Bytes × Bytes × Cursor) := do
+    let (outCount, c6, minOut) ← readOutputCount c5
     validateOutputCountMin minOut
-    let (c7, _anchorBytes) ←
-      match RubinFormal.TxWeightV2.parseOutputsForAnchor c6 outCount with
-      | none => throw "BLOCK_ERR_PARSE"
-      | some x => pure x
-    let (_, c8) ←
-      match c7.getU32le? with
-      | none => throw "BLOCK_ERR_PARSE"
-      | some x => pure x
+    let (c7, _anchorBytes) ← readOutputs c6 outCount
+    let (_, c8) ← readLocktime c7
     let (c9, _daCoreLen) ←
       match RubinFormal.DaCoreV1.parseDaCoreFieldsWithBytes tk c8 with
       | none => throw "TX_ERR_PARSE"
@@ -196,6 +197,28 @@ def powCheck (h : BlockHeader) : Except String Unit := do
     let txid := SHA3.sha3_256 core
     let wtxid := SHA3.sha3_256 full
     pure (inCount, txid, wtxid, full, { c with off := endOff })
+
+  /-- Parse a transaction from a cursor position.
+      Structured as explicit Except.bind chain (not do-notation) to
+      enable direct error-propagation proofs via simp + rw. -/
+  def parseTxFromCursor (c : Cursor) : Except String (Nat × Bytes × Bytes × Bytes × Cursor) :=
+    let start := c.off
+    match c.getU32le? with
+    | none => .error "BLOCK_ERR_PARSE"
+    | some (ver, c1) =>
+      match c1.getU8? with
+      | none => .error "BLOCK_ERR_PARSE"
+      | some (tkB, c2) =>
+        (validateTxKind tkB.toNat).bind fun () =>
+        match c2.getU64le? with
+        | none => .error "BLOCK_ERR_PARSE"
+        | some (_, c3) =>
+          match c3.getCompactSize? with
+          | none => .error "BLOCK_ERR_PARSE"
+          | some (inCount, c4, minIn) =>
+            (validateInputCountMin minIn).bind fun () =>
+            (readInputs c4 inCount).bind fun c5 =>
+            parseTxPostInputs c start tkB.toNat inCount c5
 
 def parseBlock (blockBytes : Bytes) : Except String ParsedBlock := do
   let c0 : Cursor := { bs := blockBytes, off := 0 }
