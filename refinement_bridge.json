@@ -60,11 +60,13 @@
       "model_theorem": "RubinFormal.da_gate_ok_full",
       "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "refined_model",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [
-        "Per-error-code rejection on validateDASetIntegrity internals (duplicate commit, chunk hash mismatch, etc.) covered by conformance replay, not individual theorems, due to mutable RBMap state in do-block."
+        "model_theorem (da_gate_ok_full) decomposes success case only. Error propagation proved per-step (block/parse/DA) but not cross-implementation.",
+        "Conformance replay covers: TX_ERR_PARSE, BLOCK_ERR_DA_SET_INVALID, BLOCK_ERR_DA_CHUNK_HASH_INVALID, BLOCK_ERR_DA_INCOMPLETE, BLOCK_ERR_DA_PAYLOAD_COMMIT_INVALID.",
+        "NOT covered by replay: BLOCK_ERR_DA_BATCH_EXCEEDED (no vector with >128 batches in CV-DA suite)."
       ],
       "supporting_theorems": [
         "RubinFormal.da_gate_block_error",
