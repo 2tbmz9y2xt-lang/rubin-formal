@@ -37,8 +37,10 @@
         "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
         "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
       },
-      "notes": "Upgraded from constant pinning to LIVE validator rejection. validateWitnessItemLengths (LIVE function) rejection proved for all three error paths: ML-DSA-87 bounds (TX_ERR_SIG_NONCANONICAL), unknown suite (TX_ERR_SIG_ALG_INVALID), sentinel non-empty (TX_ERR_PARSE). Accept paths proved for completeness. Exhaustive coverage: every suiteId maps to exactly one outcome. Bridge theorem via explicit-bind rfl equivalence. Combined with existing coinbase bound (CoinbaseBehavioral) and HTLC timelock (PinnedSections).",
-      "limitations": []
+      "notes": "Upgraded from constant pinning to LIVE validator rejection for the witness-item-length subset of Section 4. validateWitnessItemLengths (LIVE function) rejection is proved for the three covered error paths: ML-DSA-87 bounds (TX_ERR_SIG_NONCANONICAL), unknown suite (TX_ERR_SIG_ALG_INVALID), and sentinel non-empty (TX_ERR_PARSE). Accept paths are proved for completeness within that witness-validation surface. Subsidy and HTLC constant facts remain covered by their dedicated theorem entries; other Section 4 constants are carried by their own dedicated rows such as weight accounting and DA integrity rather than by this single note block.",
+      "limitations": [
+        "This row does not by itself prove every literal or bound named in canonical Section 4; it aggregates the witness-validation subset plus a narrow set of dedicated constant theorems."
+      ]
     },
     {
       "section_key": "transaction_wire",
@@ -472,8 +474,10 @@
         "RubinFormal.ptpi_outputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.ptpi_locktime_fail": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages bridged to live functions — ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error). Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective), ext_error_pipeline_deterministic (strict ordering + commutativity).",
-      "limitations": []
+      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity is formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages are bridged to live functions — ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: the live-bridged set covers EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, WitnessCursor, and ValueConservation. The covenant-dispatch / TXCTX sub-ordering currently still relies on the documented parallel-model helper (`dispatchCovenantValidation`) plus explicit witness-check bridges and is not claimed here as a direct live-loop call. Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective on the covered live stages), ext_error_pipeline_deterministic (strict ordering + commutativity on the modeled ext-error surface).",
+      "limitations": [
+        "dispatchCovenantValidation remains a documented parallel model rather than a direct live-loop call, so covenant-dispatch / TXCTX sub-ordering is only claimed through the current helper bridge surface, not as a standalone direct-loop equivalence theorem."
+      ]
     },
     {
       "section_key": "covenant_registry",
@@ -657,8 +661,11 @@
         "RubinFormal.det001_validation_order_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
         "RubinFormal.coinbase_outpoint_beq_derived": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
       },
-      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking: proved at list level (coinbaseEntryList) via fold induction + shared constructor bridge; RBMap-level operational equivalence not proved (Std4 lacks find?_insert/erase lemmas). enum_injective_fst proves key uniqueness by induction. List-based UTXO map provides full find?_insert semantics: insert_self, insert_other, non-spendable unchanged at query level. ANCHOR/DA_COMMIT exclusion proved at both fold level (RBMap identity) and query level (listFind? unchanged).",
-      "limitations": []
+      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking is proved through the current list-to-RBMap bridge surface, with query-level semantics and non-spendable exclusion theorems covering the live behavior that has actually been mechanized. Vault policy replay remains useful evidence for the spend-side safe subset and default-order path, but it is not presented here as a full L1↔L2 equivalence model.",
+      "limitations": [
+        "RBMap-level operational equivalence is not fully proved end-to-end; the current closure relies on the explicit list-to-RBMap bridge and query-level semantics now available in CoinbaseBehavioral.",
+        "vault_policy_default_order_safe_proved covers the spend-side safe subset / default-order path only and is not a full L1↔L2 equivalence theorem for every vault-policy branch."
+      ]
     },
     {
       "section_key": "coinbase_and_subsidy",
