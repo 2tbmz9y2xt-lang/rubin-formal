@@ -333,11 +333,13 @@ jobs:
               if (f.line > maxLine) continue;
               const content = fileContents.get(f.file) || '';
               const refs = theoremRefsInText(`${f.title || ''}\n${f.details || ''}`);
-              if (refs.length > 0) {
+            // Skip phantom-ref filter for categories that report MISSING things
+              const absenceCats = new Set(['OVERCLAIM','PHANTOM','BOUNDARY_GAP','PHANTOM_DESYNC']);
+              const cat = (f.category || '').toUpperCase();
+              if (refs.length > 0 && !absenceCats.has(cat)) {
                 const allMissing = refs.every((name) => !content.includes(name));
                 if (allMissing) continue;
               }
-              const key = `${f.file}:${f.line}:${(f.title || '').trim().toLowerCase()}`;
               if (seen.has(key)) continue;
               seen.add(key);
               filtered.push(f);
