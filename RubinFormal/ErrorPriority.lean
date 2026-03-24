@@ -772,13 +772,12 @@ theorem bridge_semantic_value (so si vic siv : Nat) (h : (so > si) = true) :
 theorem semantic_stage_chain :
     txSemanticStageOrd .EmptyInputs < txSemanticStageOrd .Nonce ∧
     txSemanticStageOrd .Nonce < txSemanticStageOrd .OutputCovenants ∧
+    txSemanticStageOrd .OutputCovenants < txSemanticStageOrd .InputStructural ∧
     txSemanticStageOrd .InputStructural < txSemanticStageOrd .UtxoLookup ∧
     txSemanticStageOrd .UtxoLookup < txSemanticStageOrd .CovenantDispatch ∧
     txSemanticStageOrd .CovenantDispatch < txSemanticStageOrd .WitnessCursor ∧
     txSemanticStageOrd .WitnessCursor < txSemanticStageOrd .ValueConservation := by
   simp [txSemanticStageOrd]
-
--- Missing bridges: OutputCovenants, InputStructural, WitnessCursor
 
 theorem bridge_semantic_output_covenant (out : CovenantGenesisV1.TxOut)
     (txKind height : Nat)
@@ -925,9 +924,10 @@ theorem tx_parse_pipeline_deterministic :
     function), this proves deterministic error selection across the tx semantic
     validation path. -/
 theorem tx_semantic_pipeline_deterministic :
-    -- Strict stage ordering
+    -- Strict stage ordering (complete chain, all 7 adjacent pairs)
     (txSemanticStageOrd .EmptyInputs < txSemanticStageOrd .Nonce ∧
      txSemanticStageOrd .Nonce < txSemanticStageOrd .OutputCovenants ∧
+     txSemanticStageOrd .OutputCovenants < txSemanticStageOrd .InputStructural ∧
      txSemanticStageOrd .InputStructural < txSemanticStageOrd .UtxoLookup ∧
      txSemanticStageOrd .UtxoLookup < txSemanticStageOrd .CovenantDispatch ∧
      txSemanticStageOrd .CovenantDispatch < txSemanticStageOrd .WitnessCursor ∧
