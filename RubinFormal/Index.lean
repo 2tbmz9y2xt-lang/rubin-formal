@@ -3,6 +3,7 @@ import RubinFormal.ByteWireV2
 import RubinFormal.ArithmeticSafety
 import RubinFormal.Conformance.Index
 import RubinFormal.PinnedSections
+import RubinFormal.ConsensusConstantsBehavioral
 import RubinFormal.OutputDescriptorV2
 import RubinFormal.SighashV1
 import RubinFormal.PowV1
