@@ -403,52 +403,8 @@ theorem selectHashOutputs_single_oob_commits_empty
   have hSingle : SIGHASH_SINGLE = SIGHASH_SINGLE := rfl
   simp [selectHashOutputs, hAll, hAllAcp, hNone, hNoneAcp, hSingle, h]
 
-theorem buildPreimageFrameParts_eq_iff (a b : SighashPreimageFrame) :
-    buildPreimageFrameParts a = buildPreimageFrameParts b ↔ a = b := by
-  constructor
-  · exact buildPreimageFrameParts_injective a b
-  · intro h
-    simp [h]
-
-theorem buildPreimageFrameParts_commits_version
-    (a b : SighashPreimageFrame)
-    (h : a.versionLE ≠ b.versionLE) :
-    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
-  intro hEq
-  apply h
-  exact congrArg SighashPreimageFrame.versionLE (buildPreimageFrameParts_injective a b hEq)
-
-theorem buildPreimageFrameParts_commits_locktime
-    (a b : SighashPreimageFrame)
-    (h : a.locktimeLE ≠ b.locktimeLE) :
-    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
-  intro hEq
-  apply h
-  exact congrArg SighashPreimageFrame.locktimeLE (buildPreimageFrameParts_injective a b hEq)
-
-theorem buildPreimageFrameParts_commits_input_context
-    (a b : SighashPreimageFrame)
-    (h : a.inputContextView ≠ b.inputContextView) :
-    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
-  intro hEq
-  apply h
-  exact congrArg SighashPreimageFrame.inputContextView (buildPreimageFrameParts_injective a b hEq)
-
-theorem buildPreimageFrameParts_commits_output_context
-    (a b : SighashPreimageFrame)
-    (h : a.outputContextView ≠ b.outputContextView) :
-    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
-  intro hEq
-  apply h
-  exact congrArg SighashPreimageFrame.outputContextView (buildPreimageFrameParts_injective a b hEq)
-
-theorem buildPreimageFrameParts_commits_declared_tx_fields
-    (a b : SighashPreimageFrame)
-    (h : a.declaredTxFieldView ≠ b.declaredTxFieldView) :
-    buildPreimageFrameParts a ≠ buildPreimageFrameParts b := by
-  intro hEq
-  apply h
-  exact congrArg SighashPreimageFrame.declaredTxFieldView (buildPreimageFrameParts_injective a b hEq)
+-- NOTE: wrapper corollaries (buildPreimageFrameParts_commits_*) and
+-- tautological eq_iff removed. Use buildPreimageFrameParts_injective directly.
 
 def digestV1 (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat) : Except String Bytes := do
   let core ← parseTxCoreForSighash tx
@@ -483,21 +439,9 @@ def digestV1 (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat
     u32le core.locktime
   pure (SHA3.sha3_256 preimage)
 
--- F-AUDIT-09: Sighash determinism.
--- digestV1 is a pure function in Lean: same tx bytes, chainId, inputIndex, inputValue
--- always produce the same digest. This is guaranteed by Lean's functional semantics.
-
-/-- digestV1 is deterministic: identical inputs yield identical outputs. -/
-theorem digestV1_deterministic
-    (tx : Bytes) (chainId : Bytes) (inputIndex : Nat) (inputValue : Nat) :
-    digestV1 tx chainId inputIndex inputValue = digestV1 tx chainId inputIndex inputValue := rfl
-
-/-- Two calls to digestV1 with provably equal arguments yield equal results. -/
-theorem digestV1_ext
-    (tx₁ tx₂ : Bytes) (cid₁ cid₂ : Bytes) (idx₁ idx₂ val₁ val₂ : Nat)
-    (htx : tx₁ = tx₂) (hcid : cid₁ = cid₂) (hidx : idx₁ = idx₂) (hval : val₁ = val₂) :
-    digestV1 tx₁ cid₁ idx₁ val₁ = digestV1 tx₂ cid₂ idx₂ val₂ := by
-  subst htx; subst hcid; subst hidx; subst hval; rfl
+-- NOTE: tautological digestV1_deterministic (f x = f x) and digestV1_ext
+-- (equal args → equal results) removed. Substantive error/success
+-- characterization is in SighashRefinementUpgrade.lean.
 
 end SighashV1
 

@@ -222,14 +222,14 @@ theorem sighash_v1_proved : sighashV1Statement := by
     exact SighashV1.selectHashOutputs_single_commits_selected_output inputIndex outputCount allOutputs selectedOutput emptyHash h
   · intro inputIndex outputCount allOutputs selectedOutput emptyHash h
     exact SighashV1.selectHashOutputs_single_oob_commits_empty inputIndex outputCount allOutputs selectedOutput emptyHash h
-  · intro a b h
-    exact SighashV1.buildPreimageFrameParts_commits_version a b h
-  · intro a b h
-    exact SighashV1.buildPreimageFrameParts_commits_locktime a b h
-  · intro a b h
-    exact SighashV1.buildPreimageFrameParts_commits_input_context a b h
-  · intro a b h
-    exact SighashV1.buildPreimageFrameParts_commits_output_context a b h
+  · intro a b h hEq; exact h (congrArg SighashV1.SighashPreimageFrame.versionLE
+      (SighashV1.buildPreimageFrameParts_injective a b hEq))
+  · intro a b h hEq; exact h (congrArg SighashV1.SighashPreimageFrame.locktimeLE
+      (SighashV1.buildPreimageFrameParts_injective a b hEq))
+  · intro a b h hEq; exact h (congrArg SighashV1.SighashPreimageFrame.inputContextView
+      (SighashV1.buildPreimageFrameParts_injective a b hEq))
+  · intro a b h hEq; exact h (congrArg SighashV1.SighashPreimageFrame.outputContextView
+      (SighashV1.buildPreimageFrameParts_injective a b hEq))
 
 theorem consensus_error_codes_proved : consensusErrorCodesStatement := by
   simpa [consensusErrorCodesStatement] using error_codes_distinct

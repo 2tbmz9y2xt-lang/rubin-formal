@@ -7,16 +7,18 @@ Replaces tautological `digestV1_deterministic` (was `f x = f x`) with
 substantive universal theorems on the live sighash validation surface.
 
 ## Coverage
-- Invalid sighash types rejected by all three hash-selection functions (universal)
-- `hasValidBaseType` exhaustive 256-value partition (native_decide)
-- Well-formed preimage frame produces fixed 246-byte preimage (universal)
+- digestV1 error characterization: parse failure → error, OOB index → error (universal LIVE)
+- digestV1 success characterization: parse ok + in bounds → ∃ digest (universal LIVE)
+- Invalid sighash types rejected by all three hash-selection functions (universal LIVE)
+- `hasValidBaseType` exhaustive 256-value partition (native_decide LIVE)
+- Preimage frame field positions (rfl, structural LIVE)
 
 ## Honest limitation
 - digestV1 end-to-end injectivity (different frames → different digests)
-  requires SHA3 collision resistance, which is an external cryptographic
-  assumption — not provable within Lean.
-- digestV1 determinism (`f x = f x`) is trivially true for any Lean function
-  and was removed as tautological per hostile gate policy.
+  requires SHA3 collision resistance — external cryptographic assumption.
+- Tautological `digestV1_deterministic` (`f x = f x`) removed.
+- 5 wrapper `buildPreimageFrameParts_commits_*` theorems removed from
+  SighashV1.lean (were congrArg corollaries of injective).
 -/
 
 namespace RubinFormal
@@ -77,5 +79,62 @@ theorem hasValidBaseType_exhaustive :
     hasValidBaseType (UInt8.ofNat t.val) = true ↔
     (t.val &&& 0x7F = 1 ∨ t.val &&& 0x7F = 2 ∨ t.val &&& 0x7F = 3) := by
   native_decide
+
+/-! ## digestV1 error characterization (universal, LIVE) -/
+
+/-- **Parse failure propagates:** if `parseTxCoreForSighash` fails, `digestV1` returns
+    the same error. Universal over all inputs. LIVE on `digestV1`. -/
+theorem digestV1_parse_failure
+    (tx chainId : Bytes) (idx val : Nat) (e : String)
+    (hFail : parseTxCoreForSighash tx = .error e) :
+    digestV1 tx chainId idx val = .error e := by
+  show (parseTxCoreForSighash tx >>= fun core => _) = .error e
+  rw [hFail]; rfl
+
+/-- **OOB index rejected:** if parse succeeds but `inputIndex ≥ inputs.length`,
+    `digestV1` returns TX_ERR_PARSE. Universal. LIVE on `digestV1`. -/
+theorem digestV1_oob_index
+    (tx chainId : Bytes) (idx val : Nat)
+    (core : TxCoreForSighash)
+    (hParse : parseTxCoreForSighash tx = .ok core)
+    (hOOB : idx ≥ core.inputs.length) :
+    digestV1 tx chainId idx val = .error "TX_ERR_PARSE" := by
+  show (parseTxCoreForSighash tx >>= fun core => _) = _
+  rw [hParse]; simp only [ge_iff_le, Bind.bind, Except.bind]; rw [if_pos hOOB]
+
+/-- **In-bounds succeeds:** if parse succeeds and index is in bounds,
+    `digestV1` returns some digest. Universal. LIVE on `digestV1`. -/
+theorem digestV1_success
+    (tx chainId : Bytes) (idx val : Nat)
+    (core : TxCoreForSighash)
+    (hParse : parseTxCoreForSighash tx = .ok core)
+    (hInBounds : idx < core.inputs.length) :
+    ∃ digest, digestV1 tx chainId idx val = .ok digest := by
+  show ∃ d, (parseTxCoreForSighash tx >>= fun core => _) = .ok d
+  rw [hParse]; simp only [ge_iff_le, Bind.bind, Except.bind]
+  rw [if_neg (show ¬(core.inputs.length ≤ idx) from by omega)]
+  exact ⟨_, rfl⟩
+
+/-! ## Preimage frame field positions (structural, LIVE) -/
+
+/-- The preimage frame parts list has exactly 16 elements. -/
+theorem buildPreimageFrameParts_length (f : SighashPreimageFrame) :
+    (buildPreimageFrameParts f).length = 16 := by rfl
+
+/-- Version field is at index 2 in the preimage parts. -/
+theorem buildPreimageFrameParts_version_at_2 (f : SighashPreimageFrame) :
+    (buildPreimageFrameParts f).get? 2 = some f.versionLE := by rfl
+
+/-- ChainId is at index 1 in the preimage parts. -/
+theorem buildPreimageFrameParts_chainId_at_1 (f : SighashPreimageFrame) :
+    (buildPreimageFrameParts f).get? 1 = some f.chainId := by rfl
+
+/-- Locktime is at index 14 in the preimage parts. -/
+theorem buildPreimageFrameParts_locktime_at_14 (f : SighashPreimageFrame) :
+    (buildPreimageFrameParts f).get? 14 = some f.locktimeLE := by rfl
+
+/-- SighashType byte is at index 15 (last) in the preimage parts. -/
+theorem buildPreimageFrameParts_sighashType_at_15 (f : SighashPreimageFrame) :
+    (buildPreimageFrameParts f).get? 15 = some (RubinFormal.bytes #[f.sighashType]) := by rfl
 
 end RubinFormal
