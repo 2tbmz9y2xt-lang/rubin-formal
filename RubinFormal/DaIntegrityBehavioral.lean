@@ -8,8 +8,8 @@ LIVE behavioral proofs on `validateDASetIntegrity` and `validateDaIntegrityGate`
 (DaIntegrityV1.lean). All DA sub-functions extracted and wired LIVE.
 Evidence level: machine_checked_contract for all DA-specific paths.
 All DA sub-functions recursive (no foldlM/List.range), fully proved
-with induction (missing/step/empty). One cross-section reference:
-parseDATx general errors (TX_ERR_PARSE etc.) covered by §13 theorems.
+with induction (missing/step/empty). parseDATx error taxonomy fully
+machine-checked via 3-phase decomposition (no cross-section assumption).
 Combines:
 
 1. Conformance replay: `cv_da_integrity_vectors_pass` (native_decide on real vectors)
