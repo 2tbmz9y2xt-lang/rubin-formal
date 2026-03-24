@@ -1,6 +1,7 @@
 import RubinFormal.ConnectBlockStrong
 import RubinFormal.CoinbaseBehavioral
 import RubinFormal.TxContextBehavioral
+import RubinFormal.SighashV1
 
 /-!
 # Full Block Connection with Coinbase + TxContext (§18/§19/§14)
@@ -32,6 +33,50 @@ structure TxContextInputData where
   outputValues : List Nat
   activeExtIds : List Nat
   continuingData : List (Nat × TxContextContinuing)
+  allowedSighashSet : UInt8
+  sighashWitness : WitnessItem
+
+/-- Derive the raw continuing-output counts from the same bundle data that
+    will later be packed into the computed TxContext. This avoids validating
+    detached metadata. -/
+def continuingCountsFromData (continuingData : List (Nat × TxContextContinuing)) : List Nat :=
+  continuingData.map fun pair => pair.2.count
+
+/-- Extract the actual sighash byte from a witness item.
+    Empty signatures fail before the policy gate runs. -/
+def extractTxContextSighashType (w : WitnessItem) : Except String UInt8 :=
+  if w.signature.size = 0 then
+    .error "TX_ERR_SIG_INVALID"
+  else
+    .ok (w.signature.get! (w.signature.size - 1))
+
+/-- Validate all raw continuing-output counts before packing the TxContext bundle.
+    This wires the K-overflow reject helper into the live computed TxContext path. -/
+def validateTxContextContinuingCounts : List Nat → Except String Unit
+  | [] => .ok ()
+  | count :: rest =>
+      match validateContinuingOutputCount count with
+      | .error err => .error err
+      | .ok () => validateTxContextContinuingCounts rest
+
+/-- Validate the txcontext sighash gate before building the bundle.
+    Invalid base types map to `TX_ERR_SIGHASH_TYPE_INVALID`; disallowed but
+    well-formed types map to `TX_ERR_SIG_ALG_INVALID`. -/
+def validateTxContextSighashGate (allowedSet sighashType : UInt8) : Except String Unit :=
+  if !SighashV1.hasValidBaseType sighashType then
+    .error "TX_ERR_SIGHASH_TYPE_INVALID"
+  else if SighashV1.checkSighashPolicy allowedSet sighashType then
+    .ok ()
+  else
+    .error "TX_ERR_SIG_ALG_INVALID"
+
+/-- Validate the txcontext sighash gate from the live witness bytes rather
+    than a detached metadata byte. -/
+def validateTxContextSighashWitness
+    (allowedSet : UInt8) (w : WitnessItem) : Except String Unit :=
+  match extractTxContextSighashType w with
+  | .error err => .error err
+  | .ok sighashType => validateTxContextSighashGate allowedSet sighashType
 
 /-- Full block connection pipeline.
     TxContext parameters are threaded through for backward compatibility
@@ -62,7 +107,8 @@ def connectBlockFull
 /-- Full block connection with COMPUTED TxContext from tx data.
     This is the CORRECT version: TxContext is computed from resolved
     input/output values, not passed as free parameters.
-    Uses buildTxContextLive which folds actual value lists. -/
+    Uses buildTxContextLive which folds actual value lists and derives
+    all pre-activation gate inputs from the same TxContext input bundle. -/
 def connectBlockFullComputed
     (nonCoinbaseTxs : List Bytes)
     (coinbaseOutputs : List CovenantGenesisV1.TxOut)
@@ -80,23 +126,39 @@ def connectBlockFullComputed
       match validateCoinbaseApplyOutputs coinbaseOutputs with
       | .error e => .error e
       | .ok () =>
-        let txCtx := match txCtxData with
-          | none => none
-          | some d => buildTxContextLive d.activeExtIds d.inputValues d.outputValues height d.continuingData
-        .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
-            , sumFees := sumFees
-            , txContext := txCtx }
+        match txCtxData with
+        | none =>
+            .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
+                , sumFees := sumFees
+                , txContext := none }
+        | some d =>
+            match validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) with
+            | .error e => .error e
+            | .ok () =>
+                match validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness with
+                | .error e => .error e
+                | .ok () =>
+                    .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
+                        , sumFees := sumFees
+                        , txContext := buildTxContextLive d.activeExtIds d.inputValues d.outputValues height d.continuingData }
 
-/-- Equivalence: connectBlockFullComputed with Some data = connectBlockFull
-    with computed sums. This bridges the two signatures. -/
+/-- Equivalence under the computed-path gate assumptions:
+    if the continuing-count and sighash validations succeed on the computed
+    TxContext input bundle, then `connectBlockFullComputed` reduces to the
+    aggregate compatibility wrapper `connectBlockFull` with computed sums.
+    This bridges the two signatures; it is not an unconditional theorem that
+    the wrapper itself enforces the extra gates. -/
 theorem connectBlockFullComputed_eq_connectBlockFull
     (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
     (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData) :
+    validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) = .ok () →
+    validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness = .ok () →
     connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) =
     connectBlockFull nctxs couts ctxid utxos h bt cid sub
       d.activeExtIds (sumInputValues d.inputValues) (sumOutputValues d.outputValues) d.continuingData := by
-  simp [connectBlockFullComputed, connectBlockFull, buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
+  intro hCounts hSighash
+  simp [connectBlockFullComputed, connectBlockFull, buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues, hCounts, hSighash]
 
 /-- connectBlockFullComputed with None = connectBlockFull with empty ext_ids. -/
 theorem connectBlockFullComputed_none_eq
@@ -131,11 +193,20 @@ theorem connectBlockFullComputed_txcontext_correct
       match hV : validateCoinbaseApplyOutputs couts with
       | .error _ => simp [hV] at hOk
       | .ok () =>
-        simp [hV] at hOk; cases hOk
-        simp [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
-        split
-        · rename_i heq; omega
-        · exact ⟨_, rfl, rfl, rfl, rfl⟩
+        simp [hV] at hOk
+        match hCounts : validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) with
+        | .error _ => simp [hCounts] at hOk
+        | .ok () =>
+          simp [hCounts] at hOk
+          match hSighash : validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness with
+          | .error _ => simp [hSighash] at hOk
+          | .ok () =>
+            simp [hSighash] at hOk
+            cases hOk
+            simp [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues]
+            split
+            · rename_i heq; omega
+            · exact ⟨_, rfl, rfl, rfl, rfl⟩
 
 /-! ## Helper: extract connectBlockTxs success -/
 
@@ -376,7 +447,7 @@ theorem connectBlockFull_no_txcontext_when_empty
         simp [hV] at hOk; obtain ⟨_, _, rfl⟩ := hOk
         rfl
 
-/-- TxContext bundle in result has correct ext_ids. -/
+/-- TxContext bundle in result has the live deterministic ext_id order. -/
 theorem connectBlockFull_txcontext_ext_ids
     (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
     (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
@@ -386,7 +457,7 @@ theorem connectBlockFull_txcontext_ext_ids
     (result : ConnectBlockResult) (bundle : TxContextBundle)
     (hOk : connectBlockFull nctxs couts ctxid utxos h bt cid sub ids tin tout cd = .ok result)
     (hBundle : result.txContext = some bundle) :
-    bundle.continuingExtIds = ids := by
+    bundle.continuingExtIds = sortExtIds ids := by
   simp only [connectBlockFull] at hOk
   match hT : connectBlockTxs nctxs utxos h bt cid with
   | .error _ => simp [hT] at hOk
@@ -504,14 +575,14 @@ theorem perTx_base_values_computed
   · rename_i heq; omega
   · cases hEq; exact ⟨rfl, rfl, rfl⟩
 
-/-- Per-tx ext_ids preserved (no reordering). -/
+/-- Per-tx ext_ids are normalized into the live deterministic order. -/
 theorem perTx_ext_ids_preserved
     (ids : List Nat) (hIds : ids.length > 0)
     (inVals outVals : List Nat) (height : Nat)
     (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
     (hEq : buildPerTxContextFromData ids inVals outVals height cd = some bundle) :
-    bundle.continuingExtIds = ids := by
+    bundle.continuingExtIds = sortExtIds ids := by
   simp [buildPerTxContextFromData, buildTxContextLive, buildTxContext] at hEq
   split at hEq
   · rename_i heq; omega
