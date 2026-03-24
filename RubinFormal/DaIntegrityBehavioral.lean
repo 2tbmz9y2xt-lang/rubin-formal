@@ -655,7 +655,7 @@ theorem da_gate_ok_implies_das_ok (blockBytes : Bytes) (ph pt : Option Bytes)
     rw [hDo] at hOk; exact hOk
 
 /-- Gate success full decomposition: block ok ∧ DA integrity ok. -/
-theorem da_gate_ok_full (blockBytes : Bytes) (ph pt : Option Bytes)
+theorem da_gate_ok_conjunction (blockBytes : Bytes) (ph pt : Option Bytes)
     (hOk : validateDaIntegrityGate blockBytes ph pt = .ok ()) :
     BlockBasicV1.validateBlockBasic blockBytes ph pt = .ok () ∧
     ∃ pb, BlockBasicV1.parseBlock blockBytes = .ok pb ∧
