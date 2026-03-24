@@ -361,6 +361,16 @@ private theorem lowestFailIdx_indexed_from (start : Nat) (results : List Bool) :
       | true =>
           simp [indexedValidationResultsFrom, lowestFailIdx?, firstErrorIndexFrom, ih (start + 1)]
 
+-- Nat.min commutativity/associativity (not in Std4)
+private theorem nat_min_comm (a b : Nat) : min a b = min b a := by
+  simp only [Nat.min_def]; split <;> split <;> omega
+
+private theorem nat_min_assoc (a b c : Nat) : min (min a b) c = min a (min b c) := by
+  simp only [Nat.min_def]; repeat (first | split | omega)
+
+private theorem nat_min_left_comm (a b c : Nat) : min a (min b c) = min b (min a c) := by
+  rw [← nat_min_assoc, nat_min_comm a b, nat_min_assoc]
+
 private theorem lowestFailIdx_perm_invariant {xs ys : List (Nat × Bool)}
     (hperm : List.Perm xs ys) :
     lowestFailIdx? xs = lowestFailIdx? ys := by
@@ -372,8 +382,12 @@ private theorem lowestFailIdx_perm_invariant {xs ys : List (Nat × Bool)}
       | mk i oki =>
           cases y with
           | mk j okj =>
-              cases oki <;> cases okj <;>
-                simp [lowestFailIdx?, Nat.min_assoc, Nat.min_left_comm, Nat.min_comm]
+              cases oki <;> cases okj <;> simp only [lowestFailIdx?]
+              all_goals (try rfl)
+              all_goals (
+                cases lowestFailIdx? zs with
+                | none => simp [Nat.min_def]; split <;> split <;> omega
+                | some k => simp [Nat.min_def]; repeat (first | split | omega))
   | trans h1 h2 ih1 ih2 => exact ih1.trans ih2
 
 /-- The lowest-index attribution theorem proved here is for canonically indexed
