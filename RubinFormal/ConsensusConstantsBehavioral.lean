@@ -93,7 +93,7 @@ theorem witness_unknown_suite_rejects (w : WI) (h : Nat)
     UtxoApplyGenesisV1.validateWitnessItemLengths w h =
     .error "TX_ERR_SIG_ALG_INVALID" := by
   rw [validateWitnessItemLengths_eq_explicit]
-  simp [validateWitnessExplicit, hNotSent, hNotMldsa]
+  simp only [validateWitnessExplicit, hNotSent, ite_false, hNotMldsa]
 
 /-! ## Sentinel violations → TX_ERR_PARSE (LIVE) -/
 
