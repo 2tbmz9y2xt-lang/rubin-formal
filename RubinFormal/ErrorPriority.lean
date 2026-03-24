@@ -28,7 +28,7 @@ linkage → merkle (via explicit-bind equivalence) → witness (existing).
 
 ## §13 Contract summary
 - `consensus_error_ordering_complete`: block-level totality + priority + success-chain.
-- `tx_parse_pipeline_deterministic`: tx parse stage ordering is strict + bridged to live.
+- `tx_parse_pipeline_deterministic`: tx parse stage ordering is strict (model-level; 5/9 stages bridged to live).
 - `tx_semantic_pipeline_deterministic`: tx semantic stage ordering is strict + bridged to live.
 -/
 
@@ -912,10 +912,13 @@ theorem consensus_error_ordering_complete
   · intro pb err hParse hFail; exact error_priority_pow blockBytes ph pt pb err hParse hFail
   · intro h; exact validate_success_pow blockBytes ph pt h
 
-/-- Tx parse pipeline: stage ordering is strict AND each stage is bridged to a
-    live sub-function with a concrete error code.  The strict chain ensures that
-    if two parse stages would both fail, the earlier one's error is returned.
-    All 8 adjacent pairs proved (HeaderRead through DaLenChecks). -/
+/-- Tx parse pipeline: model-level stage ordering is strict + injective.
+    All 8 adjacent pairs (HeaderRead through DaLenChecks) proved.
+    LIMITATION: 5 of 9 stages have live bridges (TxKind, InputCountMin,
+    OutputCountMin, WitnessChecks, DaLenChecks). The remaining 4
+    (HeaderRead, InputParse, OutputParse, Locktime) are structural parsing
+    steps without separate error-checking functions — their ordering is
+    model-only and would not detect a live parser reordering. -/
 theorem tx_parse_pipeline_deterministic :
     -- Strict stage ordering (all 8 adjacent pairs, complete chain 0..8)
     (txParseStageOrd .HeaderRead < txParseStageOrd .TxKind ∧
