@@ -154,6 +154,25 @@ theorem da_collect_empty :
     collectChunkPayloads s 0 = .ok ByteArray.empty := by
   unfold collectChunkPayloads; rfl
 
+/-! ## Orphan chunk detection (LIVE on validateNoOrphanChunks) -/
+
+/-- Orphan chunk found → BLOCK_ERR_DA_SET_INVALID. -/
+theorem da_orphan_chunk_rejects
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (entry : Bytes × Std.RBMap Nat DaChunkInfo compare)
+    (h : chunks.toList.find? (fun (daId, _) => !(commits.contains daId)) = some entry) :
+    validateNoOrphanChunks chunks commits = .error "BLOCK_ERR_DA_SET_INVALID" := by
+  simp only [validateNoOrphanChunks, h]
+
+/-- No orphan chunks → accepted. -/
+theorem da_orphan_chunk_ok
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (h : chunks.toList.find? (fun (daId, _) => !(commits.contains daId)) = none) :
+    validateNoOrphanChunks chunks commits = .ok () := by
+  simp only [validateNoOrphanChunks, h]
+
 -- Note: general missing-chunk theorem requires induction on List.range + foldlM
 -- which Std4 doesn't provide good lemmas for. The coverage is provided by:
 -- 1. collectChunkPayloads is LIVE (wired into validateDASetIntegrity)
