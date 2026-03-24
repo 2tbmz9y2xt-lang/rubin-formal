@@ -320,10 +320,12 @@ jobs:
             }
 
             parsed.findings = filtered;
-            if (typeof parsed.summary !== 'string') {
-              parsed.summary = filtered.length === 0
-                ? 'No defects found after stale/dup filtering.'
-                : `Filtered findings: ${filtered.length}.`;
+            if (parsed.degraded === true) {
+              parsed.summary = 'Security review degraded: model output was not valid JSON, so no validated findings were emitted. See raw artifact / workflow warning for details.';
+            } else if (filtered.length === 0) {
+              parsed.summary = 'No validated findings after stale/dup filtering.';
+            } else if (typeof parsed.summary !== 'string' || parsed.summary.trim() === '') {
+              parsed.summary = `Filtered findings: ${filtered.length}.`;
             }
             core.setOutput('review', JSON.stringify(parsed, null, 2));
         env:
