@@ -6,7 +6,7 @@ import RubinFormal.Conformance.CVDaIntegrityReplay
 
 LIVE behavioral proofs on `validateDASetIntegrity` and `validateDaIntegrityGate`
 (DaIntegrityV1.lean). Upgrades evidence_level from `baseline` to
-`machine_checked_contract` by combining:
+`refined_model` by combining:
 
 1. Conformance replay: `cv_da_integrity_vectors_pass` (native_decide on real vectors)
 2. Gate error propagation: each gate step's error flows to the output deterministically
@@ -140,8 +140,9 @@ theorem da_gate_ok_full (blockBytes : Bytes) (ph pt : Option Bytes)
 
 cv_da_integrity_vectors_pass (CVDaIntegrityReplay.lean):
 Proves that ALL conformance vectors from CV-DA pass through
-validateDaIntegrityGate via native_decide. This is the
-machine-checked contract evidence for the full DA validation path.
+validateDaIntegrityGate via native_decide. Combined with error
+propagation theorems, this provides refined_model evidence.
+Does NOT cover BLOCK_ERR_DA_BATCH_EXCEEDED (no CV vector with >128 batches).
 -/
 
 end RubinFormal

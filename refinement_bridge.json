@@ -57,7 +57,7 @@
     {
       "op": "da_set_integrity",
       "gate": "CV-DA",
-      "model_theorem": "RubinFormal.da_gate_ok_full",
+      "model_theorem": "RubinFormal.da_gate_ok_implies_das_ok",
       "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "evidence_level": "refined_model",
