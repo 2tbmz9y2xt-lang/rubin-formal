@@ -192,10 +192,15 @@ theorem da_commit_output_ok (outputs : List TxOut) (payloadCommit : Bytes)
 
 /-! ## Chunk collection (LIVE on collectChunkPayloads) -/
 
-/-- Empty range → empty payload. -/
+/-- Zero count → result = acc, independent of map content. -/
 theorem da_collect_empty (s : Std.RBMap Nat DaChunkInfo compare)
     (acc : Bytes) (start : Nat) :
     collectChunkPayloads s 0 acc start = .ok acc := rfl
+
+/-- Zero count makes result independent of which map is passed. -/
+theorem da_collect_zero_map_independent
+    (s1 s2 : Std.RBMap Nat DaChunkInfo compare) (acc : Bytes) (start : Nat) :
+    collectChunkPayloads s1 0 acc start = collectChunkPayloads s2 0 acc start := rfl
 
 /-- Missing chunk at position → BLOCK_ERR_DA_INCOMPLETE. -/
 theorem da_collect_missing (set : Std.RBMap Nat DaChunkInfo compare)
@@ -232,9 +237,14 @@ theorem da_orphan_chunk_step
     validateNoOrphanChunks ((daId, set) :: rest) commits = validateNoOrphanChunks rest commits := by
   simp only [validateNoOrphanChunks, h, Bool.not_true, ite_false]
 
-/-- Empty chunk list → no orphans. -/
+/-- Empty chunk list → no orphans, regardless of commits map content. -/
 theorem da_orphan_chunk_empty (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) :
     validateNoOrphanChunks [] commits = .ok () := rfl
+
+/-- No orphans result is independent of commits when chunks empty. -/
+theorem da_no_orphans_commits_independent
+    (c1 c2 : Std.RBMap Bytes DaCommitInfo cmpBytes) :
+    validateNoOrphanChunks [] c1 = validateNoOrphanChunks [] c2 := rfl
 
 
 /-! ## Parse loop (LIVE on accumulateDATxs) -/
@@ -244,6 +254,15 @@ theorem da_accumulate_empty
     (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
     (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :
     accumulateDATxs [] commits chunks = .ok (commits, chunks) := rfl
+
+/-- Empty tx list preserves BOTH maps identically (state identity). -/
+theorem da_accumulate_empty_state_preserved
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :
+    (match accumulateDATxs [] commits chunks with
+     | .ok (c, ch) => c = commits ∧ ch = chunks
+     | .error _ => False) :=
+  ⟨rfl, rfl⟩
 
 /-- Parse failure at head → error propagates. -/
 theorem da_accumulate_parse_fail
@@ -492,10 +511,15 @@ theorem parseDATx_error_taxonomy (tx : Bytes) (err : String)
 
 /-! ## Verify loop (LIVE on verifyCommitIntegrity) -/
 
-/-- Empty commit list → ok. -/
+/-- Empty commit list → ok, independent of chunks map content. -/
 theorem da_verify_empty
     (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :
     verifyCommitIntegrity [] chunks = .ok () := rfl
+
+/-- Verify result independent of chunks when commit list empty. -/
+theorem da_verify_empty_chunks_independent
+    (ch1 ch2 : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :
+    verifyCommitIntegrity [] ch1 = verifyCommitIntegrity [] ch2 := rfl
 
 /-- Missing chunk set for commit → BLOCK_ERR_DA_INCOMPLETE. -/
 theorem da_verify_missing_set
@@ -534,6 +558,14 @@ theorem da_verify_step_ok
 /-- validateDASetIntegrity on empty list → ok. -/
 theorem da_integrity_empty :
     validateDASetIntegrity [] = .ok () := rfl
+
+/-- Empty tx list passes ALL 4 stages of validateDASetIntegrity. -/
+theorem da_integrity_empty_all_stages :
+    validateDASetIntegrity [] = .ok () ∧
+    validateDaBatchCount 0 = .ok () ∧
+    validateNoOrphanChunks [] Std.RBMap.empty = .ok () ∧
+    verifyCommitIntegrity [] Std.RBMap.empty = .ok () := by
+  exact ⟨rfl, by simp [validateDaBatchCount, MAX_DA_BATCHES_PER_BLOCK], rfl, rfl⟩
 
 /-! ## Top-level composition (LIVE on validateDASetIntegrity)
 
