@@ -195,6 +195,104 @@ theorem commit_equivalence_reject (precheck : List α → Option (List SigTask �
   rwa [← accept_reject_equivalence]
 
 -- ============================================================================
+-- Section 4b: Deterministic Parallel Error Index Attribution
+-- ============================================================================
+
+/-- Sequential first-failure index over pure worker results. -/
+def firstRejectIndexFrom (start : Nat) : List Bool → Option Nat
+  | [] => none
+  | ok :: rest => if ok then firstRejectIndexFrom (start + 1) rest else some start
+
+/-- Sequential first-failure index from zero. -/
+def firstRejectIndex (results : List Bool) : Option Nat :=
+  firstRejectIndexFrom 0 results
+
+/-- Tag worker results with their canonical input index. -/
+def indexedVerifyResultsFrom (start : Nat) : List Bool → List (Nat × Bool)
+  | [] => []
+  | ok :: rest => (start, ok) :: indexedVerifyResultsFrom (start + 1) rest
+
+/-- Canonical tagged worker results from zero. -/
+def indexedVerifyResults (results : List Bool) : List (Nat × Bool) :=
+  indexedVerifyResultsFrom 0 results
+
+/-- Parallel reducer returns the lowest failing canonical index, if any. -/
+def lowestRejectIdx? : List (Nat × Bool) → Option Nat
+  | [] => none
+  | (idx, ok) :: rest =>
+      let tail := lowestRejectIdx? rest
+      if ok then tail
+      else
+        match tail with
+        | none => some idx
+        | some j => some (Nat.min idx j)
+
+private theorem firstRejectIndexFrom_lower_bound (start idx : Nat) (results : List Bool)
+    (h : firstRejectIndexFrom start results = some idx) :
+    start ≤ idx := by
+  induction results generalizing start idx with
+  | nil => simp [firstRejectIndexFrom] at h
+  | cons ok rest ih =>
+      cases ok with
+      | false =>
+          simp [firstRejectIndexFrom] at h
+          cases h
+          exact Nat.le_refl _
+      | true =>
+          simp [firstRejectIndexFrom] at h
+          exact Nat.le_trans (Nat.le_succ start) (ih (start + 1) idx h)
+
+private theorem lowestRejectIdx_indexed_from (start : Nat) (results : List Bool) :
+    lowestRejectIdx? (indexedVerifyResultsFrom start results) =
+    firstRejectIndexFrom start results := by
+  induction results generalizing start with
+  | nil => rfl
+  | cons ok rest ih =>
+      cases ok with
+      | false =>
+          simp [indexedVerifyResultsFrom, lowestRejectIdx?, firstRejectIndexFrom]
+          rw [ih (start + 1)]
+          cases hrest : firstRejectIndexFrom (start + 1) rest with
+          | none => simp [hrest]
+          | some j =>
+              have hge1 : start + 1 ≤ j := firstRejectIndexFrom_lower_bound (start + 1) j rest hrest
+              have hge : start ≤ j := Nat.le_trans (Nat.le_succ start) hge1
+              simp [hrest, Nat.min_eq_left hge]
+      | true =>
+          simp [indexedVerifyResultsFrom, lowestRejectIdx?, firstRejectIndexFrom, ih (start + 1)]
+
+private theorem lowestRejectIdx_perm_invariant {xs ys : List (Nat × Bool)}
+    (hperm : List.Perm xs ys) :
+    lowestRejectIdx? xs = lowestRejectIdx? ys := by
+  induction hperm with
+  | nil => rfl
+  | cons x _ ih => simp [lowestRejectIdx?, ih]
+  | swap x y zs =>
+      cases x with
+      | mk i oki =>
+          cases y with
+          | mk j okj =>
+              cases oki <;> cases okj <;> simp only [lowestRejectIdx?]
+              all_goals (try rfl)
+              all_goals (
+                cases lowestRejectIdx? zs with
+                | none => simp [Nat.min_def]; split <;> split <;> omega
+                | some k => simp [Nat.min_def]; repeat (first | split | omega))
+  | trans _ _ ih1 ih2 => exact ih1.trans ih2
+
+/-- Live parallel module: any permutation of canonically indexed worker
+    outputs preserves the lowest rejecting input index. -/
+theorem parallel_error_index_priority (results : List Bool)
+    (parallel : List (Nat × Bool))
+    (hperm : List.Perm parallel (indexedVerifyResults results)) :
+    lowestRejectIdx? parallel = firstRejectIndex results := by
+  calc
+    lowestRejectIdx? parallel
+        = lowestRejectIdx? (indexedVerifyResults results) := lowestRejectIdx_perm_invariant hperm
+    _ = firstRejectIndexFrom 0 results := lowestRejectIdx_indexed_from 0 results
+    _ = firstRejectIndex results := rfl
+
+-- ============================================================================
 -- Section 5: Validation Purity (Worker Side-Effect Freedom)
 -- ============================================================================
 

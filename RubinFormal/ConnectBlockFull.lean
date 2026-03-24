@@ -376,7 +376,7 @@ theorem connectBlockFull_no_txcontext_when_empty
         simp [hV] at hOk; obtain ⟨_, _, rfl⟩ := hOk
         rfl
 
-/-- TxContext bundle in result has correct ext_ids. -/
+/-- TxContext bundle in result has the live deterministic ext_id order. -/
 theorem connectBlockFull_txcontext_ext_ids
     (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
     (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
@@ -386,7 +386,7 @@ theorem connectBlockFull_txcontext_ext_ids
     (result : ConnectBlockResult) (bundle : TxContextBundle)
     (hOk : connectBlockFull nctxs couts ctxid utxos h bt cid sub ids tin tout cd = .ok result)
     (hBundle : result.txContext = some bundle) :
-    bundle.continuingExtIds = ids := by
+    bundle.continuingExtIds = sortExtIds ids := by
   simp only [connectBlockFull] at hOk
   match hT : connectBlockTxs nctxs utxos h bt cid with
   | .error _ => simp [hT] at hOk
@@ -504,14 +504,14 @@ theorem perTx_base_values_computed
   · rename_i heq; omega
   · cases hEq; exact ⟨rfl, rfl, rfl⟩
 
-/-- Per-tx ext_ids preserved (no reordering). -/
+/-- Per-tx ext_ids are normalized into the live deterministic order. -/
 theorem perTx_ext_ids_preserved
     (ids : List Nat) (hIds : ids.length > 0)
     (inVals outVals : List Nat) (height : Nat)
     (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
     (hEq : buildPerTxContextFromData ids inVals outVals height cd = some bundle) :
-    bundle.continuingExtIds = ids := by
+    bundle.continuingExtIds = sortExtIds ids := by
   simp [buildPerTxContextFromData, buildTxContextLive, buildTxContext] at hEq
   split at hEq
   · rename_i heq; omega

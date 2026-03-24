@@ -1,4 +1,5 @@
 import RubinFormal.TxContextFormal
+import RubinFormal.UtxoApplyGenesisV1
 
 /-!
 # TxContext Behavioral Proof (§14 / §18)
@@ -8,7 +9,8 @@ with REAL parameters (totalIn, totalOut, height, continuing data).
 WIRED into connectBlockFull (ConnectBlockFull.lean) — buildTxContext is
 called as part of the live block connection pipeline.
 
-Ext_id sorting properties are in TxContextFormal.lean (separate surface).
+Ext_id ordering, Uint128 comparison, K-overflow, and vault bridges are
+closed here on the live TxContext helper surface.
 -/
 
 namespace RubinFormal
@@ -41,6 +43,84 @@ structure TxContextBundle where
   continuingByExt : List (Nat × TxContextContinuing)
   continuingExtIds : List Nat
 
+/-! ## Live helper surface for TxContext pre-activation gates -/
+
+/-- Live ext_id insertion helper for deterministic ascending order.
+    Mirrors the Go/Rust txcontext ext_id normalization path. -/
+def insertExtId (x : Nat) : List Nat → List Nat
+  | [] => [x]
+  | y :: ys => if x ≤ y then x :: y :: ys else y :: insertExtId x ys
+
+/-- Live ext_id sort used by TxContext bundle construction. -/
+def sortExtIds : List Nat → List Nat
+  | [] => []
+  | x :: xs => insertExtId x (sortExtIds xs)
+
+/-- Live ext_id sort is definitionally aligned with the formal model sort. -/
+private theorem insertExtId_eq_model (x : Nat) (ys : List Nat) :
+    insertExtId x ys = TxContext.insertSorted x ys := by
+  induction ys with
+  | nil => rfl
+  | cons y ys ih =>
+      simp [insertExtId, TxContext.insertSorted, ih]
+
+theorem sortExtIds_eq_model (xs : List Nat) :
+    sortExtIds xs = TxContext.sortAscending xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+      simp [sortExtIds, TxContext.sortAscending, ih, insertExtId_eq_model]
+
+/-- Deterministic ext_id order is collection-order independent on the live path. -/
+theorem sortExtIds_order_independent (xs ys : List Nat)
+    (hPerm : List.Perm xs ys) :
+    sortExtIds xs = sortExtIds ys := by
+  rw [sortExtIds_eq_model xs, sortExtIds_eq_model ys]
+  exact TxContext.sortAscending_unique_output xs ys hPerm
+
+/-- Live Uint128 comparator matching Go/Rust hi/lo limb ordering. -/
+def compareUint128 (a b : TxContext.Uint128) : Bool :=
+  if a.hi > b.hi then true
+  else if a.hi = b.hi then decide (a.lo ≥ b.lo)
+  else false
+
+/-- Live limb comparator matches the TxContext model predicate exactly. -/
+theorem compareUint128_eq_true_iff_model (a b : TxContext.Uint128) :
+    compareUint128 a b = true ↔ TxContext.uint128GTE a b := by
+  unfold compareUint128 TxContext.uint128GTE
+  by_cases hgt : a.hi > b.hi
+  · simp [hgt]
+  · by_cases heq : a.hi = b.hi
+    · by_cases hlo : a.lo ≥ b.lo <;> simp [hgt, heq, hlo]
+    · simp [hgt, heq]
+
+/-- Live Uint128 comparator is numerically equivalent to the native value order. -/
+theorem compareUint128_native_equivalence (a b : TxContext.Uint128) :
+    compareUint128 a b = true ↔ a.toNat ≥ b.toNat := by
+  rw [compareUint128_eq_true_iff_model]
+  exact TxContext.uint128GTE_native_equivalence a b
+
+/-- Live K-overflow gate for continuing outputs. Mirrors the Go/Rust reject path
+    before writing output index K+1. -/
+def validateContinuingOutputCount (count : Nat) : Except String Unit :=
+  if count > TXCONTEXT_MAX_CONTINUING_OUTPUTS then
+    Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+  else
+    Except.ok ()
+
+/-- K-overflow rejects on the live helper surface. -/
+theorem continuing_output_count_rejects_overflow (count : Nat)
+    (hOverflow : count > TXCONTEXT_MAX_CONTINUING_OUTPUTS) :
+    validateContinuingOutputCount count = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  simp [validateContinuingOutputCount, hOverflow]
+
+/-- Counts within K are accepted on the live helper surface. -/
+theorem continuing_output_count_accepts_in_range (count : Nat)
+    (hBound : count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS) :
+    validateContinuingOutputCount count = .ok () := by
+  have hNotOverflow : ¬ count > TXCONTEXT_MAX_CONTINUING_OUTPUTS := Nat.not_lt_of_ge hBound
+  simp [validateContinuingOutputCount, hNotOverflow]
+
 /-! ## BuildTxContext with real parameters -/
 
 /-- Build TxContext bundle from real parameters.
@@ -59,7 +139,7 @@ def buildTxContext
   else some {
     base := { totalIn := totalIn, totalOut := totalOut, height := height }
     continuingByExt := continuingData
-    continuingExtIds := activeExtIds
+    continuingExtIds := sortExtIds activeExtIds
   }
 
 /-! ## Nil/Some behavioral properties -/
@@ -78,12 +158,12 @@ theorem buildTxContext_some (ids : List Nat) (hLen : ids.length > 0)
 
 /-! ## Structural correctness — bundle fields match inputs -/
 
-/-- Bundle ext_ids = input ext_ids (no reordering, no drops, no additions). -/
+/-- Bundle ext_ids equal the live deterministic sorted order. -/
 theorem buildTxContext_ext_ids (ids : List Nat) (hLen : ids.length > 0)
     (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
     (bundle : TxContextBundle)
     (hEq : buildTxContext ids tin tout ht cd = some bundle) :
-    bundle.continuingExtIds = ids := by
+    bundle.continuingExtIds = sortExtIds ids := by
   simp only [buildTxContext] at hEq; split at hEq
   · rename_i heq; omega
   · cases hEq; rfl
@@ -117,7 +197,11 @@ theorem buildTxContext_preserves_nodup (ids : List Nat) (hLen : ids.length > 0)
     (bundle : TxContextBundle)
     (hEq : buildTxContext ids tin tout ht cd = some bundle) :
     bundle.continuingExtIds.Nodup := by
-  rw [buildTxContext_ext_ids ids hLen tin tout ht cd bundle hEq]; exact hNodup
+  rw [buildTxContext_ext_ids ids hLen tin tout ht cd bundle hEq]
+  have hPerm : List.Perm ids (sortExtIds ids) := by
+    rw [sortExtIds_eq_model]
+    exact TxContext.sortAscending_perm ids
+  exact (List.Perm.nodup_iff hPerm).mp hNodup
 
 /-! ## Real value computation (models Go sumTxContextInputValues) -/
 
@@ -228,7 +312,7 @@ def buildTxContextLive
     some {
       base := { totalIn := totalIn, totalOut := totalOut, height := height }
       continuingByExt := continuingData
-      continuingExtIds := activeExtIds
+      continuingExtIds := sortExtIds activeExtIds
     }
 
 /-- rfl equivalence: buildTxContextLive = buildTxContextFromValues. -/
@@ -247,13 +331,38 @@ theorem buildTxContextLive_eq_buildTxContext
     buildTxContext ids (inVals.foldl (· + ·) 0) (outVals.foldl (· + ·) 0) h cd := by
   simp [buildTxContextLive, buildTxContext]
 
-/-! ## Ext_id ordering
+open UtxoApplyGenesisV1 in
+/-- BRIDGE: live no-vault conservation path matches the model predicate. -/
+theorem vault_bridge_no_vault (totalIn totalOut vis : Nat) :
+    TxContext.checkValueConservation totalIn totalOut vis false = true ↔
+    validateValueConservation totalOut totalIn 0 vis = .ok () := by
+  simp only [TxContext.checkValueConservation, validateValueConservation]
+  constructor
+  · intro h
+    by_cases h1 : totalOut > totalIn
+    · simp [h1] at h
+    · simp [h1] at h ⊢
+  · intro h
+    by_cases h1 : totalOut > totalIn
+    · simp [h1] at h
+    · simp [h1] at h ⊢
 
-Ext_id sort properties are already proved in TxContextFormal.lean:
-- extid_sort_sorted_perm: sortAscending produces Perm ∧ Sorted
-- extid_sort_deterministic: sortAscending is deterministic (pure function)
-- Multiple concrete CV vector replays
-
-These are reused by reference, not duplicated here. -/
+open UtxoApplyGenesisV1 in
+/-- BRIDGE: live single-vault conservation path matches the model predicate. -/
+theorem vault_bridge_with_vault (totalIn totalOut vis : Nat) :
+    TxContext.checkValueConservation totalIn totalOut vis true = true ↔
+    validateValueConservation totalOut totalIn 1 vis = .ok () := by
+  simp only [TxContext.checkValueConservation, validateValueConservation]
+  constructor
+  · intro h
+    by_cases h1 : totalOut > totalIn
+    · simp [h1] at h
+    · simp [h1] at h ⊢
+      by_cases h2 : totalOut < vis <;> simp [h2] at h ⊢
+  · intro h
+    by_cases h1 : totalOut > totalIn
+    · simp [h1] at h
+    · simp [h1] at h ⊢
+      by_cases h2 : totalOut < vis <;> simp [h2] at h ⊢
 
 end RubinFormal
