@@ -933,9 +933,6 @@
         "RubinFormal.TxContext.extid_sort_concrete_321",
         "RubinFormal.TxContext.extid_sort_cv51",
         "RubinFormal.TxContext.extid_sort_idempotent_sorted",
-        "RubinFormal.TxContext.ntotal_empty_v2_equivalence",
-        "RubinFormal.TxContext.k_overflow_discard_complete",
-        "RubinFormal.TxContext.vault_conservation_no_double_count",
         "RubinFormal.TxContext.vault_conservation_rejects_under_vault_sum",
         "RubinFormal.TxContext.vault_conservation_accepts_when_bounds_hold",
         "RubinFormal.TxContext.vault_sum_ignored_when_no_vault",
@@ -943,7 +940,14 @@
         "RubinFormal.TxContext.sighash_policy_complete",
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256",
         "RubinFormal.TxContext.sighash_invalid_base_rejected",
-        "RubinFormal.TxContext.sortAscending_unique_output"
+        "RubinFormal.TxContext.sortAscending_unique_output",
+        "RubinFormal.TxContext.ntotal_empty_no_vault_passes",
+        "RubinFormal.TxContext.ntotal_empty_zero_vault_passes",
+        "RubinFormal.TxContext.ntotal_empty_positive_vault_rejects",
+        "RubinFormal.TxContext.k_overflow_rejects_and_no_recovery",
+        "RubinFormal.TxContext.vault_conservation_with_vault_rejects_iff",
+        "RubinFormal.TxContext.vault_conservation_no_vault_rejects_iff",
+        "RubinFormal.TxContext.vault_overspend_short_circuits"
       ],
       "file": "rubin-formal/RubinFormal/TxContextFormal.lean",
       "theorem_files": {
@@ -957,9 +961,6 @@
         "RubinFormal.TxContext.extid_sort_concrete_321": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.extid_sort_cv51": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.extid_sort_idempotent_sorted": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.ntotal_empty_v2_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.k_overflow_discard_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.vault_conservation_no_double_count": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_conservation_rejects_under_vault_sum": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_conservation_accepts_when_bounds_hold": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_sum_ignored_when_no_vault": "rubin-formal/RubinFormal/TxContextFormal.lean",
@@ -967,9 +968,16 @@
         "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_invalid_base_rejected": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.sortAscending_unique_output": "rubin-formal/RubinFormal/TxContextFormal.lean"
+        "RubinFormal.TxContext.sortAscending_unique_output": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.ntotal_empty_no_vault_passes": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.ntotal_empty_zero_vault_passes": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.ntotal_empty_positive_vault_rejects": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.k_overflow_rejects_and_no_recovery": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_conservation_with_vault_rejects_iff": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_conservation_no_vault_rejects_iff": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_overspend_short_circuits": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "§14 pre-activation gate theorems. 21 registered (17 substantive LIVE + 1 structural + 3 concrete smoke tests). 3 generic list wrappers removed from registry (parallel_error_equivalence, parallel_all/any_perm_invariant — trivial Perm.map/mem_iff applications). Coverage: uint128 comparison, ext_id sort (perm+sorted+uniqueness+determinism+standalone), vault conservation (reject+accept+bounds+inactive), parallel tagged-index priority, sighash policy (256x256 exhaustive + invalid base).",
+      "notes": "§14 pre-activation gate theorems. 28 registered, all LIVE on live functions. Coverage: uint128 comparison, ext_id sort (perm+sorted+uniqueness+determinism+standalone), vault conservation (exhaustive iff + overspend short-circuit + empty outputs 3 cases), parallel tagged-index priority, sighash policy (256x256 exhaustive + invalid base). Zero wrappers. Zero model-only. 3 concrete smoke tests (native_decide).",
       "limitations": []
     }
   ],

@@ -247,29 +247,61 @@ theorem extid_sort_idempotent_sorted :
     sortAscending [1, 2, 3] = [1, 2, 3] := by
   native_decide
 
-theorem ntotal_empty_v2_equivalence (v1_count : Nat) :
-    v1_count + 0 = v1_count := Nat.add_zero v1_count
-
 inductive BuildResult (α : Type) where
   | ok : α → BuildResult α
   | err : String → BuildResult α
 
-theorem k_overflow_discard_complete {α : Type} (errMsg : String)
-    (result : BuildResult α) (herr : result = BuildResult.err errMsg) :
-    ¬∃ (v : α), result = BuildResult.ok v := by
-  subst herr; intro ⟨_, h⟩; exact BuildResult.noConfusion h
+/-- BuildResult.err blocks ANY property on ok value — no recovery possible. -/
+theorem k_overflow_rejects_and_no_recovery {α : Type} (errMsg : String)
+    (result : BuildResult α) (herr : result = BuildResult.err errMsg)
+    (P : α → Prop) :
+    ¬∃ (v : α), result = BuildResult.ok v ∧ P v := by
+  subst herr; intro ⟨_, h, _⟩; exact BuildResult.noConfusion h
 
 def checkValueConservation (totalIn totalOut vaultInputSum : Nat) (hasVaultInputs : Bool) : Bool :=
   if totalOut > totalIn then false
   else if hasVaultInputs && totalOut < vaultInputSum then false
   else true
 
-theorem vault_conservation_no_double_count
-    (totalIn totalOut vis1 vis2 : Nat) (hv : Bool) :
-    totalOut > totalIn →
-    checkValueConservation totalIn totalOut vis1 hv =
-    checkValueConservation totalIn totalOut vis2 hv := by
-  intro hgt; simp [checkValueConservation, hgt]
+/-- Empty outputs + no vault → conservation passes on live checkValueConservation. -/
+theorem ntotal_empty_no_vault_passes (totalIn vis : Nat) :
+    checkValueConservation totalIn 0 vis false = true := by
+  unfold checkValueConservation; simp [show ¬(0 > totalIn) from by omega]
+
+/-- Empty outputs + vault with zero sum → conservation passes. -/
+theorem ntotal_empty_zero_vault_passes (totalIn : Nat) :
+    checkValueConservation totalIn 0 0 true = true := by
+  unfold checkValueConservation; simp [show ¬(0 > totalIn) from by omega, show ¬(0 < 0) from by omega]
+
+/-- Empty outputs + vault with positive sum → conservation REJECTS. -/
+theorem ntotal_empty_positive_vault_rejects (totalIn vis : Nat) (hPos : vis > 0) :
+    checkValueConservation totalIn 0 vis true = false := by
+  unfold checkValueConservation; simp [show ¬(0 > totalIn) from by omega, hPos]
+
+/-- Full iff: vault conservation with vault inputs rejects iff
+    overspend OR vault-sum-under. Exhaustive on live checkValueConservation. -/
+theorem vault_conservation_with_vault_rejects_iff (totalIn totalOut vis : Nat) :
+    checkValueConservation totalIn totalOut vis true = false ↔
+    (totalOut > totalIn ∨ (totalOut ≤ totalIn ∧ totalOut < vis)) := by
+  unfold checkValueConservation
+  by_cases h1 : totalOut > totalIn
+  · simp [h1]
+  · simp [h1]; by_cases h2 : totalOut < vis
+    · simp [h2]; omega
+    · simp [h2]; omega
+
+/-- Full iff: no vault → rejects iff overspend only. -/
+theorem vault_conservation_no_vault_rejects_iff (totalIn totalOut vis : Nat) :
+    checkValueConservation totalIn totalOut vis false = false ↔ totalOut > totalIn := by
+  unfold checkValueConservation
+  by_cases h : totalOut > totalIn <;> simp [h]
+
+/-- Overspend short-circuits past vault check (both params give same result). -/
+theorem vault_overspend_short_circuits (totalIn totalOut vis1 vis2 : Nat) (hv : Bool)
+    (hOver : totalOut > totalIn) :
+    checkValueConservation totalIn totalOut vis1 hv = false ∧
+    checkValueConservation totalIn totalOut vis2 hv = false :=
+  ⟨by simp [checkValueConservation, hOver], by simp [checkValueConservation, hOver]⟩
 
 theorem vault_conservation_rejects_under_vault_sum
     (totalIn totalOut vaultInputSum : Nat)
