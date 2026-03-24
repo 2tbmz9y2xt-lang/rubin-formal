@@ -277,8 +277,48 @@ def collectChunkPayloads
     | none => .error "BLOCK_ERR_DA_INCOMPLETE"
     | some ch => collectChunkPayloads set n (acc ++ ch.payload) (start + 1)
 
-/-- Parse loop: accumulate commits and chunks from tx list.
-    Recursive version for formal proof access. -/
+/-- Process one commit tx: extract daId, chunkCount, check duplicate.
+    LIVE sub-function of accumulateDATxs commit branch. -/
+def processCommitTx
+    (t : ParsedDATx)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    : Except String (Std.RBMap Bytes DaCommitInfo cmpBytes) :=
+  match t.commitDaId with
+  | none => .error "TX_ERR_PARSE"
+  | some daId =>
+    match t.commitChunkCount with
+    | none => .error "TX_ERR_PARSE"
+    | some cc =>
+      match validateNoDuplicateCommit commits daId with
+      | .error e => .error e
+      | .ok () => .ok (commits.insert daId { chunkCount := cc, outputs := t.outputs })
+
+/-- Process one chunk tx: extract daId, index, hash, verify, check duplicate.
+    LIVE sub-function of accumulateDATxs chunk branch. -/
+def processChunkTx
+    (t : ParsedDATx)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    : Except String (Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :=
+  match t.chunkDaId with
+  | none => .error "TX_ERR_PARSE"
+  | some daId =>
+    match t.chunkIndex with
+    | none => .error "TX_ERR_PARSE"
+    | some idx =>
+      match t.chunkHash with
+      | none => .error "TX_ERR_PARSE"
+      | some h =>
+        match validateChunkHash t.payload h with
+        | .error e => .error e
+        | .ok () =>
+          let set := match chunks.find? daId with | none => Std.RBMap.empty | some m => m
+          match validateNoDuplicateChunk set idx with
+          | .error e => .error e
+          | .ok () => .ok (chunks.insert daId (set.insert idx { chunkIndex := idx, chunkHash := h, payload := t.payload }))
+
+/-- Accumulate DA txs using decomposed processCommitTx / processChunkTx.
+    Each branch delegates to the corresponding sub-function, enabling
+    formal error propagation proofs at the sub-function level. -/
 def accumulateDATxs
     (txs : List Bytes)
     (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
@@ -292,34 +332,13 @@ def accumulateDATxs
     | .error e => .error e
     | .ok t =>
       if t.txKind == 0x01 then
-        match t.commitDaId with
-        | none => .error "TX_ERR_PARSE"
-        | some daId =>
-          match t.commitChunkCount with
-          | none => .error "TX_ERR_PARSE"
-          | some cc =>
-            match validateNoDuplicateCommit commits daId with
-            | .error e => .error e
-            | .ok () =>
-              accumulateDATxs rest (commits.insert daId { chunkCount := cc, outputs := t.outputs }) chunks
+        match processCommitTx t commits with
+        | .error e => .error e
+        | .ok newCommits => accumulateDATxs rest newCommits chunks
       else if t.txKind == 0x02 then
-        match t.chunkDaId with
-        | none => .error "TX_ERR_PARSE"
-        | some daId =>
-          match t.chunkIndex with
-          | none => .error "TX_ERR_PARSE"
-          | some idx =>
-            match t.chunkHash with
-            | none => .error "TX_ERR_PARSE"
-            | some h =>
-              match validateChunkHash t.payload h with
-              | .error e => .error e
-              | .ok () =>
-                let set := match chunks.find? daId with | none => Std.RBMap.empty | some m => m
-                match validateNoDuplicateChunk set idx with
-                | .error e => .error e
-                | .ok () =>
-                  accumulateDATxs rest commits (chunks.insert daId (set.insert idx { chunkIndex := idx, chunkHash := h, payload := t.payload }))
+        match processChunkTx t chunks with
+        | .error e => .error e
+        | .ok newChunks => accumulateDATxs rest commits newChunks
       else
         accumulateDATxs rest commits chunks
 

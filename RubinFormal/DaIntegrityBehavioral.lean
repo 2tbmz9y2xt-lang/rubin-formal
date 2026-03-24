@@ -255,6 +255,100 @@ theorem da_accumulate_parse_fail
   show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
   rw [hFail]
 
+/-- Commit tx error → propagates through accumulation. -/
+theorem da_accumulate_commit_error
+    (txBytes : Bytes) (rest : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (t : ParsedDATx) (err : String)
+    (hParse : parseDATx txBytes = .ok t)
+    (hKind : (t.txKind == 0x01) = true)
+    (hFail : processCommitTx t commits = .error err) :
+    accumulateDATxs (txBytes :: rest) commits chunks = .error err := by
+  show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
+  rw [hParse]
+  show (if (t.txKind == 0x01) = true then _ else _) = _
+  rw [hKind]; simp only [ite_true]
+  show (match processCommitTx t commits with | .error e => _ | .ok nc => _) = _
+  rw [hFail]
+
+/-- Commit tx ok → recurse with updated commits. -/
+theorem da_accumulate_commit_ok
+    (txBytes : Bytes) (rest : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (t : ParsedDATx) (newCommits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (hParse : parseDATx txBytes = .ok t)
+    (hKind : (t.txKind == 0x01) = true)
+    (hOk : processCommitTx t commits = .ok newCommits) :
+    accumulateDATxs (txBytes :: rest) commits chunks =
+    accumulateDATxs rest newCommits chunks := by
+  show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
+  rw [hParse]
+  show (if (t.txKind == 0x01) = true then _ else _) = _
+  rw [hKind]; simp only [ite_true]
+  show (match processCommitTx t commits with | .error e => _ | .ok nc => _) = _
+  rw [hOk]
+
+/-- Chunk tx error → propagates through accumulation. -/
+theorem da_accumulate_chunk_error
+    (txBytes : Bytes) (rest : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (t : ParsedDATx) (err : String)
+    (hParse : parseDATx txBytes = .ok t)
+    (hNotCommit : (t.txKind == 0x01) = false)
+    (hKind : (t.txKind == 0x02) = true)
+    (hFail : processChunkTx t chunks = .error err) :
+    accumulateDATxs (txBytes :: rest) commits chunks = .error err := by
+  show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
+  rw [hParse]
+  show (if (t.txKind == 0x01) = true then _ else _) = _
+  rw [hNotCommit]; simp only [ite_false]
+  show (if (t.txKind == 0x02) = true then _ else _) = _
+  rw [hKind]; simp only [ite_true]
+  show (match processChunkTx t chunks with | .error e => _ | .ok nc => _) = _
+  rw [hFail]
+
+/-- Chunk tx ok → recurse with updated chunks. -/
+theorem da_accumulate_chunk_ok
+    (txBytes : Bytes) (rest : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (t : ParsedDATx) (newChunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (hParse : parseDATx txBytes = .ok t)
+    (hNotCommit : (t.txKind == 0x01) = false)
+    (hKind : (t.txKind == 0x02) = true)
+    (hOk : processChunkTx t chunks = .ok newChunks) :
+    accumulateDATxs (txBytes :: rest) commits chunks =
+    accumulateDATxs rest commits newChunks := by
+  show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
+  rw [hParse]
+  show (if (t.txKind == 0x01) = true then _ else _) = _
+  rw [hNotCommit]; simp only [ite_false]
+  show (if (t.txKind == 0x02) = true then _ else _) = _
+  rw [hKind]; simp only [ite_true]
+  show (match processChunkTx t chunks with | .error e => _ | .ok nc => _) = _
+  rw [hOk]
+
+/-- Unknown tx kind → skip, recurse unchanged. -/
+theorem da_accumulate_skip
+    (txBytes : Bytes) (rest : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (t : ParsedDATx)
+    (hParse : parseDATx txBytes = .ok t)
+    (hNotCommit : (t.txKind == 0x01) = false)
+    (hNotChunk : (t.txKind == 0x02) = false) :
+    accumulateDATxs (txBytes :: rest) commits chunks =
+    accumulateDATxs rest commits chunks := by
+  show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
+  rw [hParse]
+  show (if (t.txKind == 0x01) = true then _ else _) = _
+  rw [hNotCommit]; simp only [ite_false]
+  show (if (t.txKind == 0x02) = true then _ else _) = _
+  rw [hNotChunk]; simp only [ite_false]
+
 /-! ## Verify loop (LIVE on verifyCommitIntegrity) -/
 
 /-- Empty commit list → ok. -/
