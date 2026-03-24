@@ -606,7 +606,16 @@
         "RubinFormal.addCoinbaseOutputsList_single_spendable_found",
         "RubinFormal.listFind?_inserts_all_other",
         "RubinFormal.listFind?_foldl_finds_head",
-        "RubinFormal.coinbase_outpoint_beq_derived"
+        "RubinFormal.coinbase_outpoint_beq_derived",
+        "RubinFormal.cmpOutpoint_le_trans",
+        "RubinFormal.rbmap_find_insert_self",
+        "RubinFormal.rbmap_find_insert_of_ne",
+        "RubinFormal.rbmap_find_erase_self",
+        "RubinFormal.rbmap_contains_insert_self",
+        "RubinFormal.outpoint_ne_of_vout_ne",
+        "RubinFormal.insertOutputs_go_last_present",
+        "RubinFormal.insertOutputs_go_preserves_earlier",
+        "RubinFormal.addCoinbaseOutputs_preserves_full"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -659,7 +668,16 @@
         "RubinFormal.listFind?_foldl_finds_head": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
         "RubinFormal.Conformance.cv_utxo_basic_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVUtxoBasicReplay.lean",
         "RubinFormal.det001_validation_order_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
-        "RubinFormal.coinbase_outpoint_beq_derived": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean"
+        "RubinFormal.coinbase_outpoint_beq_derived": "rubin-formal/RubinFormal/CoinbaseBehavioral.lean",
+        "RubinFormal.cmpOutpoint_le_trans": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.rbmap_find_insert_self": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.rbmap_find_insert_of_ne": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.rbmap_find_erase_self": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.rbmap_contains_insert_self": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.outpoint_ne_of_vout_ne": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.insertOutputs_go_last_present": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.insertOutputs_go_preserves_earlier": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.addCoinbaseOutputs_preserves_full": "rubin-formal/RubinFormal/UtxoMapProperties.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking is proved through the current list-to-RBMap bridge surface, with query-level semantics and non-spendable exclusion theorems covering the live behavior that has actually been mechanized. Vault policy replay remains useful evidence for the spend-side safe subset and default-order path, but it is not presented here as a full L1↔L2 equivalence model.",
       "limitations": [
