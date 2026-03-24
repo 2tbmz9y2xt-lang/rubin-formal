@@ -30,6 +30,7 @@ linkage → merkle (via explicit-bind equivalence) → witness (existing).
 - `consensus_error_ordering_contract`: block-level totality + parse/pow dominance + full 6-stage success chain.
 - `tx_parse_pipeline_deterministic`: tx parse model ordering strict + injective (live bridges separate).
 - `tx_semantic_pipeline_deterministic`: tx semantic model ordering strict + injective (live bridges separate).
+- `ext_error_pipeline_deterministic`: CORE_EXT model-level priority + commutativity (live bridges separate).
 -/
 
 namespace RubinFormal
@@ -686,11 +687,13 @@ theorem txParseStageOrd_injective (a b : TxParseStage)
     (h : txParseStageOrd a = txParseStageOrd b) : a = b := by
   cases a <;> cases b <;> simp [txParseStageOrd] at h <;> rfl
 
-/-! ### Direct error-propagation bridges to live `parseTxFromCursor`
+/-! ### Direct error-propagation bridges to live code
 
 Each theorem proves: given a specific sub-function failure condition,
-`parseTxFromCursor` (or `parseTxPostInputs`) returns that error.
-These are DIRECT bridges to LIVE code — no intermediate wrapper defs.
+`parseTxFromCursor` or `parseTxPostInputs` returns that error.
+`ptfc_*` theorems target `parseTxFromCursor` directly.
+`ptpi_*` theorems target `parseTxPostInputs` (one hop from
+`parseTxFromCursor` via `ptfc_post_inputs_fail`).
 -/
 
 section DirectBridges
