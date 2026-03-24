@@ -390,7 +390,7 @@ private def sighashAllowlistOracle (allowedSet : Nat) : List Nat :=
 
 private def sighashAllowedSpec (allowedSet sighashType : Nat) : Bool :=
   let st := sighashType &&& 0xFF
-  st ∈ sighashAllowlistOracle allowedSet
+  decide (st ∈ sighashAllowlistOracle allowedSet)
 
 theorem sighash_policy_complete :
     sighashAllowed 0x87 0x01 = true ∧
