@@ -171,4 +171,21 @@ theorem threshold_wrong_count_rejected_universal
   unfold UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto
   simp [hMismatch]; rfl
 
+/-! ## R8: Threshold sig spend — unknown suite in witness rejected -/
+
+/-- **R8 (universal over witness content, singleton list):** If a single-key
+    threshold spend has a witness with unknown suite, it is rejected with
+    TX_ERR_SIG_ALG_INVALID. Universal over key, witness, threshold, height.
+    LIVE on `validateThresholdSigSpendNoCrypto`. -/
+theorem threshold_unknown_suite_first_rejected
+    (key : Bytes) (w : WitnessItem) (h : Nat) (ctx : String) (threshold : Nat)
+    (hNotS : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_SENTINEL)
+    (hNotM : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto [key] threshold [w] h ctx =
+    .error "TX_ERR_SIG_ALG_INVALID" := by
+  simp only [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto,
+    UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
+    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
+  simp [hNotS, hNotM]; rfl
+
 end RubinFormal
