@@ -110,6 +110,33 @@ theorem insertSorted_perm (x : Nat) (ys : List Nat) :
     · exact List.Perm.refl _
     · exact (List.Perm.swap y x ys).trans (List.Perm.cons y ih)
 
+/-- insertSorted preserves sortedness: if ys sorted, insertSorted x ys sorted. -/
+theorem insertSorted_preserves_sorted (x : Nat) (ys : List Nat)
+    (hys : List.Pairwise (· ≤ ·) ys) :
+    List.Pairwise (· ≤ ·) (insertSorted x ys) := by
+  induction ys with
+  | nil => exact List.Pairwise.cons (fun _ h => absurd h (List.not_mem_nil _)) List.Pairwise.nil
+  | cons y ys ih =>
+    simp only [insertSorted]
+    split
+    · rename_i hle
+      exact List.Pairwise.cons
+        (fun z hz => by
+          cases List.mem_cons.mp hz with
+          | inl h => exact h ▸ hle
+          | inr h => exact Nat.le_trans hle (List.rel_of_pairwise_cons hys h))
+        hys
+    · rename_i hgt
+      have hys_tail := (List.pairwise_cons.mp hys).2
+      have hy_le := (List.pairwise_cons.mp hys).1
+      exact List.Pairwise.cons
+        (fun z hz => by
+          have : z ∈ x :: ys := (insertSorted_perm x ys).symm.subset hz
+          cases List.mem_cons.mp this with
+          | inl h => subst h; omega
+          | inr h => exact hy_le z h)
+        (ih hys_tail)
+
 theorem sortAscending_perm (xs : List Nat) :
     List.Perm xs (sortAscending xs) := by
   induction xs with
@@ -235,17 +262,25 @@ theorem sortAscending_unique_output (xs ys : List Nat)
     (sortAscending_sorted_v2 xs)
     (sortAscending_sorted_v2 ys)
 
+/-- General idempotency: sortAscending (sortAscending xs) = sortAscending xs.
+    No preconditions. Follows from unique sorted permutation. -/
+theorem sortAscending_idempotent (xs : List Nat) :
+    sortAscending (sortAscending xs) = sortAscending xs :=
+  sortAscending_unique_output (sortAscending xs) xs (sortAscending_perm xs).symm
+
+/-- General fixpoint: if input already sorted, sortAscending is identity. -/
+theorem sortAscending_fixpoint (xs : List Nat)
+    (hSorted : List.Pairwise (· ≤ ·) xs) :
+    sortAscending xs = xs :=
+  extid_sort_deterministic xs xs (List.Perm.refl xs) hSorted
+
+/-- Concrete CV vector replay: [3,1,2] → [1,2,3]. -/
 theorem extid_sort_concrete_321 :
-    sortAscending [3, 1, 2] = [1, 2, 3] := by
-  native_decide
+    sortAscending [3, 1, 2] = [1, 2, 3] := by native_decide
 
+/-- Concrete CV vector replay: [3,1] → [1,3]. -/
 theorem extid_sort_cv51 :
-    sortAscending [3, 1] = [1, 3] := by
-  native_decide
-
-theorem extid_sort_idempotent_sorted :
-    sortAscending [1, 2, 3] = [1, 2, 3] := by
-  native_decide
+    sortAscending [3, 1] = [1, 3] := by native_decide
 
 inductive BuildResult (α : Type) where
   | ok : α → BuildResult α
@@ -296,12 +331,11 @@ theorem vault_conservation_no_vault_rejects_iff (totalIn totalOut vis : Nat) :
   unfold checkValueConservation
   by_cases h : totalOut > totalIn <;> simp [h]
 
-/-- Overspend short-circuits past vault check (both params give same result). -/
-theorem vault_overspend_short_circuits (totalIn totalOut vis1 vis2 : Nat) (hv : Bool)
+/-- Overspend → universally rejected regardless of vault sum AND vault flag. -/
+theorem vault_overspend_universal_reject (totalIn totalOut : Nat)
     (hOver : totalOut > totalIn) :
-    checkValueConservation totalIn totalOut vis1 hv = false ∧
-    checkValueConservation totalIn totalOut vis2 hv = false :=
-  ⟨by simp [checkValueConservation, hOver], by simp [checkValueConservation, hOver]⟩
+    ∀ (vis : Nat) (hv : Bool), checkValueConservation totalIn totalOut vis hv = false := by
+  intro vis hv; simp [checkValueConservation, hOver]
 
 theorem vault_conservation_rejects_under_vault_sum
     (totalIn totalOut vaultInputSum : Nat)
@@ -476,6 +510,11 @@ private def sighashAllowlistOracle (allowedSet : Nat) : List Nat :=
 private def sighashAllowedSpec (allowedSet sighashType : Nat) : Bool :=
   let st := sighashType &&& 0xFF
   decide (st ∈ sighashAllowlistOracle allowedSet)
+
+/-- Exactly 3 valid base types: 1, 2, 3. Exhaustive over all 128 values. -/
+theorem sighash_exactly_three_valid_base_types :
+    (∀ bt : Fin 128, hasValidBaseType bt.val = true ↔ (bt.val = 1 ∨ bt.val = 2 ∨ bt.val = 3)) := by
+  native_decide
 
 theorem sighash_policy_complete :
     sighashAllowed 0x87 0x01 = true ∧
