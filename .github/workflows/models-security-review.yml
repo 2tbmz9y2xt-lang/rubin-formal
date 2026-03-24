@@ -58,11 +58,14 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const path = require('path');
             const { execSync } = require('child_process');
             const rawOutputPath = 'deepseek-raw-output.txt';
             const diff = fs.readFileSync('pr-diff.txt', 'utf8').slice(0, 12000);
             const prTitle = context.payload.pull_request?.title ?? '';
             const prBody = (context.payload.pull_request?.body ?? '').slice(0, 4000);
+            const repoRoot = process.cwd();
+            const repoRootReal = fs.realpathSync(repoRoot);
             const baseSha = '${{ github.event.pull_request.base.sha }}';
             const headSha = '${{ github.event.pull_request.head.sha }}';
             const changedLeanFiles = execSync(
@@ -73,9 +76,28 @@ jobs:
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
+            const readChangedLeanFile = (file) => {
+              const fullPath = path.resolve(repoRoot, file);
+              const rel = path.relative(repoRoot, fullPath);
+              if (rel.startsWith('..') || path.isAbsolute(rel)) {
+                throw new Error(`Unsafe changed Lean path outside repository: ${file}`);
+              }
+              const st = fs.lstatSync(fullPath);
+              if (st.isSymbolicLink()) {
+                throw new Error(`Refusing to read symlinked changed Lean file: ${file}`);
+              }
+              if (!st.isFile()) {
+                throw new Error(`Changed Lean path is not a regular file: ${file}`);
+              }
+              const realPath = fs.realpathSync(fullPath);
+              if (!(realPath === repoRootReal || realPath.startsWith(`${repoRootReal}${path.sep}`))) {
+                throw new Error(`Resolved changed Lean file escapes repository root: ${file}`);
+              }
+              return fs.readFileSync(realPath, 'utf8');
+            };
             const changedFilePayload = changedLeanFiles
               .map((file) => {
-                const content = fs.readFileSync(file, 'utf8').slice(0, 5000);
+                const content = readChangedLeanFile(file).slice(0, 5000);
                 return `FILE: ${file}\n${content}`;
               })
               .join('\n\n---\n\n')
@@ -139,57 +161,16 @@ jobs:
                 ? text.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim()
                 : ''
             );
-            const extractFirstJSONObject = (text) => {
-              if (typeof text !== 'string') return null;
-              let start = -1;
-              let depth = 0;
-              let inString = false;
-              let escaped = false;
-              for (let i = 0; i < text.length; i += 1) {
-                const ch = text[i];
-                if (inString) {
-                  if (escaped) {
-                    escaped = false;
-                  } else if (ch === '\\\\') {
-                    escaped = true;
-                  } else if (ch === '"') {
-                    inString = false;
-                  }
-                  continue;
-                }
-                if (ch === '"') {
-                  inString = true;
-                  continue;
-                }
-                if (ch === '{') {
-                  if (depth === 0) start = i;
-                  depth += 1;
-                  continue;
-                }
-                if (ch === '}' && depth > 0) {
-                  depth -= 1;
-                  if (depth === 0 && start >= 0) {
-                    return text.slice(start, i + 1);
-                  }
-                }
-              }
-              return null;
-            };
             const parseReviewPayload = (raw) => {
               const normalized = stripOuterCodeFence(raw);
-              const candidates = [];
-              if (normalized) candidates.push(normalized);
-              const embedded = extractFirstJSONObject(normalized);
-              if (embedded && !candidates.includes(embedded)) candidates.push(embedded);
-              let lastErr = null;
-              for (const candidate of candidates) {
-                try {
-                  return { parsed: JSON.parse(candidate), candidate, normalized };
-                } catch (err) {
-                  lastErr = err;
-                }
+              if (!normalized) {
+                return { parsed: null, candidate: normalized, normalized, error: new Error('empty model output') };
               }
-              return { parsed: null, candidate: normalized, normalized, error: lastErr };
+              try {
+                return { parsed: JSON.parse(normalized), candidate: normalized, normalized };
+              } catch (err) {
+                return { parsed: null, candidate: normalized, normalized, error: err };
+              }
             };
             const modelId = 'deepseek/DeepSeek-V3-0324';
             const reviewMessages = [
@@ -272,7 +253,7 @@ jobs:
 
             const changedSet = new Set(changedLeanFiles);
             const fileContents = new Map(
-              changedLeanFiles.map((file) => [file, fs.readFileSync(file, 'utf8')])
+              changedLeanFiles.map((file) => [file, readChangedLeanFile(file)])
             );
             const lineCounts = new Map(
               changedLeanFiles.map((file) => [file, fileContents.get(file).split('\n').length])

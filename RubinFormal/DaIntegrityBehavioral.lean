@@ -26,9 +26,27 @@ open DaIntegrityV1
 
 /-! ## DA constants — behavioral enforcement (§21)
 
-Each constant has LIVE boundary proofs: reject at limit+1, accept at limit.
-No rfl-only pins — every constant proved through validator behavior.
+Behavioral boundaries stay wired to the live validators, but the canonical
+literal values are also pinned explicitly so symbolic-only rewrites cannot
+silently mask constant drift.
 -/
+
+/-- CHUNK_BYTES canonical literal pin. -/
+theorem da_chunk_bytes_value : DaCoreV1.CHUNK_BYTES = 524288 := rfl
+
+/-- MAX_DA_CHUNK_COUNT canonical literal pin. -/
+theorem da_max_chunk_count_value : DaCoreV1.MAX_DA_CHUNK_COUNT = 61 := rfl
+
+/-- Effective chunk-only DA capacity under the canonical per-chunk limits. -/
+theorem da_effective_chunk_capacity_value :
+    DaCoreV1.MAX_DA_CHUNK_COUNT * DaCoreV1.CHUNK_BYTES = 31981568 := by
+  native_decide
+
+/-- Effective chunk-only DA capacity stays within the canonical 32,000,000-byte
+    per-block DA limit from Section 4. -/
+theorem da_effective_chunk_capacity_within_block_limit :
+    DaCoreV1.MAX_DA_CHUNK_COUNT * DaCoreV1.CHUNK_BYTES ≤ 32000000 := by
+  native_decide
 
 /-- CHUNK_BYTES boundary: daLen at limit → accepted in kind=2 tx. -/
 theorem da_chunk_bytes_boundary_accept :
@@ -64,10 +82,9 @@ theorem da_total_bytes_bounded (chunkCount chunkSize : Nat)
     (hCount : chunkCount ≤ DaCoreV1.MAX_DA_CHUNK_COUNT)
     (hSize : chunkSize ≤ DaCoreV1.CHUNK_BYTES) :
     chunkCount * chunkSize ≤ 31981568 := by
-  have : DaCoreV1.MAX_DA_CHUNK_COUNT * DaCoreV1.CHUNK_BYTES = 31981568 := by native_decide
   calc chunkCount * chunkSize
       ≤ DaCoreV1.MAX_DA_CHUNK_COUNT * DaCoreV1.CHUNK_BYTES := Nat.mul_le_mul hCount hSize
-    _ = 31981568 := this
+    _ = 31981568 := da_effective_chunk_capacity_value
 
 /-- COV_TYPE_DA_COMMIT: wrong type → not counted by countDaCommitOutputs. -/
 theorem da_wrong_cov_type_not_counted (out : TxOut)

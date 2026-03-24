@@ -26,11 +26,13 @@ structure TxOutputView where
   value : Nat
   extPayload : List UInt8
 
-/-- Per-ext_id continuing output bundle with bounded count. -/
+/-- Per-ext_id continuing output bundle with bounded metadata count and
+    bounded carried outputs. -/
 structure TxContextContinuing where
   count : Nat
   outputs : List TxOutputView
   hBound : count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS
+  hOutputsBound : outputs.length ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS
 
 /-- TxContext base — immutable transaction-level context. -/
 structure TxContextBase where
@@ -261,6 +263,10 @@ theorem buildTxContextFromValues_height_real
 theorem continuing_bound_is_invariant (cont : TxContextContinuing) :
     cont.count ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS := cont.hBound
 
+/-- Every TxContextContinuing carries outputs.length ≤ MAX as TYPE INVARIANT. -/
+theorem continuing_outputs_length_is_invariant (cont : TxContextContinuing) :
+    cont.outputs.length ≤ TXCONTEXT_MAX_CONTINUING_OUTPUTS := cont.hOutputsBound
+
 /-- MAX = 2 (canonical constant from §14). -/
 theorem max_continuing_is_two : TXCONTEXT_MAX_CONTINUING_OUTPUTS = 2 := rfl
 
@@ -275,6 +281,19 @@ theorem buildTxContext_all_continuings_bounded
     pair.2.count ≤ 2 := by
   have hCd := buildTxContext_continuing_data ids hLen tin tout ht cd bundle hEq
   rw [hCd] at hMem; exact pair.2.hBound
+
+/-- ALL continuings in a built bundle carry at most 2 actual outputs. -/
+theorem buildTxContext_all_continuings_outputs_bounded
+    (ids : List Nat) (hLen : ids.length > 0)
+    (tin tout ht : Nat) (cd : List (Nat × TxContextContinuing))
+    (bundle : TxContextBundle)
+    (hEq : buildTxContext ids tin tout ht cd = some bundle)
+    (pair : Nat × TxContextContinuing)
+    (hMem : pair ∈ bundle.continuingByExt) :
+    pair.2.outputs.length ≤ 2 := by
+  have hCd := buildTxContext_continuing_data ids hLen tin tout ht cd bundle hEq
+  rw [hCd] at hMem
+  exact pair.2.hOutputsBound
 
 /-! ## Cross-property: value conservation (fee ≥ 0) -/
 
