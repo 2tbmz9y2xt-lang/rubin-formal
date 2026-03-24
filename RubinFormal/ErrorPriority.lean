@@ -27,7 +27,7 @@ linkage → merkle (via explicit-bind equivalence) → witness (existing).
 - Error code distinctness: all block + tx codes via `by decide` (35 theorems).
 
 ## §13 Contract summary
-- `consensus_error_ordering_parse_pow`: block-level totality + parse/pow dominance + success-chain.
+- `consensus_error_ordering_contract`: block-level totality + parse/pow dominance + full 6-stage success chain.
 - `tx_parse_pipeline_deterministic`: tx parse model ordering strict + injective (live bridges separate).
 - `tx_semantic_pipeline_deterministic`: tx semantic model ordering strict + injective (live bridges separate).
 -/
@@ -991,31 +991,41 @@ success-chain results into unified §13 contract statements.  These are LIVE
 on `validateBlockBasic` and the tx sub-function pipeline — not model-only.
 -/
 
-/-- §13 Block-level: totality + parse/pow dominance + success-chain.
-    Covers stages 1 (parse) and 2 (pow) directly. Stages 3-6 (target,
-    linkage, merkle, witness) proved individually in `error_priority_target`,
-    `error_priority_linkage_*`, `error_priority_merkle_*` — not bundled
-    here due to their conditional signatures (4 merkle × 2 linkage cases). -/
-theorem consensus_error_ordering_parse_pow
+/-- §13 Block-level contract: totality + error dominance + full success chain.
+    (1) Total: accept ∨ error.
+    (2) Parse dominates: parse failure wins unconditionally.
+    (3) PoW dominates stages 3-6: given parse ok, pow failure wins.
+    (4) Success → ALL 6 stages passed (parse, pow, target, linkage,
+        merkle root, witness commitment) — via `section25_order_complete`. -/
+theorem consensus_error_ordering_contract
     (blockBytes : Bytes) (ph pt : Option Bytes) :
     -- (1) Totality
     (section25AcceptWitness blockBytes ph pt ∨
       ∃ err, validateBlockBasic blockBytes ph pt = .error err) ∧
-    -- (2) Parse dominates: parse failure → that error, unconditionally
+    -- (2) Parse dominates
     (∀ err, parseBlock blockBytes = .error err →
       validateBlockBasic blockBytes ph pt = .error err) ∧
-    -- (3) PoW dominates stages 3–6: given parse ok, pow failure → that error
+    -- (3) PoW dominates stages 3–6
     (∀ pb err, parseBlock blockBytes = .ok pb →
       powCheck pb.header = .error err →
       validateBlockBasic blockBytes ph pt = .error err) ∧
-    -- (4) Success → all stages passed
+    -- (4) Success → all 6 stages passed
     (validateBlockBasic blockBytes ph pt = .ok () →
-      ∃ pb, parseBlock blockBytes = .ok pb ∧ powCheck pb.header = .ok ()) := by
+      ∃ pb mr wmr gotCommit,
+        parseBlock blockBytes = .ok pb ∧
+        powCheck pb.header = .ok () ∧
+        (match pt with | none => True | some exp => pb.header.target = exp) ∧
+        (match ph with | none => True | some exp => pb.header.prevHash = exp) ∧
+        merkleRootTxids pb.txids = .ok mr ∧
+        mr = pb.header.merkleRoot ∧
+        witnessMerkleRootWtxids pb.wtxids = .ok wmr ∧
+        findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit ∧
+        gotCommit = witnessCommitmentHash wmr) := by
   refine ⟨?_, ?_, ?_, ?_⟩
   · exact validateBlockBasic_accept_or_reject blockBytes ph pt
   · intro err hFail; exact error_priority_parse blockBytes ph pt err hFail
   · intro pb err hParse hFail; exact error_priority_pow blockBytes ph pt pb err hParse hFail
-  · intro h; exact validate_success_pow blockBytes ph pt h
+  · intro h; exact section25_order_complete blockBytes ph pt h
 
 /-- Tx parse pipeline: stage ordering is strict (all 8 adjacent pairs) +
     injective. This theorem proves the MODEL ordering; live grounding is
