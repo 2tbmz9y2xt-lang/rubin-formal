@@ -332,10 +332,10 @@
         "RubinFormal.ext_error_pipeline_deterministic",
         "RubinFormal.bridge_parse_header_version_short",
         "RubinFormal.bridge_parse_header_txkind_short",
-        "RubinFormal.bridge_parse_header_nonce_short",
         "RubinFormal.bridge_parse_inputs_fail",
         "RubinFormal.bridge_parse_outputs_fail",
-        "RubinFormal.bridge_parse_locktime_short"
+        "RubinFormal.bridge_parse_locktime_short",
+        "RubinFormal.bridge_parse_nonce_short"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -465,10 +465,10 @@
         "RubinFormal.consensus_error_ordering_parse_pow": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_parse_header_version_short": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_parse_header_txkind_short": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_parse_header_nonce_short": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_parse_inputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_parse_outputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_parse_locktime_short": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.bridge_parse_locktime_short": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.bridge_parse_nonce_short": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
       "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages bridged to live functions — readTxHeader (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), readInputsField (InputParse), validateOutputCountMin (OutputCountMin), readOutputsField (OutputParse), readLocktimeField (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error). Contract composition: consensus_error_ordering_complete (totality + priority + success-chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective), ext_error_pipeline_deterministic (strict ordering + commutativity).",
       "limitations": []

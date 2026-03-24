@@ -696,18 +696,25 @@ Each one mirrors exactly one `match ... | none => throw "BLOCK_ERR_PARSE"` site.
 section StructuralBridges
 open Wire
 
-/-- Stage 0: read version (U32LE) + txKind byte (U8) + nonce (U64LE).
-    Mirrors lines 139-148 of BlockBasicV1.parseTxFromCursor. -/
-def readTxHeader (c : Cursor) : Except String (Nat × UInt8 × UInt64 × Cursor) :=
+/-- Stage 0: read version (U32LE) + txKind byte (U8).
+    Mirrors lines 139-143 of BlockBasicV1.parseTxFromCursor.
+    NOTE: nonce read (getU64le) comes AFTER validateTxKind (stage 1)
+    in the live parser, so it belongs to a later stage, not here. -/
+def readTxHeaderFields (c : Cursor) : Except String (Nat × UInt8 × Cursor) :=
   match c.getU32le? with
   | none => .error "BLOCK_ERR_PARSE"
   | some (ver, c1) =>
     match c1.getU8? with
     | none => .error "BLOCK_ERR_PARSE"
-    | some (tkB, c2) =>
-      match c2.getU64le? with
-      | none => .error "BLOCK_ERR_PARSE"
-      | some (nonce, c3) => .ok (ver, tkB, nonce, c3)
+    | some (tkB, c2) => .ok (ver, tkB, c2)
+
+/-- Stage 1.5 (between TxKind validation and InputCountMin): read nonce (U64LE).
+    Mirrors line 148 of BlockBasicV1.parseTxFromCursor — happens AFTER
+    validateTxKind, BEFORE getCompactSize for input count. -/
+def readNonceField (c : Cursor) : Except String (UInt64 × Cursor) :=
+  match c.getU64le? with
+  | none => .error "BLOCK_ERR_PARSE"
+  | some (nonce, c') => .ok (nonce, c')
 
 /-- Stage 3: parse all transaction inputs.
     Mirrors `parseInputsSkip c4 inCount` call in parseTxFromCursor. -/
@@ -734,32 +741,26 @@ def readLocktimeField (c : Cursor) : Except String (Nat × Cursor) :=
 theorem bridge_parse_header_version_short (c : Cursor)
     (h : c.getU32le? = none) :
     txParseStageOrd .HeaderRead = 0 ∧
-    readTxHeader c = .error "BLOCK_ERR_PARSE" := by
+    readTxHeaderFields c = .error "BLOCK_ERR_PARSE" := by
   constructor
   · rfl
-  · simp [readTxHeader, h]
+  · simp [readTxHeaderFields, h]
 
 -- Bridge: HeaderRead (stage 0) — version ok but insufficient bytes for txkind → error
 theorem bridge_parse_header_txkind_short (c : Cursor) (ver : Nat) (c1 : Cursor)
     (hVer : c.getU32le? = some (ver, c1))
     (hTk : c1.getU8? = none) :
     txParseStageOrd .HeaderRead = 0 ∧
-    readTxHeader c = .error "BLOCK_ERR_PARSE" := by
+    readTxHeaderFields c = .error "BLOCK_ERR_PARSE" := by
   constructor
   · rfl
-  · simp [readTxHeader, hVer, hTk]
+  · simp [readTxHeaderFields, hVer, hTk]
 
--- Bridge: HeaderRead (stage 0) — version+txkind ok but insufficient for nonce → error
-theorem bridge_parse_header_nonce_short (c : Cursor) (ver : Nat) (c1 : Cursor)
-    (tkB : UInt8) (c2 : Cursor)
-    (hVer : c.getU32le? = some (ver, c1))
-    (hTk : c1.getU8? = some (tkB, c2))
-    (hNonce : c2.getU64le? = none) :
-    txParseStageOrd .HeaderRead = 0 ∧
-    readTxHeader c = .error "BLOCK_ERR_PARSE" := by
-  constructor
-  · rfl
-  · simp [readTxHeader, hVer, hTk, hNonce]
+-- Bridge: nonce read (between TxKind and InputCountMin) — getU64le? = none → error
+theorem bridge_parse_nonce_short (c : Cursor)
+    (h : c.getU64le? = none) :
+    readNonceField c = .error "BLOCK_ERR_PARSE" := by
+  simp [readNonceField, h]
 
 -- Bridge: InputParse (stage 3) — parseInputsSkip returns none → error
 theorem bridge_parse_inputs_fail (c : Cursor) (n : Nat)
