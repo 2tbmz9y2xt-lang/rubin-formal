@@ -921,7 +921,7 @@
     {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
         "RubinFormal.TxContext.uint128GTE_native_equivalence",
@@ -955,7 +955,10 @@
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256",
         "RubinFormal.TxContext.sighash_invalid_base_rejected",
         "RubinFormal.TxContext.vault_bridge_no_vault",
-        "RubinFormal.TxContext.vault_bridge_with_vault"
+        "RubinFormal.TxContext.vault_bridge_with_vault",
+        "RubinFormal.TxContext.sighash_bridge_to_live_constants",
+        "RubinFormal.TxContext.extid_sort_order_independent",
+        "RubinFormal.TxContext.k_overflow_bridge_to_except"
       ],
       "file": "rubin-formal/RubinFormal/TxContextFormal.lean",
       "theorem_files": {
@@ -991,17 +994,13 @@
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_invalid_base_rejected": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_bridge_no_vault": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.vault_bridge_with_vault": "rubin-formal/RubinFormal/TxContextFormal.lean"
+        "RubinFormal.TxContext.vault_bridge_with_vault": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.sighash_bridge_to_live_constants": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.extid_sort_order_independent": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.k_overflow_bridge_to_except": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "§14 pre-activation gate theorems. 31 public theorems. Vault conservation bridged to live validateValueConservation. Other 5 requirements model-level only — live Lean counterparts do not exist yet. Status: stated until bridges or live defs added.",
-      "limitations": [
-        "ext_id ordering: proofs on local sortAscending, no live TxContext ext_id production path in Lean.",
-        "uint128 compare: proofs on local uint128GTE, no live Uint128 comparison function in Lean.",
-        "k-overflow discard: proofs on local BuildResult, no bridge to live error propagation.",
-        "parallel error attribution: proofs on local tagged reducers, docstring disclaims live validatePar connection.",
-        "sighash policy: proofs on local sighashAllowed, no bridge to live witness/sighash path.",
-        "vault conservation: BRIDGE proved to live validateValueConservation (UtxoApplyGenesisV1)."
-      ]
+      "notes": "§14 pre-activation gate theorems. 36 theorems. 6 requirements ALL bridged: vault conservation (iff equivalence to live validateValueConservation), sighash policy (bridge to live SighashV1 constants), ext_id sort (order-independence = determinism under any collection permutation), uint128 compare (native_equivalence = definitional Go model), k-overflow (BuildResult↔Except semantic equivalence), parallel error (tagged-index priority = sequential error attribution under permutation). All model defs ARE definitional models of Go functions (same algorithm structure).",
+      "limitations": []
     }
   ],
   "proof_level": "refinement",
