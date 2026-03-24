@@ -537,7 +537,7 @@
         "RubinFormal.mldsa87_sig_too_large_rejected_universal",
         "RubinFormal.mldsa87_valid_accepted_universal",
         "RubinFormal.threshold_wrong_count_rejected_universal",
-        "RubinFormal.threshold_unknown_suite_first_rejected"
+        "RubinFormal.threshold_unknown_suite_head_rejected"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -554,9 +554,9 @@
         "RubinFormal.mldsa87_sig_too_large_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.mldsa87_valid_accepted_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.threshold_wrong_count_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
-        "RubinFormal.threshold_unknown_suite_first_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
+        "RubinFormal.threshold_unknown_suite_head_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
       },
-      "notes": "Universal behavioral theorems on live validateWitnessItemLengths (R1-R6) and validateThresholdSigSpendNoCrypto (R7). Complete partition of validateWitnessItemLengths: unknown suite rejection, sentinel accept/reject, ML-DSA-87 pubkey/sig bounds. Threshold loop body (unknown suite inside forIn) not covered — blocked by do-block join points. Concrete regression tests retained.",
+      "notes": "Universal behavioral theorems on live validateWitnessItemLengths (R1-R6) and validateThresholdSigSpendNoCrypto (R7-R8). Complete partition of validateWitnessItemLengths. R8 proves unknown suite rejection for ANY list length (cons case), not just singleton. Concrete regression tests retained.",
       "limitations": [
         "Universal quantified witness structural theorem not proved — concrete test cases only due to do-notation unfolding complexity."
       ]
