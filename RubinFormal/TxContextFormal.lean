@@ -1,5 +1,6 @@
 import Std
 import RubinFormal.ArithmeticSafety
+import RubinFormal.UtxoApplyGenesisV1
 
 /-!
 # SPEC-TXCTX-01 §14 — Formal theorems for TxContext pre-activation gates
@@ -537,5 +538,37 @@ theorem sighash_invalid_base_rejected :
       sighashAllowed allowedSet.val 0x04 = false ∧
       sighashAllowed allowedSet.val 0x80 = false := by
   native_decide
+
+/-! ## BRIDGE: vault conservation model ↔ live validateValueConservation
+
+Only vault conservation has a live Lean counterpart. Other 5 requirements
+(ext_id, uint128, k-overflow, parallel, sighash) have no live Lean function
+to bridge to — their model defs are the only Lean representation. -/
+
+open UtxoApplyGenesisV1 in
+/-- BRIDGE: model no-vault → live no-vault (vaultInputCount=0). -/
+theorem vault_bridge_no_vault (totalIn totalOut vis : Nat) :
+    checkValueConservation totalIn totalOut vis false = true ↔
+    validateValueConservation totalOut totalIn 0 vis = .ok () := by
+  simp only [checkValueConservation, validateValueConservation]
+  constructor
+  · intro h; by_cases h1 : totalOut > totalIn <;> simp [h1] at h ⊢
+  · intro h; by_cases h1 : totalOut > totalIn <;> simp [h1] at h ⊢
+
+open UtxoApplyGenesisV1 in
+/-- BRIDGE: model with-vault → live with-vault (vaultInputCount=1). -/
+theorem vault_bridge_with_vault (totalIn totalOut vis : Nat) :
+    checkValueConservation totalIn totalOut vis true = true ↔
+    validateValueConservation totalOut totalIn 1 vis = .ok () := by
+  simp only [checkValueConservation, validateValueConservation]
+  constructor
+  · intro h
+    by_cases h1 : totalOut > totalIn
+    · simp [h1] at h
+    · simp [h1] at h ⊢; by_cases h2 : totalOut < vis <;> simp [h2] at h ⊢
+  · intro h
+    by_cases h1 : totalOut > totalIn
+    · simp [h1] at h
+    · simp [h1] at h ⊢; by_cases h2 : totalOut < vis <;> simp [h2] at h ⊢
 
 end RubinFormal.TxContext

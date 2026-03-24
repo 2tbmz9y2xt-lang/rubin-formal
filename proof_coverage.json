@@ -921,7 +921,7 @@
     {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
-      "status": "proved",
+      "status": "stated",
       "theorems": [
         "RubinFormal.TxContext.uint128GTE_correct",
         "RubinFormal.TxContext.uint128GTE_native_equivalence",
@@ -953,7 +953,9 @@
         "RubinFormal.TxContext.sighash_exactly_three_valid_base_types",
         "RubinFormal.TxContext.sighash_policy_complete",
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256",
-        "RubinFormal.TxContext.sighash_invalid_base_rejected"
+        "RubinFormal.TxContext.sighash_invalid_base_rejected",
+        "RubinFormal.TxContext.vault_bridge_no_vault",
+        "RubinFormal.TxContext.vault_bridge_with_vault"
       ],
       "file": "rubin-formal/RubinFormal/TxContextFormal.lean",
       "theorem_files": {
@@ -987,10 +989,19 @@
         "RubinFormal.TxContext.sighash_exactly_three_valid_base_types": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.sighash_invalid_base_rejected": "rubin-formal/RubinFormal/TxContextFormal.lean"
+        "RubinFormal.TxContext.sighash_invalid_base_rejected": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_bridge_no_vault": "rubin-formal/RubinFormal/TxContextFormal.lean",
+        "RubinFormal.TxContext.vault_bridge_with_vault": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "§14 pre-activation gate theorems. 31 public theorems, all LIVE. 6 formerly weak theorems strengthened: insertSorted_preserves_sorted (sortedness preservation), sortAscending_idempotent (general, zero preconditions), sortAscending_fixpoint (sorted→identity), vault_overspend_universal_reject (∀ vis hv), vault_conservation_with/without_vault_rejects_iff (exhaustive iff), sighash_exactly_three_valid_base_types (128-exhaustive).",
-      "limitations": []
+      "notes": "§14 pre-activation gate theorems. 31 public theorems. Vault conservation bridged to live validateValueConservation. Other 5 requirements model-level only — live Lean counterparts do not exist yet. Status: stated until bridges or live defs added.",
+      "limitations": [
+        "ext_id ordering: proofs on local sortAscending, no live TxContext ext_id production path in Lean.",
+        "uint128 compare: proofs on local uint128GTE, no live Uint128 comparison function in Lean.",
+        "k-overflow discard: proofs on local BuildResult, no bridge to live error propagation.",
+        "parallel error attribution: proofs on local tagged reducers, docstring disclaims live validatePar connection.",
+        "sighash policy: proofs on local sighashAllowed, no bridge to live witness/sighash path.",
+        "vault conservation: BRIDGE proved to live validateValueConservation (UtxoApplyGenesisV1)."
+      ]
     }
   ],
   "proof_level": "refinement",
