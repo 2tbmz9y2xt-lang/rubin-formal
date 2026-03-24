@@ -57,15 +57,24 @@
     {
       "op": "da_set_integrity",
       "gate": "CV-DA",
-      "model_theorem": "RubinFormal.da_set_integrity_proved",
+      "model_theorem": "RubinFormal.da_gate_ok_full",
       "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "theorem_file": "rubin-formal/RubinFormal/DaIntegrityV1.lean",
+      "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "evidence_level": "machine_checked_contract",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [
-        "Conformance replay covers full gate (validateBlockBasic + parseBlock + validateDASetIntegrity).",
-        "Per-error-code rejection on validateDASetIntegrity internals (duplicate commit, chunk hash mismatch, etc.) not individually proved due to mutable RBMap state in do-block. Covered by conformance replay instead."
+        "Per-error-code rejection on validateDASetIntegrity internals (duplicate commit, chunk hash mismatch, etc.) covered by conformance replay, not individual theorems, due to mutable RBMap state in do-block."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.da_gate_block_error",
+        "RubinFormal.da_gate_parse_error",
+        "RubinFormal.da_gate_integrity_error",
+        "RubinFormal.da_gate_all_ok",
+        "RubinFormal.da_gate_ok_implies_block_ok",
+        "RubinFormal.da_gate_ok_implies_das_ok",
+        "RubinFormal.da_empty_txs_accepted",
+        "RubinFormal.Conformance.cv_da_integrity_vectors_pass"
       ]
     }
   ]
