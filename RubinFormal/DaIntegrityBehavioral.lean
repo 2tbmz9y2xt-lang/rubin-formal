@@ -407,6 +407,89 @@ theorem witness_all_ok (ws : TxWeightV2.WitnessSectionResult)
     validateWitnessErrors ws = .ok () := by
   simp [validateWitnessErrors, h1, h2, h3, h4]
 
+/-! ## parseDATx error taxonomy (machine-checked, no compositional assumptions)
+
+Proved via 3-phase decomposition:
+- Phase 1 (parseDATxPhase1): structure parsing, only TX_ERR_PARSE
+- Phase 2 (validateWitnessErrors): 4-code taxonomy (already proved above)
+- Phase 3 (parseDATxPhase3): payload parsing, only TX_ERR_PARSE
+- Composition: parseDATx = Phase1 >>= Phase2 >>= Phase3, taxonomy = union -/
+
+set_option maxHeartbeats 3200000 in
+/-- Phase 1 taxonomy: all errors = TX_ERR_PARSE. -/
+theorem parseDATxPhase1_taxonomy (tx : Bytes) (err : String)
+    (h : parseDATxPhase1 tx = .error err) : err = "TX_ERR_PARSE" := by
+  unfold parseDATxPhase1 at h; simp only [] at h
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · exact absurd h (by simp)
+  split at h
+  next => split at h
+          next => cases h; rfl
+          next => exact absurd h (by simp)
+  next => split at h
+          next => cases h; rfl
+          next => exact absurd h (by simp)
+
+/-- Phase 3 taxonomy: all errors = TX_ERR_PARSE. -/
+theorem parseDATxPhase3_taxonomy (tk daLen : Nat) (c10 : Wire.Cursor) (minDa : Bool) (txSize : Nat)
+    (err : String) (h : parseDATxPhase3 tk daLen c10 minDa txSize = .error err) :
+    err = "TX_ERR_PARSE" := by
+  unfold parseDATxPhase3 at h
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  split at h; · cases h; rfl
+  cases h
+
+set_option maxHeartbeats 6400000 in
+/-- FULL parseDATx error taxonomy: machine-checked.
+    Any error from parseDATx is one of exactly 4 canonical codes. -/
+theorem parseDATx_error_taxonomy (tx : Bytes) (err : String)
+    (h : parseDATx tx = .error err) :
+    err = "TX_ERR_PARSE" ∨
+    err = "TX_ERR_WITNESS_OVERFLOW" ∨
+    err = "TX_ERR_SIG_ALG_INVALID" ∨
+    err = "TX_ERR_SIG_NONCANONICAL" := by
+  unfold parseDATx at h
+  split at h
+  next e _ =>
+    have := parseDATxPhase1_taxonomy tx e (by assumption)
+    cases h; exact Or.inl this
+  next p1 _ =>
+    split at h
+    next => cases h; exact Or.inl rfl
+    next ws _ =>
+      split at h
+      next e _ =>
+        cases h
+        have tax := validateWitnessErrors_taxonomy ws
+        rcases tax with hOv | hAlg | hNon | hOk
+        · have : validateWitnessErrors ws = .error "TX_ERR_WITNESS_OVERFLOW" := hOv; simp_all
+        · have : validateWitnessErrors ws = .error "TX_ERR_SIG_ALG_INVALID" := hAlg; simp_all
+        · have : validateWitnessErrors ws = .error "TX_ERR_SIG_NONCANONICAL" := hNon; simp_all
+        · have : validateWitnessErrors ws = .ok () := hOk; simp_all
+      next =>
+        split at h
+        next => cases h; exact Or.inl rfl
+        next _ _ =>
+          split at h
+          next e _ =>
+            have := parseDATxPhase3_taxonomy _ _ _ _ _ e (by assumption)
+            cases h; exact Or.inl this
+          next => cases h
+
 /-! ## Verify loop (LIVE on verifyCommitIntegrity) -/
 
 /-- Empty commit list → ok. -/

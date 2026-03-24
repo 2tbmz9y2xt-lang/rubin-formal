@@ -114,103 +114,107 @@ def validateWitnessErrors (ws : TxWeightV2.WitnessSectionResult) : Except String
     .error "TX_ERR_SIG_NONCANONICAL"
   else .ok ()
 
-def parseDATx (tx : Bytes) : Except String ParsedDATx := do
+/-- Phase 1: structure parsing + DA core fields. Only TX_ERR_PARSE.
+    Explicit match (no do) for formal taxonomy proof. -/
+structure DATxPhase1Result where
+  tk : Nat
+  outs : List TxOut
+  commitDaId : Option Bytes
+  commitChunkCount : Option Nat
+  chunkDaId : Option Bytes
+  chunkIndex : Option Nat
+  chunkHash : Option Bytes
+  witnessCursor : Cursor
+
+def parseDATxPhase1 (tx : Bytes) : Except String DATxPhase1Result :=
   let c0 : Cursor := { bs := tx, off := 0 }
-  let (_, c1) ←
-    match c0.getU32le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (tkB, c2) ←
+  match c0.getU32le? with
+  | none => .error "TX_ERR_PARSE"
+  | some (_, c1) =>
     match c1.getU8? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let tk := tkB.toNat
-  if !(tk == 0x00 || tk == 0x01 || tk == 0x02) then throw "TX_ERR_PARSE"
-  let (_, c3) ←
-    match c2.getU64le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (inCount, c4, minIn) ←
-    match c3.getCompactSize? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if !minIn then throw "TX_ERR_PARSE"
-  let c5 ←
-    match RubinFormal.TxWeightV2.parseInputsSkip c4 inCount with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (outCount, c6, minOut) ←
-    match c5.getCompactSize? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if !minOut then throw "TX_ERR_PARSE"
-  let (outs, c7) ←
-    match parseOutputsLite c6 outCount with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (_, c8) ←
-    match c7.getU32le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
+    | none => .error "TX_ERR_PARSE"
+    | some (tkB, c2) =>
+      let tk := tkB.toNat
+      if !(tk == 0x00 || tk == 0x01 || tk == 0x02) then .error "TX_ERR_PARSE"
+      else match c2.getU64le? with
+        | none => .error "TX_ERR_PARSE"
+        | some (_, c3) =>
+          match c3.getCompactSize? with
+          | none => .error "TX_ERR_PARSE"
+          | some (inCount, c4, minIn) =>
+            if !minIn then .error "TX_ERR_PARSE"
+            else match TxWeightV2.parseInputsSkip c4 inCount with
+              | none => .error "TX_ERR_PARSE"
+              | some c5 =>
+                match c5.getCompactSize? with
+                | none => .error "TX_ERR_PARSE"
+                | some (outCount, c6, minOut) =>
+                  if !minOut then .error "TX_ERR_PARSE"
+                  else match parseOutputsLite c6 outCount with
+                    | none => .error "TX_ERR_PARSE"
+                    | some (outs, c7) =>
+                      match c7.getU32le? with
+                      | none => .error "TX_ERR_PARSE"
+                      | some (_, c8) =>
+                        if tk == 0x00 then
+                          .ok { tk, outs, commitDaId := none, commitChunkCount := none,
+                                chunkDaId := none, chunkIndex := none, chunkHash := none,
+                                witnessCursor := c8 }
+                        else if tk == 0x01 then
+                          match parseDaCommitCore c8 with
+                          | none => .error "TX_ERR_PARSE"
+                          | some (daId, cc, c') =>
+                            .ok { tk, outs, commitDaId := some daId, commitChunkCount := some cc,
+                                  chunkDaId := none, chunkIndex := none, chunkHash := none,
+                                  witnessCursor := c' }
+                        else
+                          match parseDaChunkCore c8 with
+                          | none => .error "TX_ERR_PARSE"
+                          | some (daId, idx, h, c') =>
+                            .ok { tk, outs, commitDaId := none, commitChunkCount := none,
+                                  chunkDaId := some daId, chunkIndex := some idx,
+                                  chunkHash := some h, witnessCursor := c' }
 
-  let mut commitDaId : Option Bytes := none
-  let mut commitChunkCount : Option Nat := none
-  let mut chunkDaId : Option Bytes := none
-  let mut chunkIndex : Option Nat := none
-  let mut chunkHash : Option Bytes := none
-  let c9 ←
-    if tk == 0x00 then
-      pure c8
-    else if tk == 0x01 then
-      match parseDaCommitCore c8 with
-      | none => throw "TX_ERR_PARSE"
-      | some (daId, cc, c') =>
-          commitDaId := some daId
-          commitChunkCount := some cc
-          pure c'
-    else
-      match parseDaChunkCore c8 with
-      | none => throw "TX_ERR_PARSE"
-      | some (daId, idx, h, c') =>
-          chunkDaId := some daId
-          chunkIndex := some idx
-          chunkHash := some h
-          pure c'
+/-- Phase 3: DA payload parsing. Only TX_ERR_PARSE.
+    Explicit match (no do) for formal taxonomy proof. -/
+def parseDATxPhase3 (tk daLen : Nat) (c10 : Cursor) (minDa : Bool) (txSize : Nat)
+    : Except String (Bytes × Cursor) :=
+  if !minDa then .error "TX_ERR_PARSE"
+  else if tk == 0x00 && daLen != 0 then .error "TX_ERR_PARSE"
+  else if tk == 0x01 && daLen > MAX_DA_MANIFEST_BYTES_PER_TX then .error "TX_ERR_PARSE"
+  else if tk != 0x00 && tk != 0x01 && (daLen < 1 || daLen > CHUNK_BYTES) then .error "TX_ERR_PARSE"
+  else match c10.getBytes? daLen with
+    | none => .error "TX_ERR_PARSE"
+    | some (payload, c11) =>
+      if c11.off != txSize then .error "TX_ERR_PARSE"
+      else .ok (payload, c11)
 
-  let ws ←
-    match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  validateWitnessErrors ws
-
-  let (daLen, c10, minDa) ←
-    match ws.cursor.getCompactSize? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if !minDa then throw "TX_ERR_PARSE"
-  if tk == 0x00 then
-    if daLen != 0 then throw "TX_ERR_PARSE"
-  else if tk == 0x01 then
-    if daLen > MAX_DA_MANIFEST_BYTES_PER_TX then throw "TX_ERR_PARSE"
-  else
-    if daLen < 1 || daLen > CHUNK_BYTES then throw "TX_ERR_PARSE"
-  let (payload, c11) ←
-    match c10.getBytes? daLen with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if c11.off != tx.size then
-    throw "TX_ERR_PARSE"
-
-  pure {
-    txKind := tk
-    commitDaId := commitDaId
-    commitChunkCount := commitChunkCount
-    chunkDaId := chunkDaId
-    chunkIndex := chunkIndex
-    chunkHash := chunkHash
-    outputs := outs
-    payload := payload
-  }
+/-- Compose phases into parseDATx.
+    Phase 1 (structure) → Phase 2 (witness) → Phase 3 (payload). -/
+def parseDATx (tx : Bytes) : Except String ParsedDATx :=
+  match parseDATxPhase1 tx with
+  | .error e => .error e
+  | .ok p1 =>
+    match TxWeightV2.parseWitnessSectionForWeight p1.witnessCursor with
+    | none => .error "TX_ERR_PARSE"
+    | some ws =>
+      match validateWitnessErrors ws with
+      | .error e => .error e
+      | .ok () =>
+        match ws.cursor.getCompactSize? with
+        | none => .error "TX_ERR_PARSE"
+        | some (daLen, c10, minDa) =>
+          match parseDATxPhase3 p1.tk daLen c10 minDa tx.size with
+          | .error e => .error e
+          | .ok (payload, _) =>
+            .ok { txKind := p1.tk
+                , commitDaId := p1.commitDaId
+                , commitChunkCount := p1.commitChunkCount
+                , chunkDaId := p1.chunkDaId
+                , chunkIndex := p1.chunkIndex
+                , chunkHash := p1.chunkHash
+                , outputs := p1.outs
+                , payload := payload }
 
 /-- Batch count limit check. LIVE sub-function (line 226-227). -/
 def validateDaBatchCount (commitCount : Nat) : Except String Unit :=
