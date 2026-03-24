@@ -6,8 +6,9 @@ import RubinFormal.UtxoApplyGenesisV1
 
 Models behavioral properties of the TxContext bundle construction path
 with REAL parameters (totalIn, totalOut, height, continuing data).
-WIRED into connectBlockFull (ConnectBlockFull.lean) — buildTxContext is
-called as part of the live block connection pipeline.
+WIRED into `buildTxContextLive` / `connectBlockFullComputed`
+(ConnectBlockFull.lean) — the computed path folds actual value lists and
+derives gate inputs from the same TxContext input bundle.
 
 Ext_id ordering, Uint128 comparison, K-overflow, and vault bridges are
 closed here on the live TxContext helper surface.
@@ -126,9 +127,9 @@ theorem continuing_output_count_accepts_in_range (count : Nat)
 /-- Build TxContext bundle from real parameters.
     Models Go BuildTxContext / Rust build_tx_context.
     Takes actual totalIn, totalOut, height, and continuing data.
-    Called from connectBlockFull (block-level) with block aggregates,
-    AND from buildPerTxContextFromData (ConnectBlockFull.lean) with per-tx
-    resolved input/output value lists. Per-tx properties proved via
+    Called from the aggregate compatibility wrapper in ConnectBlockFull.lean,
+    AND from buildPerTxContextFromData / connectBlockFullComputed with per-tx
+    resolved input/output value lists. Computed-path properties proved via
     perTx_base_values_computed and perTx_ext_ids_preserved. -/
 def buildTxContext
     (activeExtIds : List Nat)

@@ -251,14 +251,12 @@ jobs:
                 attempt = await callModel(false);
               }
               if (!attempt.ok) {
-                core.warning(`Security review degraded: model ${modelId} returned ${attempt.status}: ${(attempt.body || '').slice(0, 200)}`);
-                result = '';
+                throw new Error(`Security review model ${modelId} returned ${attempt.status}: ${(attempt.body || '').slice(0, 200)}`);
               } else {
                 result = attempt.content;
               }
             } catch (err) {
-              core.warning(`Security review degraded: model ${modelId} error: ${err.message}`);
-              result = '';
+              throw new Error(`Security review failed before validated findings were produced: ${err.message}`);
             }
             if (typeof result === 'string' && result.trim() !== '') {
               fs.writeFileSync(rawOutputPath, result, 'utf8');
@@ -269,13 +267,7 @@ jobs:
               const preview = (parsedResult.normalized || String(result || ''))
                 .replace(/\s+/g, ' ')
                 .slice(0, 180);
-              core.warning(`Security review degraded: invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
-              parsed = {
-                model: modelId,
-                degraded: true,
-                findings: [],
-                summary: 'Security review degraded: model output was not valid JSON, so no validated findings were emitted. See raw artifact / workflow warning for details.'
-              };
+              throw new Error(`Security review produced invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
             }
 
             const changedSet = new Set(changedLeanFiles);

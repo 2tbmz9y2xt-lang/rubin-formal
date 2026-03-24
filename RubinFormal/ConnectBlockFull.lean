@@ -33,9 +33,22 @@ structure TxContextInputData where
   outputValues : List Nat
   activeExtIds : List Nat
   continuingData : List (Nat × TxContextContinuing)
-  continuingCounts : List Nat
   allowedSighashSet : UInt8
-  sighashType : UInt8
+  sighashWitness : WitnessItem
+
+/-- Derive the raw continuing-output counts from the same bundle data that
+    will later be packed into the computed TxContext. This avoids validating
+    detached metadata. -/
+def continuingCountsFromData (continuingData : List (Nat × TxContextContinuing)) : List Nat :=
+  continuingData.map fun pair => pair.2.count
+
+/-- Extract the actual sighash byte from a witness item.
+    Empty signatures fail before the policy gate runs. -/
+def extractTxContextSighashType (w : WitnessItem) : Except String UInt8 :=
+  if w.signature.size = 0 then
+    .error "TX_ERR_SIG_INVALID"
+  else
+    .ok (w.signature.get! (w.signature.size - 1))
 
 /-- Validate all raw continuing-output counts before packing the TxContext bundle.
     This wires the K-overflow reject helper into the live computed TxContext path. -/
@@ -56,6 +69,14 @@ def validateTxContextSighashGate (allowedSet sighashType : UInt8) : Except Strin
     .ok ()
   else
     .error "TX_ERR_SIG_ALG_INVALID"
+
+/-- Validate the txcontext sighash gate from the live witness bytes rather
+    than a detached metadata byte. -/
+def validateTxContextSighashWitness
+    (allowedSet : UInt8) (w : WitnessItem) : Except String Unit :=
+  match extractTxContextSighashType w with
+  | .error err => .error err
+  | .ok sighashType => validateTxContextSighashGate allowedSet sighashType
 
 /-- Full block connection pipeline.
     TxContext parameters are threaded through for backward compatibility
@@ -86,7 +107,8 @@ def connectBlockFull
 /-- Full block connection with COMPUTED TxContext from tx data.
     This is the CORRECT version: TxContext is computed from resolved
     input/output values, not passed as free parameters.
-    Uses buildTxContextLive which folds actual value lists. -/
+    Uses buildTxContextLive which folds actual value lists and derives
+    all pre-activation gate inputs from the same TxContext input bundle. -/
 def connectBlockFullComputed
     (nonCoinbaseTxs : List Bytes)
     (coinbaseOutputs : List CovenantGenesisV1.TxOut)
@@ -110,10 +132,10 @@ def connectBlockFullComputed
                 , sumFees := sumFees
                 , txContext := none }
         | some d =>
-            match validateTxContextContinuingCounts d.continuingCounts with
+            match validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) with
             | .error e => .error e
             | .ok () =>
-                match validateTxContextSighashGate d.allowedSighashSet d.sighashType with
+                match validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness with
                 | .error e => .error e
                 | .ok () =>
                     .ok { utxoMap := addCoinbaseOutputs coinbaseOutputs coinbaseTxid height postTxUtxos
@@ -126,8 +148,8 @@ theorem connectBlockFullComputed_eq_connectBlockFull
     (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
     (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData) :
-    validateTxContextContinuingCounts d.continuingCounts = .ok () →
-    validateTxContextSighashGate d.allowedSighashSet d.sighashType = .ok () →
+    validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) = .ok () →
+    validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness = .ok () →
     connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) =
     connectBlockFull nctxs couts ctxid utxos h bt cid sub
       d.activeExtIds (sumInputValues d.inputValues) (sumOutputValues d.outputValues) d.continuingData := by
@@ -168,11 +190,11 @@ theorem connectBlockFullComputed_txcontext_correct
       | .error _ => simp [hV] at hOk
       | .ok () =>
         simp [hV] at hOk
-        match hCounts : validateTxContextContinuingCounts d.continuingCounts with
+        match hCounts : validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) with
         | .error _ => simp [hCounts] at hOk
         | .ok () =>
           simp [hCounts] at hOk
-          match hSighash : validateTxContextSighashGate d.allowedSighashSet d.sighashType with
+          match hSighash : validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness with
           | .error _ => simp [hSighash] at hOk
           | .ok () =>
             simp [hSighash] at hOk
