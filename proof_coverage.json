@@ -802,7 +802,7 @@
         "RubinFormal.witness_all_ok": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
         "RubinFormal.da_integrity_empty": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean"
       },
-      "notes": "Full behavioral closure: all for-loops decomposed into recursive functions. accumulateDATxs, verifyCommitIntegrity, collectChunkPayloads, checkOrphanChunks — all recursive with per-step error propagation theorems. parseDATx error taxonomy: 4 codes exhaustively covered. 59 theorems total.",
+      "notes": "Full behavioral closure: all for-loops decomposed into recursive functions (accumulateDATxs, verifyCommitIntegrity, collectChunkPayloads, checkOrphanChunks). Per-step error propagation for every branch. parseDATx error taxonomy: 4 codes exhaustively covered via phase decomposition. 56 substantive theorems + 5 inductive base cases (rfl). 61 total.",
       "limitations": []
     },
     {
