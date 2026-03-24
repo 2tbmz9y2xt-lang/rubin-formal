@@ -1017,11 +1017,10 @@ theorem tx_semantic_pipeline_deterministic :
     (∀ a b, txSemanticStageOrd a = txSemanticStageOrd b → a = b) := by
   exact ⟨semantic_stage_chain, txSemanticStageOrd_injective⟩
 
-/-- CORE_EXT error ordering contract: parse errors dominate suite errors,
-    which dominate signature errors — AND this ordering matches the live
-    `dispatchCovenantValidation` / `applyWitnessChecks` functions.
-    Bridges: `bridge_ext_parse_to_dispatch`, `bridge_ext_suite_to_witness`,
-    `bridge_ext_sig_to_witness`. -/
+/-- CORE_EXT error ordering: model-level strict priority + commutativity.
+    Live grounding is provided separately by `bridge_ext_parse_to_dispatch`,
+    `bridge_ext_suite_to_witness`, `bridge_ext_sig_to_witness` (each conditional
+    on concrete per-tx hypotheses, so not bundled into this universal statement). -/
 theorem ext_error_pipeline_deterministic :
     CoreExtRefinement.errorPriority .ParseError <
       CoreExtRefinement.errorPriority .SuiteDisallowed ∧
