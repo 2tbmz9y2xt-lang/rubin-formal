@@ -192,4 +192,44 @@ theorem threshold_unknown_suite_head_rejected
   simp [hLen', hNotS, hNotM]
   show Except.error "TX_ERR_SIG_ALG_INVALID" = Except.error "TX_ERR_SIG_ALG_INVALID"; rfl
 
+/-! ## forIn.loop infrastructure for threshold loop induction -/
+
+/-- forIn.loop on cons where body yields → recurse on tail. -/
+private theorem forIn_loop_yield {α β : Type}
+    {body : α → β → Except String (ForInStep β)}
+    {a : α} {as : List α} {b b' : β}
+    (hYield : body a b = .ok (.yield b')) :
+    List.forIn.loop body (a :: as) b = List.forIn.loop body as b' := by
+  show body a b >>= _ = _; rw [hYield]; rfl
+
+/-- forIn.loop on cons where body errors → error propagates. -/
+private theorem forIn_loop_error {α β : Type}
+    {body : α → β → Except String (ForInStep β)}
+    {a : α} {as : List α} {b : β} {e : String}
+    (hErr : body a b = .error e) :
+    List.forIn.loop body (a :: as) b = (Except.error e : Except String β) := by
+  show body a b >>= _ = _; rw [hErr]; rfl
+
+/-- **First-error-wins for forIn on List+Except:** if all elements in `safe`
+    prefix yield, and `bad` element errors, the whole forIn returns that error.
+    Proved by induction on the prefix list. -/
+theorem forIn_loop_safe_then_error
+    {body : (WitnessItem × Bytes) → Nat → Except String (ForInStep Nat)}
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (init : Nat)
+    (hSafe : ∀ (p : WitnessItem × Bytes) (acc : Nat), p ∈ safe →
+      ∃ acc', body p acc = .ok (.yield acc'))
+    (hBad : ∀ acc, body bad acc = .error "TX_ERR_SIG_ALG_INVALID") :
+    List.forIn.loop body (safe ++ bad :: rest) init =
+    (Except.error "TX_ERR_SIG_ALG_INVALID" : Except String Nat) := by
+  induction safe generalizing init with
+  | nil => simp; exact forIn_loop_error (hBad init)
+  | cons p ps ih =>
+    simp only [List.cons_append]
+    have ⟨acc', hYield⟩ := hSafe p init (List.mem_cons_self _ _)
+    rw [forIn_loop_yield hYield]
+    exact ih acc' (fun q acc hq => hSafe q acc (List.mem_cons_of_mem _ hq))
+
 end RubinFormal
