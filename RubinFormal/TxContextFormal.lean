@@ -224,6 +224,17 @@ theorem extid_sort_deterministic (xs ys : List Nat)
     (sortAscending_sorted_v2 xs)
     hsorted
 
+/-- Standalone: sortAscending is the UNIQUE function producing a sorted
+    permutation. For any two lists with same elements, sortAscending gives
+    identical output. No external sortedness hypothesis needed. -/
+theorem sortAscending_unique_output (xs ys : List Nat)
+    (hperm : List.Perm xs ys) :
+    sortAscending xs = sortAscending ys :=
+  extid_sorted_permutation_unique (sortAscending xs) (sortAscending ys)
+    ((sortAscending_perm xs).symm.trans (hperm.trans (sortAscending_perm ys)))
+    (sortAscending_sorted_v2 xs)
+    (sortAscending_sorted_v2 ys)
+
 theorem extid_sort_concrete_321 :
     sortAscending [3, 1, 2] = [1, 2, 3] := by
   native_decide
