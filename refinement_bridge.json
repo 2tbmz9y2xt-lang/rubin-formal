@@ -60,11 +60,12 @@
       "model_theorem": "RubinFormal.da_set_integrity_proved",
       "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityV1.lean",
-      "evidence_level": "baseline",
+      "evidence_level": "machine_checked_contract",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [
-        "Proves non-emptiness invariant (empty chunk set is invalid). Does not cover the full DA validation pipeline including chunk hashing and manifest verification."
+        "Conformance replay covers full gate (validateBlockBasic + parseBlock + validateDASetIntegrity).",
+        "Per-error-code rejection on validateDASetIntegrity internals (duplicate commit, chunk hash mismatch, etc.) not individually proved due to mutable RBMap state in do-block. Covered by conformance replay instead."
       ]
     }
   ]
