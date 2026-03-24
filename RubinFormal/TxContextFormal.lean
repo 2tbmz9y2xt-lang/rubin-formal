@@ -31,7 +31,8 @@ theorem uint128GTE_correct (a b : Uint128) :
 private theorem limb_gt_implies_ge (hi_a lo_a hi_b lo_b B : Nat)
     (hgt : hi_a > hi_b) (hlob : lo_b < B) :
     hi_a * B + lo_a ≥ hi_b * B + lo_b := by
-  have h1 : (hi_b + 1) * B ≤ hi_a * B := Nat.mul_le_mul_right B hgt
+  have hsucc : hi_b + 1 ≤ hi_a := Nat.succ_le_of_lt hgt
+  have h1 : (hi_b + 1) * B ≤ hi_a * B := Nat.mul_le_mul_right B hsucc
   have h3 : (hi_b + 1) * B = hi_b * B + B := Nat.succ_mul hi_b B
   have h4 : hi_b * B + B ≤ hi_a * B := h3 ▸ h1
   have hlt : hi_b * B + lo_b < hi_a * B + lo_a :=
@@ -52,7 +53,8 @@ private theorem hi_gt_implies_ge (a b : Uint128) (hgt : a.hi > b.hi) :
 private theorem limb_lt_implies_lt (hi_a lo_a hi_b lo_b B : Nat)
     (hlt : hi_a < hi_b) (hloa : lo_a < B) :
     hi_a * B + lo_a < hi_b * B + lo_b := by
-  have h1 : (hi_a + 1) * B ≤ hi_b * B := Nat.mul_le_mul_right B hlt
+  have hsucc : hi_a + 1 ≤ hi_b := Nat.succ_le_of_lt hlt
+  have h1 : (hi_a + 1) * B ≤ hi_b * B := Nat.mul_le_mul_right B hsucc
   have h3 : (hi_a + 1) * B = hi_a * B + B := Nat.succ_mul hi_a B
   have h4 : hi_a * B + B ≤ hi_b * B := h3 ▸ h1
   calc hi_a * B + lo_a
