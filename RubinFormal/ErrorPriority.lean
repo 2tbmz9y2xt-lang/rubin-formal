@@ -1016,11 +1016,12 @@ theorem consensus_error_ordering_contract
 
 /-- Tx parse pipeline: stage ordering is strict (all 8 adjacent pairs) +
     injective. This theorem proves the MODEL ordering; live grounding is
-    provided by separate bridge theorems: `bridge_parse_header_*` (stage 0),
-    `bridge_parse_txkind` (1), `bridge_parse_inputmin` (2),
-    `bridge_parse_inputs_fail` (3), `bridge_parse_outputmin` (4),
-    `bridge_parse_outputs_fail` (5), `bridge_parse_locktime_short` (6),
-    `bridge_parse_witness` (7), `bridge_parse_dalen` (8). -/
+    provided by separate bridge theorems: `ptfc_header_version_fail` /
+    `ptfc_header_txkind_fail` (stage 0), `bridge_parse_txkind` (1),
+    `bridge_parse_inputmin` (2), `ptfc_inputs_fail` (3),
+    `bridge_parse_outputmin` (4), `ptpi_outputs_fail` (5),
+    `ptpi_locktime_fail` (6), `bridge_parse_witness` (7),
+    `bridge_parse_dalen` (8). -/
 theorem tx_parse_pipeline_deterministic :
     -- Strict stage ordering (all 8 adjacent pairs, complete chain 0..8)
     (txParseStageOrd .HeaderRead < txParseStageOrd .TxKind ∧
