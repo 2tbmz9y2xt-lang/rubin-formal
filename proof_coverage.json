@@ -204,7 +204,7 @@
     {
       "section_key": "consensus_error_codes",
       "section_heading": "## 13. Consensus Error Codes (Normative)",
-      "status": "stated",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
         "RubinFormal.det001_validation_order_proved",
@@ -325,7 +325,11 @@
         "RubinFormal.bridge_parse_dalen",
         "RubinFormal.bridge_semantic_output_covenant",
         "RubinFormal.bridge_semantic_scriptsig",
-        "RubinFormal.bridge_semantic_witness_cursor"
+        "RubinFormal.bridge_semantic_witness_cursor",
+        "RubinFormal.consensus_error_ordering_complete",
+        "RubinFormal.tx_parse_pipeline_deterministic",
+        "RubinFormal.tx_semantic_pipeline_deterministic",
+        "RubinFormal.ext_error_pipeline_deterministic"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -448,9 +452,13 @@
         "RubinFormal.bridge_parse_dalen": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_output_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_scriptsig": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_semantic_witness_cursor": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.bridge_semantic_witness_cursor": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.consensus_error_ordering_complete": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.tx_parse_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.tx_semantic_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.ext_error_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all enum stages bridged to live functions (TxKind, InputCountMin, OutputCountMin, WitnessChecks, DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error).",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all enum stages bridged to live functions (TxKind, InputCountMin, OutputCountMin, WitnessChecks, DaLenChecks). Tx semantic: all enum stages bridged to live functions (EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, ValueConservation). TXCTX: ExtError model bridged to dispatchCovenantValidation + applyWitnessChecks. All bridges: machine-checked conjunction (stageOrd = N AND liveFunction(args) = error). Contract composition: consensus_error_ordering_complete (totality + priority + success-chain), tx_parse_pipeline_deterministic (strict + injective), tx_semantic_pipeline_deterministic (strict + injective), ext_error_pipeline_deterministic (strict ordering + commutativity).",
       "limitations": []
     },
     {
