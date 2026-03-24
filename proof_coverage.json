@@ -939,9 +939,6 @@
         "RubinFormal.TxContext.vault_conservation_rejects_under_vault_sum",
         "RubinFormal.TxContext.vault_conservation_accepts_when_bounds_hold",
         "RubinFormal.TxContext.vault_sum_ignored_when_no_vault",
-        "RubinFormal.TxContext.parallel_error_equivalence",
-        "RubinFormal.TxContext.parallel_all_perm_invariant",
-        "RubinFormal.TxContext.parallel_any_fail_perm_invariant",
         "RubinFormal.TxContext.parallel_error_index_priority_of_tagged_permutation",
         "RubinFormal.TxContext.sighash_policy_complete",
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256",
@@ -966,16 +963,13 @@
         "RubinFormal.TxContext.vault_conservation_rejects_under_vault_sum": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_conservation_accepts_when_bounds_hold": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.vault_sum_ignored_when_no_vault": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.parallel_error_equivalence": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.parallel_all_perm_invariant": "rubin-formal/RubinFormal/TxContextFormal.lean",
-        "RubinFormal.TxContext.parallel_any_fail_perm_invariant": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.parallel_error_index_priority_of_tagged_permutation": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_complete": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_policy_exhaustive_256x256": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sighash_invalid_base_rejected": "rubin-formal/RubinFormal/TxContextFormal.lean",
         "RubinFormal.TxContext.sortAscending_unique_output": "rubin-formal/RubinFormal/TxContextFormal.lean"
       },
-      "notes": "§14 pre-activation gate theorems. 33 theorems covering: uint128 comparison (correctness + native equivalence), ext_id sort (permutation + sorted + uniqueness + determinism + concrete CV vectors), n_total equivalence, k-overflow discard, vault conservation (reject + accept + bounds + no-vault), parallel error/permutation invariance (All/Any/lowestFailIdx perm-invariant + tagged priority), sighash policy (exhaustive 256x256 + invalid base rejection).",
+      "notes": "§14 pre-activation gate theorems. 21 registered (17 substantive LIVE + 1 structural + 3 concrete smoke tests). 3 generic list wrappers removed from registry (parallel_error_equivalence, parallel_all/any_perm_invariant — trivial Perm.map/mem_iff applications). Coverage: uint128 comparison, ext_id sort (perm+sorted+uniqueness+determinism+standalone), vault conservation (reject+accept+bounds+inactive), parallel tagged-index priority, sighash policy (256x256 exhaustive + invalid base).",
       "limitations": []
     }
   ],
