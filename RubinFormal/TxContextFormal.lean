@@ -188,17 +188,17 @@ private theorem sorted_perm_unique_when_both_sorted :
       have hx_mem : x ∈ y :: ys := hperm.mem_iff.mp (by simp)
       have hy_mem : y ∈ x :: xs := hperm.symm.mem_iff.mp (by simp)
       have hxy : x ≤ y := by
-        have hcons := List.pairwise_cons.mp hys
-        rw [List.mem_cons] at hx_mem
-        rcases hx_mem with rfl | hmem
-        · exact Nat.le_refl _
-        · exact hcons.1 x hmem
-      have hyx : y ≤ x := by
         have hcons := List.pairwise_cons.mp hxs
         rw [List.mem_cons] at hy_mem
         rcases hy_mem with rfl | hmem
         · exact Nat.le_refl _
         · exact hcons.1 y hmem
+      have hyx : y ≤ x := by
+        have hcons := List.pairwise_cons.mp hys
+        rw [List.mem_cons] at hx_mem
+        rcases hx_mem with rfl | hmem
+        · exact Nat.le_refl _
+        · exact hcons.1 x hmem
       have hEq : x = y := Nat.le_antisymm hxy hyx
       subst hEq
       have hperm_tail : List.Perm xs ys := List.Perm.cons_inv hperm
