@@ -376,7 +376,7 @@ private theorem lowestFailIdx_perm_invariant {xs ys : List (Nat × Bool)}
     lowestFailIdx? xs = lowestFailIdx? ys := by
   induction hperm with
   | nil => rfl
-  | cons x hperm ih => simpa [lowestFailIdx?, ih]
+  | cons x _ ih => simp [lowestFailIdx?, ih]
   | swap x y zs =>
       cases x with
       | mk i oki =>
@@ -388,7 +388,7 @@ private theorem lowestFailIdx_perm_invariant {xs ys : List (Nat × Bool)}
                 cases lowestFailIdx? zs with
                 | none => simp [Nat.min_def]; split <;> split <;> omega
                 | some k => simp [Nat.min_def]; repeat (first | split | omega))
-  | trans h1 h2 ih1 ih2 => exact ih1.trans ih2
+  | trans _ _ ih1 ih2 => exact ih1.trans ih2
 
 /-- The lowest-index attribution theorem proved here is for canonically indexed
     worker outputs up to permutation. It does not by itself instantiate the
