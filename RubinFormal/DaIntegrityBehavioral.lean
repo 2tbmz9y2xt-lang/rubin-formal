@@ -91,16 +91,50 @@ theorem da_gate_all_ok (blockBytes : Bytes) (ph pt : Option Bytes)
   show (do let pb' ← BlockBasicV1.parseBlock blockBytes; validateDASetIntegrity pb'.txs) = _
   rw [hP]; exact hD
 
-/-! ## Gate composition (BRIDGE)
+/-! ## Gate success invariants (LIVE)
 
-Proves the gate IS the composition — not just that it calls both. -/
+Non-trivial: gate success implies ALL sub-steps passed.
+Proved by contradiction (if any sub-step failed, gate would fail). -/
 
-/-- Gate = validateBlockBasic >> parseBlock >> validateDASetIntegrity. -/
-theorem da_gate_eq_composition (blockBytes : Bytes) (ph pt : Option Bytes) :
-    validateDaIntegrityGate blockBytes ph pt =
-    (do BlockBasicV1.validateBlockBasic blockBytes ph pt
-        let pb ← BlockBasicV1.parseBlock blockBytes
-        validateDASetIntegrity pb.txs) := rfl
+/-- Gate success → block validation passed. -/
+theorem da_gate_ok_implies_block_ok (blockBytes : Bytes) (ph pt : Option Bytes)
+    (hOk : validateDaIntegrityGate blockBytes ph pt = .ok ()) :
+    BlockBasicV1.validateBlockBasic blockBytes ph pt = .ok () := by
+  cases hBB : BlockBasicV1.validateBlockBasic blockBytes ph pt with
+  | ok _ => rfl
+  | error e =>
+    exfalso; have : validateDaIntegrityGate blockBytes ph pt = .error e := by
+      unfold validateDaIntegrityGate; rw [hBB]; rfl
+    simp [this] at hOk
+
+/-- Gate success → parse ok AND DA integrity ok. -/
+theorem da_gate_ok_implies_das_ok (blockBytes : Bytes) (ph pt : Option Bytes)
+    (hOk : validateDaIntegrityGate blockBytes ph pt = .ok ()) :
+    ∃ pb, BlockBasicV1.parseBlock blockBytes = .ok pb ∧
+          validateDASetIntegrity pb.txs = .ok () := by
+  have hB := da_gate_ok_implies_block_ok blockBytes ph pt hOk
+  cases hP : BlockBasicV1.parseBlock blockBytes with
+  | error e =>
+    exfalso; have : validateDaIntegrityGate blockBytes ph pt = .error e := by
+      unfold validateDaIntegrityGate; rw [hB]
+      show (do let pb ← BlockBasicV1.parseBlock blockBytes; validateDASetIntegrity pb.txs) = _
+      rw [hP]; rfl
+    simp [this] at hOk
+  | ok pb =>
+    refine ⟨pb, rfl, ?_⟩
+    unfold validateDaIntegrityGate at hOk; rw [hB] at hOk
+    have hDo : (do let pb' ← BlockBasicV1.parseBlock blockBytes; validateDASetIntegrity pb'.txs) =
+               validateDASetIntegrity pb.txs := by rw [hP]; rfl
+    rw [hDo] at hOk; exact hOk
+
+/-- Gate success full decomposition: block ok ∧ DA integrity ok. -/
+theorem da_gate_ok_full (blockBytes : Bytes) (ph pt : Option Bytes)
+    (hOk : validateDaIntegrityGate blockBytes ph pt = .ok ()) :
+    BlockBasicV1.validateBlockBasic blockBytes ph pt = .ok () ∧
+    ∃ pb, BlockBasicV1.parseBlock blockBytes = .ok pb ∧
+          validateDASetIntegrity pb.txs = .ok () :=
+  ⟨da_gate_ok_implies_block_ok blockBytes ph pt hOk,
+   da_gate_ok_implies_das_ok blockBytes ph pt hOk⟩
 
 /-! ## Conformance replay (existing — referenced, not duplicated)
 
