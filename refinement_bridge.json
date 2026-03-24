@@ -63,9 +63,7 @@
       "evidence_level": "machine_checked_contract",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
-      "limitations": [
-        "parseDATx emits TX_ERR_PARSE / TX_ERR_WITNESS_OVERFLOW / TX_ERR_SIG_ALG_INVALID / TX_ERR_SIG_NONCANONICAL from internal parseTxFromCursor — these are general tx parse errors covered by ErrorPriority.lean (§13), not DA-specific theorems."
-      ],
+      "limitations": [],
       "supporting_theorems": [
         "RubinFormal.da_batch_exceeded",
         "RubinFormal.da_batch_ok",
@@ -96,7 +94,8 @@
         "RubinFormal.da_collect_missing",
         "RubinFormal.da_collect_step",
         "RubinFormal.da_orphan_chunk_step"
-      ]
+      ],
+      "notes": "validateWitnessErrors extracted from parseDATx as LIVE sub-function. Exhaustive 4-code error taxonomy proved (validateWitnessErrors_taxonomy). All parseDATx error codes now machine-checked: TX_ERR_PARSE from structure, TX_ERR_WITNESS_OVERFLOW/TX_ERR_SIG_ALG_INVALID/TX_ERR_SIG_NONCANONICAL from validateWitnessErrors."
     }
   ]
 }

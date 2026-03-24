@@ -349,6 +349,64 @@ theorem da_accumulate_skip
   show (if (t.txKind == 0x02) = true then _ else _) = _
   rw [hNotChunk]; simp only [ite_false]
 
+/-! ## Witness error taxonomy (LIVE on validateWitnessErrors)
+
+parseDATx calls validateWitnessErrors (LIVE sub-function) for non-TX_ERR_PARSE
+error codes. This section proves exhaustive error taxonomy + individual rejection. -/
+
+/-- Exhaustive: validateWitnessErrors returns one of 4 error codes or ok. -/
+theorem validateWitnessErrors_taxonomy (ws : TxWeightV2.WitnessSectionResult) :
+    validateWitnessErrors ws = .error "TX_ERR_WITNESS_OVERFLOW" ∨
+    validateWitnessErrors ws = .error "TX_ERR_SIG_ALG_INVALID" ∨
+    validateWitnessErrors ws = .error "TX_ERR_SIG_NONCANONICAL" ∨
+    validateWitnessErrors ws = .ok () := by
+  unfold validateWitnessErrors
+  split
+  · exact Or.inl rfl
+  · split
+    · exact Or.inl rfl
+    · split
+      · exact Or.inr (Or.inl rfl)
+      · split
+        · exact Or.inr (Or.inr (Or.inl rfl))
+        · exact Or.inr (Or.inr (Or.inr rfl))
+
+/-- Witness size overflow → TX_ERR_WITNESS_OVERFLOW. -/
+theorem witness_overflow_size_rejects (ws : TxWeightV2.WitnessSectionResult)
+    (h : ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX) :
+    validateWitnessErrors ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  simp [validateWitnessErrors, h]
+
+/-- Witness overflow flag → TX_ERR_WITNESS_OVERFLOW. -/
+theorem witness_overflow_flag_rejects (ws : TxWeightV2.WitnessSectionResult)
+    (h1 : ¬(ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX))
+    (h2 : ws.isOverflow = true) :
+    validateWitnessErrors ws = .error "TX_ERR_WITNESS_OVERFLOW" := by
+  simp [validateWitnessErrors, h1, h2]
+
+/-- Invalid signature algorithm → TX_ERR_SIG_ALG_INVALID. -/
+theorem witness_sig_alg_rejects (ws : TxWeightV2.WitnessSectionResult)
+    (h1 : ¬(ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX))
+    (h2 : ws.isOverflow = false) (h3 : ws.anySigAlgInvalid = true) :
+    validateWitnessErrors ws = .error "TX_ERR_SIG_ALG_INVALID" := by
+  simp [validateWitnessErrors, h1, h2, h3]
+
+/-- Non-canonical signature → TX_ERR_SIG_NONCANONICAL. -/
+theorem witness_sig_noncanonical_rejects (ws : TxWeightV2.WitnessSectionResult)
+    (h1 : ¬(ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX))
+    (h2 : ws.isOverflow = false) (h3 : ws.anySigAlgInvalid = false)
+    (h4 : ws.anySigNoncanonical = true) :
+    validateWitnessErrors ws = .error "TX_ERR_SIG_NONCANONICAL" := by
+  simp [validateWitnessErrors, h1, h2, h3, h4]
+
+/-- All witness checks pass → ok. -/
+theorem witness_all_ok (ws : TxWeightV2.WitnessSectionResult)
+    (h1 : ¬(ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX))
+    (h2 : ws.isOverflow = false) (h3 : ws.anySigAlgInvalid = false)
+    (h4 : ws.anySigNoncanonical = false) :
+    validateWitnessErrors ws = .ok () := by
+  simp [validateWitnessErrors, h1, h2, h3, h4]
+
 /-! ## Verify loop (LIVE on verifyCommitIntegrity) -/
 
 /-- Empty commit list → ok. -/

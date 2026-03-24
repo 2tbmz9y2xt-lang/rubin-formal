@@ -98,6 +98,22 @@ def parseDaChunkCore (c : Cursor) : Option (Bytes × Nat × Bytes × Cursor) := 
   let (h, c3) ← c2.getBytes? 32
   pure (daId, idx, h, c3)
 
+/-- Witness section error checks from parseDATx (lines 169-172).
+    LIVE sub-function: called directly from parseDATx.
+    Written without do-notation for formal proof access.
+    Returns one of: TX_ERR_WITNESS_OVERFLOW, TX_ERR_SIG_ALG_INVALID,
+    TX_ERR_SIG_NONCANONICAL, or .ok (). -/
+def validateWitnessErrors (ws : TxWeightV2.WitnessSectionResult) : Except String Unit :=
+  if ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX then
+    .error "TX_ERR_WITNESS_OVERFLOW"
+  else if ws.isOverflow then
+    .error "TX_ERR_WITNESS_OVERFLOW"
+  else if ws.anySigAlgInvalid then
+    .error "TX_ERR_SIG_ALG_INVALID"
+  else if ws.anySigNoncanonical then
+    .error "TX_ERR_SIG_NONCANONICAL"
+  else .ok ()
+
 def parseDATx (tx : Bytes) : Except String ParsedDATx := do
   let c0 : Cursor := { bs := tx, off := 0 }
   let (_, c1) ←
@@ -165,11 +181,7 @@ def parseDATx (tx : Bytes) : Except String ParsedDATx := do
     match RubinFormal.TxWeightV2.parseWitnessSectionForWeight c9 with
     | none => throw "TX_ERR_PARSE"
     | some x => pure x
-  let witBytes := ws.endOff - ws.startOff
-  if witBytes > RubinFormal.TxWeightV2.MAX_WITNESS_BYTES_PER_TX then throw "TX_ERR_WITNESS_OVERFLOW"
-  if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-  if ws.anySigAlgInvalid then throw "TX_ERR_SIG_ALG_INVALID"
-  if ws.anySigNoncanonical then throw "TX_ERR_SIG_NONCANONICAL"
+  validateWitnessErrors ws
 
   let (daLen, c10, minDa) ←
     match ws.cursor.getCompactSize? with
