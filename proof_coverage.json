@@ -15,17 +15,30 @@
       "theorems": [
         "RubinFormal.sem001_mldsa_bounded_lengths_proved",
         "RubinFormal.subsidy_u128_safety_proved",
-        "RubinFormal.htlc_timelock_proved"
+        "RubinFormal.htlc_timelock_proved",
+        "RubinFormal.validateWitnessItemLengths_eq_explicit",
+        "RubinFormal.witness_mldsa_bounds_violated_rejects",
+        "RubinFormal.witness_mldsa_bounds_satisfied_accepts",
+        "RubinFormal.witness_unknown_suite_rejects",
+        "RubinFormal.witness_sentinel_nonempty_rejects",
+        "RubinFormal.witness_sentinel_valid_accepts",
+        "RubinFormal.witness_validation_exhaustive"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
+        "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
+        "RubinFormal.subsidy_u128_safety_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.htlc_timelock_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.validateWitnessItemLengths_eq_explicit": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+        "RubinFormal.witness_mldsa_bounds_violated_rejects": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+        "RubinFormal.witness_mldsa_bounds_satisfied_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+        "RubinFormal.witness_unknown_suite_rejects": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+        "RubinFormal.witness_sentinel_nonempty_rejects": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+        "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+        "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
       },
-      "notes": "Registry entry anchors selected consensus constants that already participate in executable replay or bounded arithmetic proofs.",
-      "limitations": [
-        "No single universal theorem for every numeric constant in §4 is claimed here.",
-        "Coverage scope is limited to constants exercised by the listed theorems."
-      ]
+      "notes": "Upgraded from constant pinning to LIVE validator rejection. validateWitnessItemLengths (LIVE function) rejection proved for all three error paths: ML-DSA-87 bounds (TX_ERR_SIG_NONCANONICAL), unknown suite (TX_ERR_SIG_ALG_INVALID), sentinel non-empty (TX_ERR_PARSE). Accept paths proved for completeness. Exhaustive coverage: every suiteId maps to exactly one outcome. Bridge theorem via explicit-bind rfl equivalence. Combined with existing coinbase bound (CoinbaseBehavioral) and HTLC timelock (PinnedSections).",
+      "limitations": []
     },
     {
       "section_key": "transaction_wire",
