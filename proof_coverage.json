@@ -201,7 +201,7 @@
         "RubinFormal.selectHashOutputs_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
         "RubinFormal.hasValidBaseType_exhaustive": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean"
       },
-      "notes": "Tautological digestV1_deterministic (f x = f x) and weak digestV1_empty_tx_fails removed. Replaced with universal invalid-type rejection for all 3 selectHash functions + hasValidBaseType 256-value exhaustive partition. digestV1 injectivity requires SHA3 collision resistance (external assumption). buildPreimageFrameParts_injective (in SighashV1.lean) proves frame-level injectivity.",
+      "notes": "Tautological digestV1_deterministic (f x = f x) and weak digestV1_empty_tx_fails removed. Replaced with universal invalid-type rejection for all 3 selectHash functions + hasValidBaseType 256-value exhaustive partition. digestV1 injectivity requires SHA3 collision resistance (external assumption). buildPreimageFrameParts_injective (in SighashV1.lean) proves frame-level injectivity. NOTE: 5 buildPreimageFrameParts_commits_* theorems in SighashV1.lean are WRAPPER corollaries of buildPreimageFrameParts_injective (congrArg projections). Not substantive coverage — retained for API convenience only.",
       "limitations": [
         "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
         "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
