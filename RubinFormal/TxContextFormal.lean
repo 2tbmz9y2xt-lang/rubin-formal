@@ -181,11 +181,9 @@ private theorem sorted_perm_unique_when_both_sorted :
   | [], _ :: _, _, _, hperm => by
       have hlen := hperm.length_eq
       simp at hlen
-      cases hlen
   | _ :: _, [], _, _, hperm => by
       have hlen := hperm.length_eq
       simp at hlen
-      cases hlen
   | x :: xs, y :: ys, hxs, hys, hperm => by
       have hx_mem : x ∈ y :: ys := hperm.mem_iff.mp (by simp)
       have hy_mem : y ∈ x :: xs := hperm.symm.mem_iff.mp (by simp)
@@ -208,7 +206,7 @@ private theorem sorted_perm_unique_when_both_sorted :
       have hys_tail : List.Pairwise (· ≤ ·) ys := (List.pairwise_cons.mp hys).2
       simpa using sorted_perm_unique_when_both_sorted hxs_tail hys_tail hperm_tail
 
-/-- Any two sorted permutations of the same ext_id list are equal.
+/-- Any two sorted permutations of the same ext_id list are equal. -/
 theorem extid_sorted_permutation_unique (xs ys : List Nat)
     (hperm : List.Perm xs ys)
     (hxs : List.Pairwise (· ≤ ·) xs)
