@@ -95,8 +95,7 @@
         "RubinFormal.da_orphan_chunk_empty",
         "RubinFormal.da_collect_missing",
         "RubinFormal.da_collect_step",
-        "RubinFormal.da_orphan_chunk_step",
-        "RubinFormal.da_orphan_chunk_empty"
+        "RubinFormal.da_orphan_chunk_step"
       ]
     }
   ]
