@@ -198,6 +198,69 @@ theorem da_orphan_chunk_empty (commits : Std.RBMap Bytes DaCommitInfo cmpBytes) 
     validateNoOrphanChunks [] commits = .ok () := rfl
 
 
+/-! ## Parse loop (LIVE on accumulateDATxs) -/
+
+/-- Empty tx list → returns initial state unchanged. -/
+theorem da_accumulate_empty
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :
+    accumulateDATxs [] commits chunks = .ok (commits, chunks) := rfl
+
+/-- Parse failure at head → error propagates. -/
+theorem da_accumulate_parse_fail
+    (txBytes : Bytes) (rest : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (err : String) (hFail : parseDATx txBytes = .error err) :
+    accumulateDATxs (txBytes :: rest) commits chunks = .error err := by
+  show (match parseDATx txBytes with | .error e => _ | .ok t => _) = _
+  rw [hFail]
+
+/-! ## Verify loop (LIVE on verifyCommitIntegrity) -/
+
+/-- Empty commit list → ok. -/
+theorem da_verify_empty
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :
+    verifyCommitIntegrity [] chunks = .ok () := rfl
+
+/-- Missing chunk set for commit → BLOCK_ERR_DA_INCOMPLETE. -/
+theorem da_verify_missing_set
+    (daId : Bytes) (cinfo : DaCommitInfo)
+    (rest : List (Bytes × DaCommitInfo))
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (hMiss : chunks.find? daId = none) :
+    verifyCommitIntegrity ((daId, cinfo) :: rest) chunks = .error "BLOCK_ERR_DA_INCOMPLETE" := by
+  simp [verifyCommitIntegrity, hMiss]
+
+/-- Commit verified → recurse on rest. -/
+theorem da_verify_step_ok
+    (daId : Bytes) (cinfo : DaCommitInfo)
+    (rest : List (Bytes × DaCommitInfo))
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    (set : Std.RBMap Nat DaChunkInfo compare)
+    (hFound : chunks.find? daId = some set)
+    (hCount : (set.size != cinfo.chunkCount) = false)
+    (concat : Bytes)
+    (hCollect : collectChunkPayloads set cinfo.chunkCount = .ok concat)
+    (hOutput : validateCommitOutput cinfo.outputs (SHA3.sha3_256 concat) = .ok ()) :
+    verifyCommitIntegrity ((daId, cinfo) :: rest) chunks =
+    verifyCommitIntegrity rest chunks := by
+  show (match chunks.find? daId with | none => _ | some set => _) = _
+  rw [hFound]
+  show (match validateChunkCountMatch set.size cinfo.chunkCount with | .error e => _ | .ok () => _) = _
+  rw [show validateChunkCountMatch set.size cinfo.chunkCount = .ok () from by
+    simp only [validateChunkCountMatch, hCount, ite_false]]
+  show (match collectChunkPayloads set cinfo.chunkCount with | .error e => _ | .ok concat => _) = _
+  rw [hCollect]
+  show (match validateCommitOutput cinfo.outputs (SHA3.sha3_256 concat) with | .error e => _ | .ok () => _) = _
+  rw [hOutput]
+
+/-! ## Full pipeline composition (LIVE on validateDASetIntegrity) -/
+
+/-- validateDASetIntegrity on empty list → ok. -/
+theorem da_integrity_empty :
+    validateDASetIntegrity [] = .ok () := rfl
+
 /-! ## Gate error propagation (LIVE)
 
 validateDaIntegrityGate = validateBlockBasic >> parseBlock >> validateDASetIntegrity.

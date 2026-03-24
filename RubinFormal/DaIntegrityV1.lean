@@ -277,40 +277,87 @@ def collectChunkPayloads
     | none => .error "BLOCK_ERR_DA_INCOMPLETE"
     | some ch => collectChunkPayloads set n (acc ++ ch.payload) (start + 1)
 
-def validateDASetIntegrity (txs : List Bytes) : Except String Unit := do
-  let mut commits : Std.RBMap Bytes DaCommitInfo cmpBytes := Std.RBMap.empty
-  let mut chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes := Std.RBMap.empty
+/-- Parse loop: accumulate commits and chunks from tx list.
+    Recursive version for formal proof access. -/
+def accumulateDATxs
+    (txs : List Bytes)
+    (commits : Std.RBMap Bytes DaCommitInfo cmpBytes)
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    : Except String (Std.RBMap Bytes DaCommitInfo cmpBytes ×
+                      Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes) :=
+  match txs with
+  | [] => .ok (commits, chunks)
+  | txBytes :: rest =>
+    match parseDATx txBytes with
+    | .error e => .error e
+    | .ok t =>
+      if t.txKind == 0x01 then
+        match t.commitDaId with
+        | none => .error "TX_ERR_PARSE"
+        | some daId =>
+          match t.commitChunkCount with
+          | none => .error "TX_ERR_PARSE"
+          | some cc =>
+            match validateNoDuplicateCommit commits daId with
+            | .error e => .error e
+            | .ok () =>
+              accumulateDATxs rest (commits.insert daId { chunkCount := cc, outputs := t.outputs }) chunks
+      else if t.txKind == 0x02 then
+        match t.chunkDaId with
+        | none => .error "TX_ERR_PARSE"
+        | some daId =>
+          match t.chunkIndex with
+          | none => .error "TX_ERR_PARSE"
+          | some idx =>
+            match t.chunkHash with
+            | none => .error "TX_ERR_PARSE"
+            | some h =>
+              match validateChunkHash t.payload h with
+              | .error e => .error e
+              | .ok () =>
+                let set := match chunks.find? daId with | none => Std.RBMap.empty | some m => m
+                match validateNoDuplicateChunk set idx with
+                | .error e => .error e
+                | .ok () =>
+                  accumulateDATxs rest commits (chunks.insert daId (set.insert idx { chunkIndex := idx, chunkHash := h, payload := t.payload }))
+      else
+        accumulateDATxs rest commits chunks
 
-  for txBytes in txs do
-    let t ← parseDATx txBytes
-    if t.txKind == 0x01 then
-      let daId ← match t.commitDaId with | some x => pure x | none => throw "TX_ERR_PARSE"
-      let cc ← match t.commitChunkCount with | some x => pure x | none => throw "TX_ERR_PARSE"
-      validateNoDuplicateCommit commits daId
-      commits := commits.insert daId { chunkCount := cc, outputs := t.outputs }
-    else if t.txKind == 0x02 then
-      let daId ← match t.chunkDaId with | some x => pure x | none => throw "TX_ERR_PARSE"
-      let idx ← match t.chunkIndex with | some x => pure x | none => throw "TX_ERR_PARSE"
-      let h ← match t.chunkHash with | some x => pure x | none => throw "TX_ERR_PARSE"
-      validateChunkHash t.payload h
-      let set := match chunks.find? daId with | none => Std.RBMap.empty | some m => m
-      validateNoDuplicateChunk set idx
-      chunks := chunks.insert daId (set.insert idx { chunkIndex := idx, chunkHash := h, payload := t.payload })
+/-- Verify loop: check per-commit integrity for each commit.
+    Recursive version for formal proof access. -/
+def verifyCommitIntegrity
+    (commitList : List (Bytes × DaCommitInfo))
+    (chunks : Std.RBMap Bytes (Std.RBMap Nat DaChunkInfo compare) cmpBytes)
+    : Except String Unit :=
+  match commitList with
+  | [] => .ok ()
+  | (daId, cinfo) :: rest =>
+    match chunks.find? daId with
+    | none => .error "BLOCK_ERR_DA_INCOMPLETE"
+    | some set =>
+      match validateChunkCountMatch set.size cinfo.chunkCount with
+      | .error e => .error e
+      | .ok () =>
+        match collectChunkPayloads set cinfo.chunkCount with
+        | .error e => .error e
+        | .ok concat =>
+          let payloadCommit := SHA3.sha3_256 concat
+          match validateCommitOutput cinfo.outputs payloadCommit with
+          | .error e => .error e
+          | .ok () => verifyCommitIntegrity rest chunks
 
-  validateDaBatchCount commits.size
-
-  validateNoOrphanChunks chunks.toList commits
-
-  for (daId, cinfo) in commits.toList do
-    let set? := chunks.find? daId
-    let set ← match set? with | none => throw "BLOCK_ERR_DA_INCOMPLETE" | some m => pure m
-    validateChunkCountMatch set.size cinfo.chunkCount
-    let concat ← collectChunkPayloads set cinfo.chunkCount
-    let payloadCommit := SHA3.sha3_256 concat
-
-    validateCommitOutput cinfo.outputs payloadCommit
-
-  pure ()
+/-- Full DA set integrity validation. Composed from recursive sub-functions.
+    No do-notation for full formal proof access. -/
+def validateDASetIntegrity (txs : List Bytes) : Except String Unit :=
+  match accumulateDATxs txs Std.RBMap.empty Std.RBMap.empty with
+  | .error e => .error e
+  | .ok (commits, chunks) =>
+    match validateDaBatchCount commits.size with
+    | .error e => .error e
+    | .ok () =>
+      match validateNoOrphanChunks chunks.toList commits with
+      | .error e => .error e
+      | .ok () => verifyCommitIntegrity commits.toList chunks
 
 def validateDaIntegrityGate
     (blockBytes : Bytes)
