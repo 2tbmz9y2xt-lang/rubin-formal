@@ -929,7 +929,6 @@
         "RubinFormal.continuing_output_count_rejects_overflow",
         "RubinFormal.vault_bridge_no_vault",
         "RubinFormal.vault_bridge_with_vault",
-        "RubinFormal.Refinement.ParallelEquivalence.parallel_error_index_priority",
         "RubinFormal.checkSighashPolicy_exhaustive_256x256",
         "RubinFormal.checkSighashPolicy_invalid_base_rejected"
       ],
@@ -941,11 +940,10 @@
         "RubinFormal.continuing_output_count_rejects_overflow": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.vault_bridge_no_vault": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.vault_bridge_with_vault": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
-        "RubinFormal.Refinement.ParallelEquivalence.parallel_error_index_priority": "rubin-formal/RubinFormal/Refinement/ParallelEquivalence.lean",
         "RubinFormal.checkSighashPolicy_exhaustive_256x256": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.checkSighashPolicy_invalid_base_rejected": "rubin-formal/RubinFormal/SighashV1.lean"
       },
-      "notes": "§14 pre-activation gate closure on the live Lean helper surface. 9 closure theorems: ext_id ordering is wired into buildTxContext via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, vault conservation is bridged to live validateValueConservation, parallel error index priority is proved in Refinement.ParallelEquivalence, and sighash policy is closed exhaustively in SighashV1 over 256×256. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims.",
+      "notes": "§14 pre-activation gate closure on the live Lean helper surface. 8 closure theorems: ext_id ordering is wired into buildTxContext via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure.",
       "limitations": []
     }
   ],
