@@ -61,7 +61,7 @@ jobs:
             const path = require('path');
             const { execSync } = require('child_process');
             const rawOutputPath = 'deepseek-raw-output.txt';
-            const diff = fs.readFileSync('pr-diff.txt', 'utf8').slice(0, 12000);
+            const diff = fs.readFileSync('pr-diff.txt', 'utf8').slice(0, 128000);
             const prTitle = context.payload.pull_request?.title ?? '';
             const prBody = (context.payload.pull_request?.body ?? '').slice(0, 4000);
             const repoRoot = process.cwd();
@@ -97,11 +97,11 @@ jobs:
             };
             const changedFilePayload = changedLeanFiles
               .map((file) => {
-                const content = readChangedLeanFile(file).slice(0, 5000);
+                const content = readChangedLeanFile(file).slice(0, 8000);
                 return `FILE: ${file}\n${content}`;
               })
               .join('\n\n---\n\n')
-              .slice(0, 18000);
+              .slice(0, 64000);
             const systemPrompt = [
               '<role>',
               'You are a HOSTILE formal verification reviewer — a merge gate for Lean 4 / RUBIN protocol PRs.',
@@ -195,6 +195,12 @@ jobs:
               '- Do NOT report: improvements (axiom→theorem, sorry removal), style issues, suggestions, refactoring ideas.',
               '- Do NOT report a theorem name that does not exist in current file content.',
               '- Do NOT duplicate the same issue across multiple findings.',
+              '- ANTI-HALLUCINATION: If the diff is truncated or you cannot see a file/function mentioned',
+              '  elsewhere in the diff — do NOT claim it is missing. Flag as unreviewed, not missing.',
+              '- NEVER report "function not defined" or "theorem missing" unless you have verified the',
+              '  COMPLETE file content provided. If content is truncated, assume unseen code exists.',
+              '- You receive BOTH diff AND full changed file content. Use full content to verify',
+              '  definitions and imports before claiming anything is absent.',
               '</hard-rules>',
               '',
               '<output-format>',
