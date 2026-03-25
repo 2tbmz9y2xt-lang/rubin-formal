@@ -114,8 +114,5 @@ theorem digestV1_success
   rw [if_neg (show ¬(core.inputs.length ≤ idx) from by omega)]
   exact ⟨_, rfl⟩
 
--- NOTE: concatBytes_size_eq and buildPreimageFrame_wellformed_size (246-byte
--- invariant) proved in standalone test but hit C++ stack overflow during
--- lake build for 16-element list simp reduction (Lean 4.6 limitation).
 
 end RubinFormal
