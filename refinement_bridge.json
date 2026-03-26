@@ -1,14 +1,20 @@
 {
   "schema_version": 1,
   "status": "pv-refined",
-  "notes": "Bridge map for model theorem -> executable conformance op evidence. The registry remains narrower than universal mechanized refinement, but `retarget_v1` is now backed by a machine-checked Go-trace contract instead of metadata-only baseline evidence. PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
+  "notes": "Bridge map for model theorem -> executable conformance op evidence. parse_tx, retarget_v1, and utxo_apply_basic are backed by machine-checked Go-trace contracts. da_set_integrity has full behavioral closure. fork_choice_select relies on a cryptographic axiom. sighash_v1 remains baseline-only. PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
   "critical_ops": [
     {
       "op": "parse_tx",
       "gate": "CV-PARSE",
-      "model_theorem": "RubinFormal.transaction_wire_proved",
-      "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "evidence_level": "baseline"
+      "model_theorem": "RubinFormal.Refinement.parse_tx_go_trace_contract_proved",
+      "lean_file": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
+      "evidence_level": "machine_checked_contract",
+      "contract_scope": "All 16 CV-PARSE Go-trace vectors replayed against Lean parseTx. Exact id set pinned by parseExpectedIds (PARSE-01..PARSE-16).",
+      "limitations": [
+        "This is a narrow trace-backed contract over the current 16 CV-PARSE fixture vectors, not a universal proof for all possible transaction byte sequences.",
+        "PARSE-16 has documented error-priority drift: Lean reports TX_ERR_SIG_ALG_INVALID, Go reports TX_ERR_WITNESS_OVERFLOW. Both reject; check order differs. Documented in isKnownParseDrift.",
+        "Serialize direction (Lean→bytes→Go roundtrip) is not covered by this contract."
+      ]
     },
     {
       "op": "sighash_v1",
