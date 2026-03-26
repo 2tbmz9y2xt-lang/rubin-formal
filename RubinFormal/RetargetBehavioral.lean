@@ -176,11 +176,9 @@ theorem retarget_4x_lower (targetOldNat tActual : Nat) :
   dsimp
   exact Nat.le_trans (Nat.le_max_right 1 _) (Nat.le_max_left _ _)
 
-/-- Hi bound: result ≤ targetOldNat * 4 (never increases by more than 4x).
-    Under valid preconditions where targetOldNat > 0 and targetOldNat * 4 ≤ powLimit. -/
+/-- Hi bound: result ≤ targetOldNat * 4 (never increases by more than 4x). -/
 theorem retarget_4x_upper (targetOldNat tActual : Nat)
-    (hPos : 0 < targetOldNat)
-    (_ : targetOldNat * 4 ≤ powLimit) :
+    (hPos : 0 < targetOldNat) :
     let lo := Nat.max 1 (targetOldNat / 4)
     let hi := Nat.min (targetOldNat * 4) powLimit
     let candidate := (targetOldNat * tActual) / tExpected
