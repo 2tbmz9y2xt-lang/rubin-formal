@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "status": "pv-refined",
-  "notes": "Bridge map for model theorem -> executable conformance op evidence. parse_tx, retarget_v1, and utxo_apply_basic are backed by machine-checked Go-trace contracts. da_set_integrity has full behavioral closure. fork_choice_select relies on a cryptographic axiom. sighash_v1 remains baseline-only. PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
+  "notes": "Bridge map for model theorem -> executable conformance op evidence. The registry remains narrower than universal mechanized refinement, but `retarget_v1` and `parse_tx` are now backed by machine-checked Go-trace contracts instead of metadata-only baseline evidence. parse_tx drift exception (PARSE-16) is payload-pinned via triple-segment content hash (~192-bit collision resistance). PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
   "critical_ops": [
     {
       "op": "parse_tx",
@@ -9,10 +9,10 @@
       "model_theorem": "RubinFormal.Refinement.parse_tx_go_trace_contract_proved",
       "lean_file": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
       "evidence_level": "machine_checked_contract",
-      "contract_scope": "All 16 CV-PARSE Go-trace vectors replayed against Lean parseTx. Exact id set pinned by parseExpectedIds (PARSE-01..PARSE-16).",
+      "contract_scope": "All 16 CV-PARSE Go-trace vectors replayed against Lean parseTx. Exact id set pinned by parseExpectedIds (PARSE-01..PARSE-16). PARSE-16 drift exception payload-pinned via triple-segment content hash.",
       "limitations": [
-        "This is a narrow trace-backed contract over the current 16 CV-PARSE fixture vectors, not a universal proof for all possible transaction byte sequences.",
-        "PARSE-16 has documented error-priority drift: Lean reports TX_ERR_SIG_ALG_INVALID, Go reports TX_ERR_WITNESS_OVERFLOW. Both reject; check order differs. Documented in isKnownParseDrift.",
+        "Narrow trace-backed contract over current 16 CV-PARSE fixture vectors, not a universal proof for all possible transaction byte sequences.",
+        "PARSE-16 has documented error-priority drift (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception is pinned to concrete fixture payload via triple-segment hash (full + first-half + second-half, ~192-bit collision resistance) — any byte change breaks the proof.",
         "Serialize direction (Lean→bytes→Go roundtrip) is not covered by this contract."
       ]
     },
