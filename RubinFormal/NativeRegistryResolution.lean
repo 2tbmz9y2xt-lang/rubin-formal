@@ -150,19 +150,33 @@ theorem fi_rot_03_active_create_suite_resolves
   have ⟨hcreate, _⟩ := descriptor_suites_registered d reg h hwf
   exact fi_rot_03_unique_entry reg sid hnd (hcreate sid hactive)
 
-/-! ### Pre-rotation specialisation -/
+/-! ### Canonical single-suite registry theorems (#287)
 
-/-- In the pre-rotation registry, ML-DSA-87 resolves correctly. -/
+  Parametric versions that take any registry equal to `[ML_DSA_87_ENTRY]`,
+  removing hard dependence on the `PRE_ROTATION_REGISTRY` constant.
+  The pre-rotation specialisations are backward-compatible corollaries. -/
+
+/-- Any single-ML-DSA-87 registry resolves suite 0x01 to ML_DSA_87_ENTRY. -/
+theorem single_ml_dsa_registry_resolves (reg : SuiteRegistry)
+    (hreg : reg = [ML_DSA_87_ENTRY]) :
+    registryLookup reg 0x01 = some ML_DSA_87_ENTRY := by
+  subst hreg; native_decide
+
+/-- Any single-entry registry trivially has no duplicate suite IDs. -/
+theorem single_entry_registry_no_duplicates (reg : SuiteRegistry) (e : SuiteEntry)
+    (hreg : reg = [e]) :
+    registryNoDuplicates reg := by
+  subst hreg; intro i j hi hj _; simp at hi hj; omega
+
+/-- Pre-rotation corollary: ML-DSA-87 resolves correctly. -/
 theorem fi_rot_03_pre_rotation_ml_dsa_resolves :
-    registryLookup PRE_ROTATION_REGISTRY 0x01 = some ML_DSA_87_ENTRY := by
-  native_decide
+    registryLookup PRE_ROTATION_REGISTRY 0x01 = some ML_DSA_87_ENTRY :=
+  single_ml_dsa_registry_resolves PRE_ROTATION_REGISTRY rfl
 
-/-- The pre-rotation registry has no duplicate suite IDs. -/
+/-- Pre-rotation corollary: no duplicate suite IDs. -/
 theorem fi_rot_03_pre_rotation_no_duplicates :
-    registryNoDuplicates PRE_ROTATION_REGISTRY := by
-  intro i j hi hj _
-  simp [PRE_ROTATION_REGISTRY] at hi hj
-  omega
+    registryNoDuplicates PRE_ROTATION_REGISTRY :=
+  single_entry_registry_no_duplicates PRE_ROTATION_REGISTRY ML_DSA_87_ENTRY rfl
 
 end NativeRegistryResolution
 

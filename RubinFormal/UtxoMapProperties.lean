@@ -201,41 +201,35 @@ theorem rbmap_contains_insert_self (k : Outpoint) (v : UtxoEntry)
     (t.insert k v).contains k = true := by
   simp [Std.RBMap.contains, rbmap_findEntry_insert_self k v t]
 
-/-! ## Insert-of-ne lifting: inserting with key k' preserves find? for key k ≠ k'. -/
+/-! ## Insert-of-ne lifting: inserting with key k' preserves find? for key k ≠ k'.
+
+  (#288) RBMap.findEntry? uses cut `(· |>.1 |> cmpOutpoint k)` while
+  RBSet.find? uses full pair comparison `utxoPairCmp (k, v)`.  These are
+  definitionally equal because `utxoPairCmp` is `Ordering.byKey Prod.fst cmpOutpoint`.
+  The helper `findP_eq_pair_find` factors out this equivalence so the main
+  proof never uses the fragile `change` tactic. -/
+
+/-- The RBMap key-projection cut equals the RBSet pair comparison for any dummy value.
+    This is the key lifting lemma: `findP? (cmpOutpoint k ·.1)` ≡ `find? utxoPairCmp (k, dummy)`. -/
+private theorem findP_eq_pair_find (k : Outpoint) (dummy : UtxoEntry)
+    (t : Std.RBSet (Outpoint × UtxoEntry) utxoPairCmp) :
+    t.findP? (fun x => cmpOutpoint k x.1) = t.find? (k, dummy) := by
+  simp only [Std.RBSet.findP?, Std.RBSet.find?]
+  congr 1
 
 /-- Inserting a different key preserves findEntry? for the original key.
-    Uses RBSet.find?_insert_of_ne with a dummy entry to match the RBSet API. -/
+    Uses `findP_eq_pair_find` to bridge RBMap (key-cut) ↔ RBSet (pair-find),
+    then delegates to `Std.RBSet.find?_insert_of_ne`. -/
 theorem rbmap_findEntry_insert_of_ne (k k' : Outpoint) (v : UtxoEntry)
     (t : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (hne : cmpOutpoint k k' ≠ .eq) :
     (t.insert k' v).findEntry? k = t.findEntry? k := by
-  -- Use RBSet.find?_insert_of_ne at the RBSet level
-  -- RBMap is an RBSet of pairs; findEntry? k = RBSet.findP? (cmpOutpoint k ·.1)
-  -- But RBSet.find? uses full pair comparison, while findP? uses a cut.
-  -- Approach: use the RBSet.find?_insert_of_ne lemma indirectly via findP?
-  -- Actually simpler: RBMap.findEntry? unfolds to RBSet.findP? which is RBNode.find?
-  simp only [Std.RBMap.insert, Std.RBMap.findEntry?, Std.RBSet.findP?, Std.RBSet.insert]
-  -- Goal: RBNode.find? (fun x => cmpOutpoint k x.1) (RBNode.insert pairCmp t.val (k',v))
-  --     = RBNode.find? (fun x => cmpOutpoint k x.1) t.val
-  -- The cut is (fun x => cmpOutpoint k x.1) and the inserted value is (k', v)
-  -- cut (k', v) = cmpOutpoint k k' ≠ .eq (by hne)
-  -- Use the RBNode-level find?_insert from Std4 RBSet.find?_insert_of_ne proof
-  -- RBSet.find?_insert_of_ne: cmp v' v ≠ .eq → (t.insert v).find? v' = t.find? v'
-  -- At RBSet level: t = our RBMap as RBSet, v = (k', v_entry), v' = (k, dummy)
-  -- cmp (k, dummy) (k', v_entry) = cmpOutpoint k k' ≠ .eq ✓
-  -- (t.insert (k',v)).find? (k, dummy) = t.find? (k, dummy)
-  -- And find? (k, dummy) = RBNode.find? (pairCmp (k, dummy)) = RBNode.find? (fun x => cmpOutpoint k x.1)
-  -- Which is exactly findEntry? k
-  -- So: use RBSet.find?_insert_of_ne directly
-  change (Std.RBSet.insert (α := Outpoint × UtxoEntry) t (k', v)).1.find?
-    (utxoPairCmp (k, v)) =
-    t.1.find? (utxoPairCmp (k, v))
-  have := Std.RBSet.find?_insert_of_ne (cmp := utxoPairCmp) t
+  simp only [Std.RBMap.findEntry?, Std.RBMap.insert]
+  rw [findP_eq_pair_find k v (Std.RBSet.insert t (k', v)),
+      findP_eq_pair_find k v t]
+  exact Std.RBSet.find?_insert_of_ne (cmp := utxoPairCmp) t
     (v := (k', v)) (v' := (k, v))
     (by simp [utxoPairCmp, Ordering.byKey]; exact hne)
-  -- `this` should be about RBSet.find?, which wraps RBNode.find?
-  simp only [Std.RBSet.find?, Std.RBSet.insert] at this
-  exact this
 
 /-- Inserting a different key preserves find? for the original key. -/
 theorem rbmap_find_insert_of_ne (k k' : Outpoint) (v' : UtxoEntry)
