@@ -20,7 +20,9 @@
   final reject verdict.
 
   Builds on: ParallelEquivalence.lean (reducer_equivalence, reducePar, reduceSeq).
-  Closes #286.
+  Scope: formal model level. Runtime bridge (Go goroutine cancellation) is
+  outside the Lean formal model boundary.
+  Addresses #286.
 -/
 
 import RubinFormal.Refinement.ParallelEquivalence

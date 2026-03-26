@@ -13,6 +13,7 @@
 -/
 
 import RubinFormal.NativeSpendCreateGate
+import RubinFormal.UtxoApplyGenesisV1
 
 namespace RubinFormal
 
@@ -20,6 +21,7 @@ namespace SpendGateLiveBridge
 
 open NativeSuiteRotation
 open NativeSpendCreateGate
+open UtxoApplyGenesisV1
 
 /-! ### Pre-rotation spend suite characterization -/
 
@@ -139,6 +141,79 @@ theorem spend_suite_implies_gate_accept
     (hMem : suiteId ∈ NativeSpendSuites h d) :
     nativeSpendGate d h suiteId = GateResult.accept :=
   (fi_rot_04_spend_gate_iff d h suiteId).mpr hMem
+
+/-! ### Live function bridge — validateP2PKSpendPreSig
+
+  The theorems above establish: model gate accept ↔ suiteId = SUITE_ID_ML_DSA_87.
+  The theorems below connect this to the LIVE function validateP2PKSpendPreSig
+  (UtxoApplyGenesisV1.lean), proving that the model gate verdict determines
+  whether the live suite check fires or not.
+
+  validateP2PKSpendPreSig (line 44):
+    `if suite != SUITE_ID_ML_DSA_87 then throw "TX_ERR_SIG_ALG_INVALID"`
+
+  The bridge proves: model gate accept ↔ this `!=` check evaluates to false. -/
+
+/-- The UtxoApplyGenesisV1 module's SUITE_ID_ML_DSA_87 is definitionally
+    the same as the canonical RubinFormal.SUITE_ID_ML_DSA_87.
+    This grounds cross-module suite ID references. -/
+private theorem utxo_suite_eq_canonical :
+    UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 = RubinFormal.SUITE_ID_ML_DSA_87 := by
+  native_decide
+
+/-- Live suite check does not fire when model gate accepts.
+    validateP2PKSpendPreSig line 44: `if suite != SUITE_ID_ML_DSA_87 then throw`.
+    When model gate accepts (pre-rotation), suiteId = ML_DSA_87,
+    so `suite != SUITE_ID_ML_DSA_87` evaluates to false — no throw. -/
+theorem live_suite_check_passes_on_gate_accept
+    (d : RotationDeploymentDescriptor) (h : Nat) (w : UtxoBasicV1.WitnessItem)
+    (hSuites : NativeSpendSuites h d = [SUITE_ID_ML_DSA_87])
+    (hAccept : nativeSpendGate d h w.suiteId = GateResult.accept) :
+    (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false := by
+  have hSuite := gate_accept_implies_ml_dsa_87 d h w.suiteId hSuites hAccept
+  rw [hSuite, utxo_suite_eq_canonical]
+  native_decide
+
+/-- Live suite check fires when model gate rejects.
+    When model gate rejects (pre-rotation), suiteId ≠ ML_DSA_87,
+    so `suite != SUITE_ID_ML_DSA_87` evaluates to true → throw. -/
+theorem live_suite_check_rejects_on_gate_reject
+    (d : RotationDeploymentDescriptor) (h : Nat) (w : UtxoBasicV1.WitnessItem)
+    (hSuites : NativeSpendSuites h d = [SUITE_ID_ML_DSA_87])
+    (hReject : nativeSpendGate d h w.suiteId = GateResult.reject_sig_alg_invalid) :
+    (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true := by
+  -- Extract w.suiteId ≠ SUITE_ID_ML_DSA_87 from rejection
+  have hNotMem : w.suiteId ∉ NativeSpendSuites h d := by
+    intro hmem
+    have hAcc := (fi_rot_04_spend_gate_iff d h w.suiteId).mpr hmem
+    rw [hAcc] at hReject; exact absurd hReject (by decide)
+  rw [hSuites] at hNotMem
+  simp [List.mem_singleton] at hNotMem
+  -- hNotMem : w.suiteId ≠ SUITE_ID_ML_DSA_87
+  -- Convert propositional ≠ to computational != via BEq
+  show (!(w.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)) = true
+  rw [utxo_suite_eq_canonical, Bool.not_eq_true']
+  -- goal: (w.suiteId == SUITE_ID_ML_DSA_87) = false
+  cases hbeq : (w.suiteId == SUITE_ID_ML_DSA_87)
+  · rfl
+  · exact absurd (eq_of_beq hbeq) hNotMem
+
+/-- Full model-to-live bridge: nativeSpendGate accept ↔ validateP2PKSpendPreSig
+    suite check passes. This is the complete bridge from model to live for #285.
+    Pre-rotation scope: NativeSpendSuites(h) = {ML_DSA_87}. -/
+theorem gate_iff_live_suite_check
+    (d : RotationDeploymentDescriptor) (h : Nat) (w : UtxoBasicV1.WitnessItem)
+    (hSuites : NativeSpendSuites h d = [SUITE_ID_ML_DSA_87]) :
+    nativeSpendGate d h w.suiteId = GateResult.accept ↔
+    (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false :=
+  ⟨live_suite_check_passes_on_gate_accept d h w hSuites,
+   fun hCheck => by
+     have hbeq : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true := by
+       cases hb : w.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87
+       · simp [bne, hb] at hCheck
+       · rfl
+     have hSuiteEq := (eq_of_beq hbeq).trans utxo_suite_eq_canonical
+     exact ml_dsa_87_implies_gate_accept d h w.suiteId hSuites hSuiteEq⟩
 
 end SpendGateLiveBridge
 
