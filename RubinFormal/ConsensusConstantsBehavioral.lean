@@ -40,7 +40,7 @@ theorem witness_mldsa_bounds_violated_rejects (w : WI) (h : Nat)
     UtxoApplyGenesisV1.validateWitnessItemLengths w h =
     .error "TX_ERR_SIG_NONCANONICAL" := by
   unfold UtxoApplyGenesisV1.validateWitnessItemLengths; rw [hSuite]
-  rw [show (ML_DSA == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = false from by native_decide]
+  rw [show (ML_DSA == RubinFormal.SUITE_ID_SENTINEL) = false from by native_decide]
   simp only [ite_false]
   rw [show (ML_DSA == ML_DSA) = true from by native_decide]; simp only [ite_true]
   simp only [hBad, ite_true]; rfl
@@ -52,7 +52,7 @@ theorem witness_mldsa_bounds_satisfied_accepts (w : WI) (h : Nat)
             w.signature.size > SIG_BYTES + 1) = false) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .ok () := by
   unfold UtxoApplyGenesisV1.validateWitnessItemLengths; rw [hSuite]
-  rw [show (ML_DSA == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = false from by native_decide]
+  rw [show (ML_DSA == RubinFormal.SUITE_ID_SENTINEL) = false from by native_decide]
   simp only [ite_false]
   rw [show (ML_DSA == ML_DSA) = true from by native_decide]; simp only [ite_true]
   simp only [hOk, ite_false]; rfl
@@ -66,7 +66,7 @@ explicit-bind version and prove rfl equivalence. -/
 /-- Explicit-bind version of validateWitnessItemLengths.
     rfl-equivalent to the LIVE do-block version. -/
 private def validateWitnessExplicit (w : WI) (_h : Nat) : Except String Unit :=
-  if w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL then
+  if w.suiteId == RubinFormal.SUITE_ID_SENTINEL then
     if (w.pubkey.size != 0) || (w.signature.size != 0) then
       Except.error "TX_ERR_PARSE"
     else Except.ok ()
@@ -88,7 +88,7 @@ theorem validateWitnessItemLengths_eq_explicit (w : WI) (h : Nat) :
 
 /-- Suite not SENTINEL and not ML_DSA → rejected with SIG_ALG_INVALID. -/
 theorem witness_unknown_suite_rejects (w : WI) (h : Nat)
-    (hNotSent : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = false)
+    (hNotSent : (w.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false)
     (hNotMldsa : (w.suiteId == ML_DSA) = false) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h =
     .error "TX_ERR_SIG_ALG_INVALID" := by
@@ -99,23 +99,23 @@ theorem witness_unknown_suite_rejects (w : WI) (h : Nat)
 
 /-- Sentinel with non-empty pubkey or sig → rejected with TX_ERR_PARSE. -/
 theorem witness_sentinel_nonempty_rejects (w : WI) (h : Nat)
-    (hSuite : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_SENTINEL)
+    (hSuite : w.suiteId = RubinFormal.SUITE_ID_SENTINEL)
     (hBad : ((w.pubkey.size != 0) || (w.signature.size != 0)) = true) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h =
     .error "TX_ERR_PARSE" := by
   unfold UtxoApplyGenesisV1.validateWitnessItemLengths; rw [hSuite]
-  rw [show (UtxoApplyGenesisV1.SUITE_ID_SENTINEL ==
-           UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = true from by native_decide]
+  rw [show (RubinFormal.SUITE_ID_SENTINEL ==
+           RubinFormal.SUITE_ID_SENTINEL) = true from by native_decide]
   simp only [ite_true, hBad]; rfl
 
 /-- Valid sentinel → accepted. -/
 theorem witness_sentinel_valid_accepts (w : WI) (h : Nat)
-    (hSuite : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_SENTINEL)
+    (hSuite : w.suiteId = RubinFormal.SUITE_ID_SENTINEL)
     (hOk : ((w.pubkey.size != 0) || (w.signature.size != 0)) = false) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .ok () := by
   unfold UtxoApplyGenesisV1.validateWitnessItemLengths; rw [hSuite]
-  rw [show (UtxoApplyGenesisV1.SUITE_ID_SENTINEL ==
-           UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = true from by native_decide]
+  rw [show (RubinFormal.SUITE_ID_SENTINEL ==
+           RubinFormal.SUITE_ID_SENTINEL) = true from by native_decide]
   simp only [ite_true, hOk, ite_false]; rfl
 
 /-! ## Exhaustive suite coverage (LIVE)
@@ -137,14 +137,14 @@ theorem witness_validation_exhaustive (w : WI) (h : Nat) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .ok () := by
   rw [validateWitnessItemLengths_eq_explicit]
   simp only [validateWitnessExplicit]
-  by_cases hSent : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = true
+  by_cases hSent : (w.suiteId == RubinFormal.SUITE_ID_SENTINEL) = true
   · simp only [hSent, ite_true]
     by_cases hBad : ((w.pubkey.size != 0) || (w.signature.size != 0)) = true
     · simp only [hBad, ite_true]; exact Or.inl trivial -- TX_ERR_PARSE
     · have : ((w.pubkey.size != 0) || (w.signature.size != 0)) = false :=
         Bool.eq_false_iff.mpr (fun h => by rw [h] at hBad; exact hBad rfl)
       simp only [this, ite_false]; exact Or.inr (Or.inr (Or.inr trivial)) -- .ok ()
-  · have hSF : (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_SENTINEL) = false :=
+  · have hSF : (w.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false :=
       Bool.eq_false_iff.mpr (fun h => by rw [h] at hSent; exact hSent rfl)
     simp only [hSF, ite_false]
     by_cases hMl : (w.suiteId == ML_DSA) = true

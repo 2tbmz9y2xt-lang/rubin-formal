@@ -18,7 +18,6 @@ def MAX_MULTISIG_KEYS : Nat := 12
 
 /- Pre-rotation suite constants.  Post-rotation (Q-FORMAL-ROTATION-04):
    creation gate becomes `suiteId ∉ NATIVE_CREATE_SUITES(h) → reject`. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def COV_TYPE_P2PK : Nat := 0x0000

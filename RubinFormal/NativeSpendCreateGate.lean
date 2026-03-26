@@ -105,19 +105,19 @@ theorem fi_rot_04_spend_gate_determined_by_suite
 
 /-- FI-ROT-04: accepted suite is never sentinel (from wellFormedDescriptor). -/
 theorem fi_rot_04_accepted_not_sentinel
-    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (haccept : nativeSpendGate d h suiteId = GateResult.accept) :
-    suiteId ≠ SUITE_ID_SENTINEL := by
+    suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := by
   have hmem := fi_rot_04_spend_gate_sound d h suiteId haccept
-  exact active_spend_suite_not_sentinel d h suiteId hwf hmem
+  exact active_spend_suite_not_sentinel reg d h suiteId hwf hmem
 where
   active_spend_suite_not_sentinel
-      (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
-      (hwf : wellFormedDescriptor d)
+      (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
+      (hwf : wellFormedDescriptor reg d)
       (hactive : sid ∈ NativeSpendSuites h d) :
-      sid ≠ SUITE_ID_SENTINEL := by
-    obtain ⟨_, holdNS, hnewNS, _, _⟩ := hwf
+      sid ≠ RubinFormal.SUITE_ID_SENTINEL := by
+    obtain ⟨_, holdNS, hnewNS, _, _, _⟩ := hwf
     rcases spend_suites_subset d h sid hactive with rfl | rfl <;> assumption
 
 /-! ### FI-ROT-05: p2pk_create_cutoff_v1 -/
@@ -144,13 +144,13 @@ theorem fi_rot_05_create_gate_rejects
 
 /-- FI-ROT-05 (cutoff corollary): after H2, old suite P2PK creation is invalid. -/
 theorem fi_rot_05_old_suite_rejected_after_h2
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (hge : d.h2 ≤ h) :
     nativeP2PKCreateGate d h d.oldSuiteId = GateResult.reject_covenant_type_invalid := by
   apply fi_rot_05_create_gate_rejects
   unfold NativeCreateSuites
-  obtain ⟨hneq, _, _, _, _⟩ := hwf
+  obtain ⟨hneq, _, _, _, _, _⟩ := hwf
   have hge1 : ¬ h < d.h1 := by omega
   have hge2 : ¬ h < d.h2 := by omega
   simp [hge1, hge2, List.mem_singleton]
@@ -158,12 +158,12 @@ theorem fi_rot_05_old_suite_rejected_after_h2
 
 /-- FI-ROT-05: accepted create suite is never sentinel. -/
 theorem fi_rot_05_accepted_not_sentinel
-    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (haccept : nativeP2PKCreateGate d h suiteId = GateResult.accept) :
-    suiteId ≠ SUITE_ID_SENTINEL := by
+    suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := by
   have hmem := fi_rot_05_create_gate_sound d h suiteId haccept
-  obtain ⟨_, holdNS, hnewNS, _, _⟩ := hwf
+  obtain ⟨_, holdNS, hnewNS, _, _, _⟩ := hwf
   rcases create_suites_subset d h suiteId hmem with rfl | rfl <;> assumption
 
 end NativeSpendCreateGate

@@ -34,16 +34,6 @@ def registryNoDuplicates (reg : SuiteRegistry) : Prop :=
   ∀ (i j : Nat) (hi : i < reg.length) (hj : j < reg.length),
     (reg.get ⟨i, hi⟩).suiteId = (reg.get ⟨j, hj⟩).suiteId → i = j
 
-/-- A suite_id is registered if `registryLookup` returns `some`. -/
-def isRegistered (reg : SuiteRegistry) (sid : Nat) : Prop :=
-  ∃ entry, registryLookup reg sid = some entry
-
-/-- A rotation descriptor is registry-consistent: both old and new suite
-    are present in the registry. -/
-def descriptorRegistryConsistent
-    (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) : Prop :=
-  isRegistered reg d.oldSuiteId ∧ isRegistered reg d.newSuiteId
-
 /-! ### FI-ROT-03: registry resolution deterministic -/
 
 /-- The result of `registryLookup` is deterministic by construction:
@@ -121,10 +111,10 @@ theorem spend_suites_subset
     d.oldSuiteId or d.newSuiteId, both registered by hypothesis. -/
 theorem descriptor_suites_registered
     (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat)
-    (hcons : descriptorRegistryConsistent d reg)
-    (_hwf : wellFormedDescriptor d) :
+    (hwf : wellFormedDescriptor reg d) :
     (∀ sid ∈ NativeCreateSuites h d, isRegistered reg sid) ∧
     (∀ sid ∈ NativeSpendSuites h d, isRegistered reg sid) := by
+  have hcons := wellFormedDescriptor_registryConsistent reg d hwf
   obtain ⟨hold, hnew⟩ := hcons
   constructor
   · intro sid hmem
@@ -144,22 +134,20 @@ theorem descriptor_suites_registered
 theorem fi_rot_03_active_suite_resolves
     (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat) (sid : Nat)
     (hnd : registryNoDuplicates reg)
-    (hcons : descriptorRegistryConsistent d reg)
-    (hwf : wellFormedDescriptor d)
+    (hwf : wellFormedDescriptor reg d)
     (hactive : sid ∈ NativeSpendSuites h d) :
     ∃ entry, registryLookup reg sid = some entry ∧ ∀ e2, registryLookup reg sid = some e2 → e2 = entry := by
-  have ⟨_, hspend⟩ := descriptor_suites_registered d reg h hcons hwf
+  have ⟨_, hspend⟩ := descriptor_suites_registered d reg h hwf
   exact fi_rot_03_unique_entry reg sid hnd (hspend sid hactive)
 
 /-- Same for create suites. -/
 theorem fi_rot_03_active_create_suite_resolves
     (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat) (sid : Nat)
     (hnd : registryNoDuplicates reg)
-    (hcons : descriptorRegistryConsistent d reg)
-    (hwf : wellFormedDescriptor d)
+    (hwf : wellFormedDescriptor reg d)
     (hactive : sid ∈ NativeCreateSuites h d) :
     ∃ entry, registryLookup reg sid = some entry ∧ ∀ e2, registryLookup reg sid = some e2 → e2 = entry := by
-  have ⟨hcreate, _⟩ := descriptor_suites_registered d reg h hcons hwf
+  have ⟨hcreate, _⟩ := descriptor_suites_registered d reg h hwf
   exact fi_rot_03_unique_entry reg sid hnd (hcreate sid hactive)
 
 /-! ### Pre-rotation specialisation -/

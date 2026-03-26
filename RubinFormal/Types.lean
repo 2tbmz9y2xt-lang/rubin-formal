@@ -33,4 +33,10 @@ instance : Repr Bytes where
 instance : Inhabited Bytes where
   default := ByteArray.empty
 
+/-- Canonical suite ID constants (CANONICAL §2.3 / §5.4).
+    Rotation/covenant/validator modules must reuse these definitions instead
+    of carrying local copies, so theorem users share one sentinel source. -/
+def SUITE_ID_SENTINEL : Nat := 0x00
+def SUITE_ID_ML_DSA_87 : Nat := 0x01
+
 end RubinFormal

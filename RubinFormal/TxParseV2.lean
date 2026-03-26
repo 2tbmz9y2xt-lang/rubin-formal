@@ -20,7 +20,6 @@ def MAX_COVENANT_DATA_PER_OUTPUT : Nat := 65536
 
 /- Pre-rotation suite constants.  Post-rotation (Q-FORMAL-ROTATION-02/03):
    replace with registry lookup via `Rotation.SuiteRegistry`. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
@@ -80,7 +79,7 @@ def parseWitnessItem (c : Cursor) : Option (Cursor × Option TxErr) := do
   let (sig, c5) ← c4.getBytes? sigLen
 
   -- Canonicalization rules (CANONICAL §5.4).
-  if suiteID == SUITE_ID_SENTINEL then
+  if suiteID == RubinFormal.SUITE_ID_SENTINEL then
     if pubLen == 0 && sigLen == 0 then
       pure (c5, none)
     else if pubLen == 32 then

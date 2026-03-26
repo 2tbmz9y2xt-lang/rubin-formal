@@ -62,6 +62,10 @@ structure RotationDescriptor where
 def registryLookup (reg : SuiteRegistry) (sid : Nat) : Option SuiteEntry :=
   reg.find? (fun e => e.suiteId == sid)
 
+/-- A suite_id is registered if `registryLookup` returns `some`. -/
+def isRegistered (reg : SuiteRegistry) (sid : Nat) : Prop :=
+  ∃ entry, registryLookup reg sid = some entry
+
 /-! ### Single-suite (pre-rotation) era constants -/
 
 /-- The ML-DSA-87 registry entry, used throughout the pre-rotation codebase. -/
