@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "status": "go-refinement-v1",
-  "claim_level": "refined",
+  "status": "active",
+  "claim_level": "mixed",
   "spec_source_file": "spec/RUBIN_L1_CANONICAL.md",
   "spec_section_hashes_file": "spec/SECTION_HASHES.json",
   "spec_section_hashes_sha3_256": "e6f6daf93926eb0fb4a1e7db68dff7803f0796cb8af70f03e9238398fcd3c602",
@@ -11,7 +11,7 @@
     {
       "section_key": "consensus_constants",
       "section_heading": "## 4. Consensus Constants (Wire-Level)",
-      "status": "proved",
+      "status": "proved_subset",
       "theorems": [
         "RubinFormal.sem001_mldsa_bounded_lengths_proved",
         "RubinFormal.subsidy_u128_safety_proved",
@@ -40,12 +40,13 @@
       "notes": "Upgraded from constant pinning to LIVE validator rejection for the witness-item-length subset of Section 4. validateWitnessItemLengths (LIVE function) rejection is proved for the three covered error paths: ML-DSA-87 bounds (TX_ERR_SIG_NONCANONICAL), unknown suite (TX_ERR_SIG_ALG_INVALID), and sentinel non-empty (TX_ERR_PARSE). Accept paths are proved for completeness within that witness-validation surface. Subsidy and HTLC constant facts remain covered by their dedicated theorem entries; other Section 4 constants are carried by their own dedicated rows such as weight accounting and DA integrity rather than by this single note block.",
       "limitations": [
         "This row does not by itself prove every literal or bound named in canonical Section 4; it aggregates the witness-validation subset plus a narrow set of dedicated constant theorems."
-      ]
+      ],
+      "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "transaction_wire",
       "section_heading": "## 5. Transaction Wire",
-      "status": "proved",
+      "status": "proved_subset",
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
         "RubinFormal.Conformance.cv_compact_vectors_pass",
@@ -92,17 +93,23 @@
         "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via triple-segment content hash (~192-bit collision resistance).",
         "Serialize direction (Lean→bytes→Go roundtrip) not covered by parse_tx contract."
       ],
-      "notes": "Includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16)."
+      "notes": "Includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16).",
+      "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "transaction_identifiers",
       "section_heading": "## 8. Transaction Identifiers (TXID / WTXID)",
-      "status": "proved",
+      "status": "cv_replay_pass",
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
         "RubinFormal.Conformance.cv_sig_vectors_pass"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "evidence_level": "cv_replay_only",
+      "limitations": [
+        "This section is evidenced by conformance vector replay only (native_decide). No structural or behavioral theorems are present. Coverage is bounded by the fixture set."
+      ],
+      "notes": "CV replay pass only. No additional structural or behavioral theorems for this section."
     },
     {
       "section_key": "weight_accounting",
@@ -155,12 +162,13 @@
       "notes": "Weight accounting behaviourally closed: (1) all 5 normative constants pinned, (2) live 4-component formula decomposed with abstract model bridge, (3) sigCost = mlCount*8 + unknownCount*64 with monotonicity, (4) DA component kind=0 proved (daLen=0 → daSize=1 → daBytes=0), (5) all 4 components independently monotone, (6) conformance replay on real byte sequences, (7) suite-aware post-rotation model via registry lookups. Full monadic parse-to-weight threading deliberately not attempted — behavioral decomposition + CV replay provides equivalent assurance.",
       "limitations": [
         "Full end-to-end monadic parse-to-weight theorem (threading through Option/Except chain) deliberately not attempted — behavioral decomposition + CV replay combination provides equivalent assurance without brittle coupling to internal parser state."
-      ]
+      ],
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "witness_commitment",
       "section_heading": "### 10.4.1 Witness Commitment (Coinbase Anchor)",
-      "status": "proved",
+      "status": "proved_subset",
       "theorems": [
         "RubinFormal.witness_commitment_proved",
         "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot",
@@ -183,12 +191,13 @@
         "The semantic surface proves the canonical witness-commitment step over the current BlockBasicV1 model, not cryptographic collision resistance of SHA3-256.",
         "Executable replay remains complementary evidence for concrete fixture coverage and regression checking.",
         "The merkle-tag theorems are structural domain-separation results only: cross-domain root equality would require a SHA3 collision."
-      ]
+      ],
+      "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "sighash_v1",
       "section_heading": "## 12. Sighash v1 (Normative)",
-      "status": "proved",
+      "status": "proved_subset",
       "theorems": [
         "RubinFormal.Conformance.cv_sighash_vectors_pass",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
@@ -227,7 +236,8 @@
         "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
         "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried sighash_type extraction.",
         "The TxContext-aware verify_sig_ext dispatch and allowed_sighash_set policy introduced by TXCTX are not yet covered by a dedicated section-level proof."
-      ]
+      ],
+      "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "consensus_error_codes",
@@ -503,16 +513,22 @@
       "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity is formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages are bridged to live functions — ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: the live-bridged set covers EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, WitnessCursor, and ValueConservation. The covenant-dispatch / TXCTX sub-ordering currently still relies on the documented parallel-model helper (`dispatchCovenantValidation`) plus explicit witness-check bridges and is not claimed here as a direct live-loop call. Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective on the covered live stages), ext_error_pipeline_deterministic (strict ordering + commutativity on the modeled ext-error surface).",
       "limitations": [
         "dispatchCovenantValidation remains a documented parallel model rather than a direct live-loop call, so covenant-dispatch / TXCTX sub-ordering is only claimed through the current helper bridge surface, not as a standalone direct-loop equivalence theorem."
-      ]
+      ],
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "covenant_registry",
       "section_heading": "## 14. Covenant Type Registry (Normative)",
-      "status": "proved",
+      "status": "cv_replay_pass",
       "theorems": [
         "RubinFormal.Conformance.cv_covenant_genesis_vectors_pass"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "evidence_level": "cv_replay_only",
+      "limitations": [
+        "This section is evidenced by conformance vector replay only (native_decide). No structural or behavioral theorems are present. Coverage is bounded by the fixture set."
+      ],
+      "notes": "CV replay pass only. No additional structural or behavioral theorems for this section."
     },
     {
       "section_key": "difficulty_update",
@@ -578,12 +594,13 @@
       "notes": "Behavioral closure of §15 retarget formula. 6 constant pins, identity/zero cases, lo≤hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio, and CV-POW conformance replay. Helper nat_div_le_div_right proved from Nat.div_add_mod (Lean 4.6.0 Init lacks Nat.div_le_div_right).",
       "limitations": [
         "Full retargetV1 end-to-end Except-monad threading not attempted — behavioral decomposition + CV replay provides equivalent assurance without brittle coupling to internal monadic state."
-      ]
+      ],
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "transaction_structural_rules",
       "section_heading": "## 16. Transaction Structural Rules (Normative)",
-      "status": "proved",
+      "status": "proved_subset",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
         "RubinFormal.core_ext_cursor_no_ambiguity_proved",
@@ -621,16 +638,22 @@
       "notes": "Universal behavioral theorems on live validateWitnessItemLengths (R1-R6) and validateThresholdSigSpendNoCrypto (R7-R8). Complete partition of validateWitnessItemLengths. R8 proves unknown suite rejection for ANY list length (cons case), not just singleton. Concrete regression tests retained.",
       "limitations": [
         "Universal quantified witness structural theorem not proved — concrete test cases only due to do-notation unfolding complexity."
-      ]
+      ],
+      "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "replay_domain_checks",
       "section_heading": "## 1. Replay-Domain Checks (Normative)",
-      "status": "proved",
+      "status": "cv_replay_pass",
       "theorems": [
         "RubinFormal.Conformance.cv_replay_vectors_pass"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean"
+      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "evidence_level": "cv_replay_only",
+      "limitations": [
+        "This section is evidenced by conformance vector replay only (native_decide). No structural or behavioral theorems are present. Coverage is bounded by the fixture set."
+      ],
+      "notes": "CV replay pass only. No additional structural or behavioral theorems for this section."
     },
     {
       "section_key": "utxo_state_model",
@@ -767,7 +790,8 @@
       "limitations": [
         "RBMap-level operational equivalence is not fully proved end-to-end; the current closure relies on the explicit list-to-RBMap bridge and query-level semantics now available in CoinbaseBehavioral.",
         "vault_policy_default_order_safe_proved covers the spend-side safe subset / default-order path only and is not a full L1↔L2 equivalence theorem for every vault-policy branch."
-      ]
+      ],
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "coinbase_and_subsidy",
@@ -781,7 +805,8 @@
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved": "rubin-formal/RubinFormal/SubsidyV1.lean"
-      }
+      },
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "value_conservation",
@@ -802,7 +827,8 @@
         "RubinFormal.value_conservation_block_txs": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean",
         "RubinFormal.utxo_apply_basic_universal_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean"
       },
-      "notes": "Value conservation proved at single-tx level (sum_in = sum_out + fee via scanInputs/sumOutputs) and block level (connectBlockTxs preserves conservation across all txs). Real UTXO-map model, not abstract."
+      "notes": "Value conservation proved at single-tx level (sum_in = sum_out + fee via scanInputs/sumOutputs) and block level (connectBlockTxs preserves conservation across all txs). Real UTXO-map model, not abstract.",
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "da_set_integrity",
@@ -956,12 +982,13 @@
         "RubinFormal.da_integrity_empty_all_stages": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean"
       },
       "notes": "Full behavioral closure: all for-loops are decomposed into recursive functions (accumulateDATxs, verifyCommitIntegrity, collectChunkPayloads, checkOrphanChunks), per-step error propagation is proved branch-by-branch, and parseDATx error taxonomy is covered via phase decomposition. Base cases are strengthened with independence/state-preservation composition proofs. Canonical DA constants are pinned explicitly at theorem level for CHUNK_BYTES, MAX_DA_CHUNK_COUNT, effective chunk-only capacity, and the DA_COMMIT covenant tag, while the live validator boundary proofs remain in place for the same surfaces.",
-      "limitations": []
+      "limitations": [],
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "block_timestamp_rules",
       "section_heading": "## 22. Block Timestamp Rules (Normative)",
-      "status": "proved",
+      "status": "proved_subset",
       "theorems": [
         "RubinFormal.Conformance.cv_timestamp_vectors_pass",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff",
@@ -976,12 +1003,13 @@
       "limitations": [
         "The universal theorem layer is over `timestampBounds` given an already-derived median-time-past value; the list-to-MTP extraction path remains evidenced by executable replay rather than a standalone theorem.",
         "No chain-wide timestamp monotonicity claim beyond the covered `timestampBounds` gate and current replayed integration path is asserted here."
-      ]
+      ],
+      "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "fork_choice",
       "section_heading": "## 23. Fork-Choice Rule (Non-Validation Procedure)",
-      "status": "proved",
+      "status": "proved_with_axiom",
       "theorems": [
         "RubinFormal.Conformance.cv_fork_choice_vectors_pass",
         "RubinFormal.ForkChoiceV1.emptyChain_loses",
@@ -1019,7 +1047,8 @@
       "limitations": [
         "forkSelect models the runtime fork_choice_select. Go/Rust code follows identical if/else chain. Structural equivalence evident from inspection but not proved via rfl (Go/Rust not importable to Lean).",
         "Determinism proofs require 32-byte hashes (documented in forkSelect docstring). Runtime block hashes are always 32 bytes by SHA3-256 construction."
-      ]
+      ],
+      "evidence_level": "machine_checked_assumption_backed"
     },
     {
       "section_key": "block_validation_order",
@@ -1043,7 +1072,8 @@
         "RubinFormal.prepareNonCoinbaseTxBasic_inputs_available": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.scanInputs_no_intra_tx_double_spend": "rubin-formal/RubinFormal/ConnectBlockStrong.lean"
       },
-      "notes": "Section 25 coverage now includes a standalone totality theorem for the BlockValidationOrder model: every input either produces the ordered acceptance witness from section25_order_complete or rejects with an explicit error returned by validateBlockBasic."
+      "notes": "Section 25 coverage now includes a standalone totality theorem for the BlockValidationOrder model: every input either produces the ordered acceptance witness from section25_order_complete or rejects with an explicit error returned by validateBlockBasic.",
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "parallel_validation_equivalence",
@@ -1061,7 +1091,8 @@
         "RubinFormal.Refinement.ParallelEquivalence.reducer_permutation_invariant",
         "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
       ],
-      "file": "RubinFormal/Refinement/ParallelEquivalence.lean"
+      "file": "RubinFormal/Refinement/ParallelEquivalence.lean",
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "txcontext_formal",
@@ -1093,15 +1124,16 @@
         "RubinFormal.SighashV1.checkSighashPolicy_invalid_base_rejected": "rubin-formal/RubinFormal/SighashV1.lean"
       },
       "notes": "§14 pre-activation gate closure on the live Lean helper/computed TxContext surface. 10 closure theorems: ext_id ordering is wired into buildTxContext/buildTxContextLive via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, the carried continuing outputs list itself is bounded both at the TxContextContinuing type and at the built-bundle surface, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. The computed block helper derives continuing counts from the actual carried outputs inside the same continuingData bundle and extracts the sighash byte from a witness item instead of detached metadata. The legacy aggregate connectBlockFull wrapper remains compatibility surface and is not itself counted as the live gate path. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure.",
-      "limitations": []
+      "limitations": [],
+      "evidence_level": "machine_checked_behavioral"
     }
   ],
-  "proof_level": "refinement",
+  "proof_level": "mixed",
   "claims": {
     "allowed": [
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; this is not a universal proof of CANONICAL semantics",
       "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
-      "The pinned-section registry covers all 17 hash-pinned section keys, but some entries are intentionally stated or explicitly scope-limited via notes/limitations",
+      "The pinned-section registry covers all 17 hash-pinned section keys. Each entry carries an explicit evidence_level distinguishing universal proofs from subset contracts, assumption-backed proofs, and CV-replay-only entries.",
       "formal claims are bounded by explicit forbidden claims below"
     ],
     "forbidden": [
@@ -1111,5 +1143,13 @@
       "treating formal-only extra theorems as additional pinned-section coverage when they are not in the registry",
       "universal mechanized refinement between spec text and Go/Rust implementations"
     ]
+  },
+  "status_taxonomy": {
+    "machine_checked_universal": "Universal inductive proof over all inputs. No axioms, no fixture dependence. A counterexample would require a Lean kernel bug.",
+    "machine_checked_behavioral": "Behavioral decomposition of a live formula into pure functions with full constant pins, monotonicity, and CV replay. Not monadic end-to-end but provides equivalent assurance via decomposition + conformance vectors.",
+    "machine_checked_contract": "Fixture-backed contract: conformance vectors or Go-trace vectors replayed via native_decide. Sound for covered inputs only; not a universal proof.",
+    "machine_checked_assumption_backed": "Universal proof that depends on one or more named axioms (e.g., block_hash_collision_resistance). Sound only if axioms hold.",
+    "cv_replay_only": "Conformance vector replay pass with no additional structural or behavioral theorems. Weakest machine-checked level.",
+    "baseline": "Metadata-only or stated claim. No machine-checked evidence yet."
   }
 }
