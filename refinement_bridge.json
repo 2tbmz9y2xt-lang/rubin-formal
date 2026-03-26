@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "status": "pv-refined",
-  "notes": "Bridge map for model theorem -> executable conformance op evidence. The registry remains narrower than universal mechanized refinement, but `retarget_v1` and `parse_tx` are now backed by machine-checked Go-trace contracts instead of metadata-only baseline evidence. parse_tx drift exception (PARSE-16) is payload-pinned via triple-segment content hash (~192-bit collision resistance). PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
+  "status": "active",
+  "notes": "Bridge map for model theorem -> executable conformance op evidence. Each critical_op carries an explicit evidence_level from the shared taxonomy: machine_checked_universal, machine_checked_behavioral, machine_checked_contract, machine_checked_assumption_backed, cv_replay_only, or baseline. parse_tx drift exception (PARSE-16) is payload-pinned via triple-segment content hash (~192-bit collision resistance). PV structural proofs added in ParallelEquivalence.lean (Q-PV-19).",
   "critical_ops": [
     {
       "op": "parse_tx",
