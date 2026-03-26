@@ -12,8 +12,8 @@
       "contract_scope": "All 16 CV-PARSE Go-trace vectors replayed against Lean parseTx. Exact id set pinned by parseExpectedIds (PARSE-01..PARSE-16). PARSE-16 drift exception payload-pinned via triple-segment content hash.",
       "limitations": [
         "Narrow trace-backed contract over current 16 CV-PARSE fixture vectors, not a universal proof for all possible transaction byte sequences.",
-        "PARSE-16 has documented error-priority drift (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception is pinned to concrete fixture payload via triple-segment hash (full + first-half + second-half, ~192-bit collision resistance) \u2014 any byte change breaks the proof.",
-        "Serialize direction (Lean\u2192bytes\u2192Go roundtrip) is not covered by this contract."
+        "PARSE-16 has documented error-priority drift (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception is pinned to concrete fixture payload via triple-segment hash (full + first-half + second-half, ~192-bit collision resistance) — any byte change breaks the proof.",
+        "Serialize direction (Lean→bytes→Go roundtrip) is not covered by this contract."
       ]
     },
     {
@@ -29,11 +29,41 @@
       "model_theorem": "RubinFormal.retarget_v1_go_trace_contract_proved",
       "lean_file": "rubin-formal/RubinFormal/RefinementBridgeV1.lean",
       "evidence_level": "machine_checked_contract",
-      "contract_scope": "Generated Go trace v1 rows with `op=retarget_v1`, replayed against Lean `PowV1.retargetV1` on matching `CV-POW` fixture ids.",
+      "contract_scope": "Behavioral decomposition of the live retarget formula (three-way clamp) with constant pins, candidate monotonicity, 4x stability boundary, lo≤hi under valid preconditions, strengthened clamped range, timestamp clamping, and CV-POW conformance replay.",
       "limitations": [
-        "This is a narrow trace-backed equivalence contract, not a universal proof for all possible retarget inputs.",
-        "Other critical ops remain baseline-only until they receive their own machine-checked bridge."
-      ]
+        "Full retargetV1 end-to-end Except-monad threading is deliberately not attempted — behavioral decomposition + CV replay provides equivalent assurance without brittle coupling to internal monadic state.",
+        "Go trace contract (RefinementBridgeV1.lean) supplements behavioral proofs with concrete fixture-based evidence."
+      ],
+      "theorem_file": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+      "spec_section": "§15",
+      "go_function": "retargetV1",
+      "supporting_theorems": [
+        "RubinFormal.retarget_window_size_value",
+        "RubinFormal.retarget_block_interval_value",
+        "RubinFormal.retarget_tExpected_value",
+        "RubinFormal.retarget_max_timestamp_step_value",
+        "RubinFormal.retarget_pow_limit_value",
+        "RubinFormal.retarget_tExpected_decomposition",
+        "RubinFormal.retarget_identity",
+        "RubinFormal.retarget_zero_tActual",
+        "RubinFormal.retarget_lo_positive",
+        "RubinFormal.retarget_hi_bounded",
+        "RubinFormal.retarget_lo_le_hi",
+        "RubinFormal.retarget_clamped_in_range",
+        "RubinFormal.retarget_clamped_in_range_strong",
+        "RubinFormal.retarget_result_in_valid_range",
+        "RubinFormal.retarget_candidate_monotone",
+        "RubinFormal.retarget_candidate_monotone_target",
+        "RubinFormal.retarget_4x_lower",
+        "RubinFormal.retarget_4x_upper",
+        "RubinFormal.timestamp_step_bounded",
+        "RubinFormal.timestamp_step_le_actual",
+        "RubinFormal.max_tActual_bounded",
+        "RubinFormal.max_retarget_ratio",
+        "RubinFormal.retarget_cv_replay_pass",
+        "RubinFormal.Conformance.cv_pow_vectors_pass"
+      ],
+      "notes": "Behavioral closure of §15 retarget formula. The live retargetV1 function is validated against CV-POW vectors (native_decide), and the three-way clamp formula is decomposed into pure functions with full constant pins, candidate monotonicity (both tActual and targetOldNat), lo≤hi proof, strengthened clamped range [lo,hi], and 4x stability boundary. Helper lemma nat_div_le_div_right proved from Nat.div_add_mod since Lean 4.6.0 Init lacks Nat.div_le_div_right."
     },
     {
       "op": "fork_choice_select",
@@ -41,7 +71,7 @@
       "model_theorem": "RubinFormal.Refinement.fork_choice_select_cv_contract_proved",
       "lean_file": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
       "evidence_level": "machine_checked_contract",
-      "contract_scope": "All 10 CV-FORK-CHOICE vectors with op=fork_choice_select (6 positive + 4 negative) replayed against selectWinner which exercises chainTotalWork + bytesLT tie-break. Exact id set pinned by forkChoiceSelectExpectedIds. Proved by native_decide, axiom-free \u2014 no block_hash_collision_resistance in the theorem dependency chain.",
+      "contract_scope": "All 10 CV-FORK-CHOICE vectors with op=fork_choice_select (6 positive + 4 negative) replayed against selectWinner which exercises chainTotalWork + bytesLT tie-break. Exact id set pinned by forkChoiceSelectExpectedIds. Proved by native_decide, axiom-free — no block_hash_collision_resistance in the theorem dependency chain.",
       "limitations": [
         "Narrow trace-backed contract over current 10 CV-FORK-CHOICE fork_choice_select vectors, not a universal proof for all possible chain configurations.",
         "Data source is CV-FORK-CHOICE conformance vectors, not Go trace (go_trace_v1.jsonl does not contain fork_choice_select operations).",
@@ -83,7 +113,7 @@
       "lean_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "evidence_level": "machine_checked_contract",
-      "spec_section": "\u00a721",
+      "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
       "limitations": [],
       "supporting_theorems": [
@@ -150,11 +180,11 @@
       "lean_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "evidence_level": "machine_checked_contract",
-      "spec_section": "\u00a79",
+      "spec_section": "§9",
       "go_function": "CalcTxWeight",
       "contract_scope": "Behavioral decomposition of the live weight formula (base/witness/DA/signature) with abstract model bridge + conformance replay. Constants pinned, all 4 components independently monotone, DA-component kind=0 proved, sigCost decomposition proved.",
       "limitations": [
-        "Full end-to-end monadic parse-to-weight theorem (threading through Option/Except chain of txWeightAndStats) is deliberately not attempted \u2014 behavioral decomposition + CV replay provides equivalent assurance.",
+        "Full end-to-end monadic parse-to-weight theorem (threading through Option/Except chain of txWeightAndStats) is deliberately not attempted — behavioral decomposition + CV replay provides equivalent assurance.",
         "Post-rotation suite-aware cost model proved separately in WeightSuiteAware.lean."
       ],
       "supporting_theorems": [
@@ -175,7 +205,7 @@
         "RubinFormal.weight_suite_aware_correct_create",
         "RubinFormal.weight_accounting_proved"
       ],
-      "notes": "Behavioral closure of \u00a79 weight formula. The live txWeightAndStats function is validated against CV vectors (native_decide), and the weight formula is decomposed into pure functions with full monotonicity and abstract model equivalence. Suite-aware cost model (post-rotation) covered by WeightSuiteAware.lean."
+      "notes": "Behavioral closure of §9 weight formula. The live txWeightAndStats function is validated against CV vectors (native_decide), and the weight formula is decomposed into pure functions with full monotonicity and abstract model equivalence. Suite-aware cost model (post-rotation) covered by WeightSuiteAware.lean."
     }
   ]
 }
