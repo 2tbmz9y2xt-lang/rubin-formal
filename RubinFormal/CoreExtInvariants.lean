@@ -1,4 +1,5 @@
 import Std
+import RubinFormal.Types
 
 namespace RubinFormal
 
@@ -15,8 +16,6 @@ v2 (Q-FORMAL-GAP-01, F-04 fix, 2026-03-06):
 - `coreExtTighteningStatement` in PinnedSections now includes the rejection property.
 -/
 
-/-- CORE_EXT suite ID constants (CANONICAL §5.4). -/
-def SUITE_ID_SENTINEL : Nat := 0x00
 
 structure WitnessItemMini where
   suiteId : Nat

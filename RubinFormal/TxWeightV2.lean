@@ -9,6 +9,10 @@ open Wire
 
 namespace TxWeightV2
 
+/-- Namespace alias to canonical RubinFormal.SUITE_ID_SENTINEL (see #284). -/
+abbrev SUITE_ID_SENTINEL : Nat := RubinFormal.SUITE_ID_SENTINEL
+abbrev SUITE_ID_ML_DSA_87 : Nat := RubinFormal.SUITE_ID_ML_DSA_87
+
 -- Constants from CANONICAL §§2/4/5/9 (subset required for weight accounting).
 def WITNESS_DISCOUNT_DIVISOR : Nat := 4
 
@@ -19,11 +23,6 @@ def VERIFY_COST_UNKNOWN_SUITE : Nat := 64
 
 def MAX_WITNESS_ITEMS : Nat := 1024
 def MAX_WITNESS_BYTES_PER_TX : Nat := 100000
-
-/- Pre-rotation suite ID constants.  See `RotationPrelude.lean` for
-   the registry-based model used by Q-FORMAL-ROTATION-01..06. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
-def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
 def ML_DSA_87_SIG_BYTES : Nat := 4627

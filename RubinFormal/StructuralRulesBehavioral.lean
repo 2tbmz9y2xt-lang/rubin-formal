@@ -51,12 +51,12 @@ theorem unknown_suite_rejected_universal
     (hNotM : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .error "TX_ERR_SIG_ALG_INVALID" := by
   have hS : w.suiteId ≠ 0 := by
-    simp [UtxoApplyGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_SENTINEL] at hNotS; exact hNotS
+    simp [UtxoApplyGenesisV1.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_SENTINEL] at hNotS; exact hNotS
   have hM : w.suiteId ≠ 1 := by
-    simp [UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at hNotM; exact hNotM
+    simp [UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87, RubinFormal.SUITE_ID_ML_DSA_87] at hNotM; exact hNotM
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
     UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
-    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87]
+    RubinFormal.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_ML_DSA_87]
   simp [hS, hM]; rfl
 
 /-! ## R2: Sentinel — non-empty pubkey or sig rejected -/
@@ -69,7 +69,7 @@ theorem sentinel_nonempty_rejected_universal
     (hNE : w.pubkey.size ≠ 0 ∨ w.signature.size ≠ 0) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .error "TX_ERR_PARSE" := by
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
-    UtxoApplyGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_SENTINEL] at *
+    UtxoApplyGenesisV1.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_SENTINEL] at *
   simp only [hS, beq_self_eq_true, ite_true]
   rcases hNE with hp | hs
   · simp [bne_iff_ne, hp, Bool.true_or]; rfl
@@ -86,7 +86,7 @@ theorem sentinel_empty_accepted_universal
     (hSE : w.signature.size = 0) :
     UtxoApplyGenesisV1.validateWitnessItemLengths w h = .ok () := by
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
-    UtxoApplyGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_SENTINEL] at *
+    UtxoApplyGenesisV1.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_SENTINEL] at *
   simp only [hS, beq_self_eq_true, ite_true]
   simp [bne_iff_ne, hPE, hSE]; rfl
 
@@ -102,7 +102,7 @@ theorem mldsa87_wrong_pubkey_rejected_universal
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
     UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
     UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES, UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES,
-    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
+    RubinFormal.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_ML_DSA_87] at *
   simp [show w.suiteId ≠ 0 from by omega, hM, bne_iff_ne, hBad, Bool.true_or]; rfl
 
 /-! ## R5: ML-DSA-87 — sig bounds rejected -/
@@ -118,7 +118,7 @@ theorem mldsa87_empty_sig_rejected_universal
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
     UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
     UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES, UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES,
-    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
+    RubinFormal.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_ML_DSA_87] at *
   simp [show w.suiteId ≠ 0 from by omega, hM, bne_iff_ne, hPOk, hSig0]; rfl
 
 /-- **R5b (universal):** ML-DSA-87 with sig too large is rejected.
@@ -132,7 +132,7 @@ theorem mldsa87_sig_too_large_rejected_universal
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
     UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
     UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES, UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES,
-    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
+    RubinFormal.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_ML_DSA_87] at *
   simp [show w.suiteId ≠ 0 from by omega, hM]
   split
   · rfl
@@ -153,7 +153,7 @@ theorem mldsa87_valid_accepted_universal
   simp only [UtxoApplyGenesisV1.validateWitnessItemLengths,
     UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
     UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES, UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES,
-    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
+    RubinFormal.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_ML_DSA_87] at *
   simp [show w.suiteId ≠ 0 from by omega, hM, bne_iff_ne, hPOk,
         show w.signature.size ≠ 0 from by omega]
   simp [show ¬(4628 < w.signature.size) from by omega]; rfl
@@ -187,7 +187,7 @@ theorem threshold_unknown_suite_head_rejected
     .error "TX_ERR_SIG_ALG_INVALID" := by
   simp only [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto,
     UtxoApplyGenesisV1.SUITE_ID_SENTINEL, UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87,
-    CovenantGenesisV1.SUITE_ID_SENTINEL, CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
+    RubinFormal.SUITE_ID_SENTINEL, RubinFormal.SUITE_ID_ML_DSA_87] at *
   have hLen' : wrest.length = krest.length := by simp [List.length] at hLen; omega
   simp [hLen', hNotS, hNotM]
   show Except.error "TX_ERR_SIG_ALG_INVALID" = Except.error "TX_ERR_SIG_ALG_INVALID"; rfl

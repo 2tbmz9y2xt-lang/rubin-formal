@@ -9,6 +9,10 @@ open Wire
 
 namespace TxV2
 
+/-- Namespace alias to canonical RubinFormal.SUITE_ID_SENTINEL (see #284). -/
+abbrev SUITE_ID_SENTINEL : Nat := RubinFormal.SUITE_ID_SENTINEL
+abbrev SUITE_ID_ML_DSA_87 : Nat := RubinFormal.SUITE_ID_ML_DSA_87
+
 -- Consensus constants (subset, from CANONICAL §2/§5).
 def MAX_TX_INPUTS : Nat := 1024
 def MAX_TX_OUTPUTS : Nat := 1024
@@ -17,11 +21,6 @@ def MAX_WITNESS_ITEMS : Nat := 1024
 def MAX_WITNESS_BYTES_PER_TX : Nat := 100000
 -- Wire-level hard cap (CANONICAL §5.3).
 def MAX_COVENANT_DATA_PER_OUTPUT : Nat := 65536
-
-/- Pre-rotation suite constants.  Post-rotation (Q-FORMAL-ROTATION-02/03):
-   replace with registry lookup via `Rotation.SuiteRegistry`. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
-def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
 def ML_DSA_87_SIG_BYTES : Nat := 4627

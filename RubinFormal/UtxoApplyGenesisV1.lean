@@ -12,10 +12,10 @@ open RubinFormal
 open RubinFormal.UtxoBasicV1
 open RubinFormal.CovenantGenesisV1
 
-/- Pre-rotation suite constants (re-exported from CovenantGenesisV1).
+/- Pre-rotation suite constants (re-exported from RubinFormal.Types canonical).
    Post-rotation (Q-FORMAL-ROTATION-02/04): use `Rotation.registryLookup`. -/
-def SUITE_ID_SENTINEL : Nat := CovenantGenesisV1.SUITE_ID_SENTINEL
-def SUITE_ID_ML_DSA_87 : Nat := CovenantGenesisV1.SUITE_ID_ML_DSA_87
+def SUITE_ID_SENTINEL : Nat := RubinFormal.SUITE_ID_SENTINEL
+def SUITE_ID_ML_DSA_87 : Nat := RubinFormal.SUITE_ID_ML_DSA_87
 
 def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
 def ML_DSA_87_SIG_BYTES : Nat := 4627

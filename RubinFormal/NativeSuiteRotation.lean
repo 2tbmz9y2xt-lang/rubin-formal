@@ -24,6 +24,9 @@ namespace NativeSuiteRotation
 
 open Rotation
 
+/-- Namespace alias to canonical RubinFormal.SUITE_ID_SENTINEL (see #284). -/
+abbrev SUITE_ID_SENTINEL : Nat := RubinFormal.SUITE_ID_SENTINEL
+
 /-! ### Rotation Deployment Descriptor (extended from RotationPrelude) -/
 
 /-- A full rotation deployment descriptor with all lifecycle heights. -/
@@ -34,9 +37,6 @@ structure RotationDeploymentDescriptor where
   h2         : Nat   -- old suite create-ineligible
   h4         : Option Nat  -- old suite spend-ineligible (sunset); None = never
   deriving Repr, DecidableEq
-
-/-- SUITE_ID_SENTINEL constant (0x00) — sentinel is never a valid active suite. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
 
 /-- A descriptor is well-formed per CANONICAL §4.1.3:
     - old ≠ new

@@ -63,7 +63,7 @@ private theorem suiteAwareCost_nonSentinel (reg : SuiteRegistry) (sid : Nat)
     suiteAwareCost reg sid = match registryLookup reg sid with
       | some entry => entry.verifyCost
       | none => TxWeightV2.VERIFY_COST_UNKNOWN_SUITE := by
-  unfold suiteAwareCost TxWeightV2.SUITE_ID_SENTINEL
+  unfold suiteAwareCost TxWeightV2.SUITE_ID_SENTINEL RubinFormal.SUITE_ID_SENTINEL
   have hbeq : (sid == (0 : Nat)) = false := by
     show Nat.beq sid 0 = false
     exact nat_beq_ne_zero h
@@ -95,7 +95,7 @@ theorem fi_rot_03_total_sig_cost_deterministic
 /-- Sentinel suite has zero cost. -/
 theorem fi_rot_03_sentinel_zero_cost (reg : SuiteRegistry) :
     suiteAwareCost reg TxWeightV2.SUITE_ID_SENTINEL = 0 := by
-  unfold suiteAwareCost TxWeightV2.SUITE_ID_SENTINEL
+  unfold suiteAwareCost TxWeightV2.SUITE_ID_SENTINEL RubinFormal.SUITE_ID_SENTINEL
   simp
 
 /-- ML-DSA-87 cost matches hardcoded VERIFY_COST_ML_DSA_87 in pre-rotation registry. -/

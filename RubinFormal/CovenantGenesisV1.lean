@@ -8,6 +8,10 @@ open Wire
 
 namespace CovenantGenesisV1
 
+/-- Namespace alias to canonical RubinFormal.SUITE_ID_SENTINEL (see #284). -/
+abbrev SUITE_ID_SENTINEL : Nat := RubinFormal.SUITE_ID_SENTINEL
+abbrev SUITE_ID_ML_DSA_87 : Nat := RubinFormal.SUITE_ID_ML_DSA_87
+
 def MAX_P2PK_COVENANT_DATA : Nat := 33
 def MAX_ANCHOR_PAYLOAD_SIZE : Nat := 65536
 def MAX_HTLC_COVENANT_DATA : Nat := 105
@@ -15,11 +19,6 @@ def MAX_HTLC_COVENANT_DATA : Nat := 105
 def MAX_VAULT_KEYS : Nat := 12
 def MAX_VAULT_WHITELIST_ENTRIES : Nat := 1024
 def MAX_MULTISIG_KEYS : Nat := 12
-
-/- Pre-rotation suite constants.  Post-rotation (Q-FORMAL-ROTATION-04):
-   creation gate becomes `suiteId ∉ NATIVE_CREATE_SUITES(h) → reject`. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
-def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def COV_TYPE_P2PK : Nat := 0x0000
 def COV_TYPE_ANCHOR : Nat := 0x0002

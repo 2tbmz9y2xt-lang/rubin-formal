@@ -33,4 +33,11 @@ instance : Repr Bytes where
 instance : Inhabited Bytes where
   default := ByteArray.empty
 
+
+/-- Canonical suite ID constants (CANONICAL §2.3 / §5.4).
+    All modules MUST reference these definitions instead of
+    defining local copies.  See issue #284. -/
+def SUITE_ID_SENTINEL : Nat := 0x00
+def SUITE_ID_ML_DSA_87 : Nat := 0x01
+
 end RubinFormal

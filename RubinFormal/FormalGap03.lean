@@ -73,7 +73,7 @@ theorem det001_validation_order_proved : det001ValidationOrderStatement := by
 
 theorem sem001_mldsa_bounded_lengths_proved : sem001MLDSABoundedLengthStatement := by
   intro w blockHeight hSuite
-  have hDistinct : ¬CovenantGenesisV1.SUITE_ID_ML_DSA_87 = CovenantGenesisV1.SUITE_ID_SENTINEL := by
+  have hDistinct : ¬RubinFormal.SUITE_ID_ML_DSA_87 = RubinFormal.SUITE_ID_SENTINEL := by
     native_decide
   by_cases hPub : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES
   · by_cases hSig0 : w.signature.size = 0
