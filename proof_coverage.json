@@ -634,7 +634,9 @@
         "RubinFormal.outpoint_ne_of_vout_ne",
         "RubinFormal.insertOutputs_go_last_present",
         "RubinFormal.insertOutputs_go_preserves_earlier",
-        "RubinFormal.addCoinbaseOutputs_preserves_full"
+        "RubinFormal.addCoinbaseOutputs_preserves_full",
+        "RubinFormal.utxo_apply_basic_universal_refinement",
+        "RubinFormal.utxo_apply_basic_chain_refinement"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -696,7 +698,9 @@
         "RubinFormal.outpoint_ne_of_vout_ne": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
         "RubinFormal.insertOutputs_go_last_present": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
         "RubinFormal.insertOutputs_go_preserves_earlier": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
-        "RubinFormal.addCoinbaseOutputs_preserves_full": "rubin-formal/RubinFormal/UtxoMapProperties.lean"
+        "RubinFormal.addCoinbaseOutputs_preserves_full": "rubin-formal/RubinFormal/UtxoMapProperties.lean",
+        "RubinFormal.utxo_apply_basic_universal_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean",
+        "RubinFormal.utxo_apply_basic_chain_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean"
       },
       "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking is proved through the current list-to-RBMap bridge surface, with query-level semantics and non-spendable exclusion theorems covering the live behavior that has actually been mechanized. Vault policy replay remains useful evidence for the spend-side safe subset and default-order path, but it is not presented here as a full L1↔L2 equivalence model.",
       "limitations": [
@@ -727,13 +731,15 @@
         "RubinFormal.Conformance.cv_subsidy_vectors_pass",
         "RubinFormal.utxo_conservation_theorem",
         "RubinFormal.value_conservation_single_tx",
-        "RubinFormal.value_conservation_block_txs"
+        "RubinFormal.value_conservation_block_txs",
+        "RubinFormal.utxo_apply_basic_universal_refinement"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.utxo_conservation_theorem": "rubin-formal/RubinFormal/ConnectBlockStrong.lean",
         "RubinFormal.value_conservation_single_tx": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean",
-        "RubinFormal.value_conservation_block_txs": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean"
+        "RubinFormal.value_conservation_block_txs": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean",
+        "RubinFormal.utxo_apply_basic_universal_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean"
       },
       "notes": "Value conservation proved at single-tx level (sum_in = sum_out + fee via scanInputs/sumOutputs) and block level (connectBlockTxs preserves conservation across all txs). Real UTXO-map model, not abstract."
     },
