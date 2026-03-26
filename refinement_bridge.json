@@ -59,15 +59,21 @@
     {
       "op": "utxo_apply_basic",
       "gate": "CV-UTXO-BASIC",
-      "model_theorem": "RubinFormal.utxo_apply_basic_go_trace_contract_proved",
+      "model_theorem": "RubinFormal.utxo_apply_basic_universal_refinement",
       "lean_file": "rubin-formal/RubinFormal/RefinementBridgeV1.lean",
-      "evidence_level": "machine_checked_contract",
-      "contract_scope": "Generated Go trace v1 rows with exact supported ids `CV-U-01, CV-U-02, CV-U-05, CV-U-06, CV-U-08, CV-U-09, CV-U-10, CV-U-11, CV-U-12, CV-U-13, CV-U-14, CV-U-15, CV-U-17` (implemented by `utxoApplyBasicExpectedIds` / `utxoApplyBasicBridgeRows`), replayed against Lean `applyNonCoinbaseTxBasic` on matching fixture ids.",
+      "evidence_level": "machine_checked_universal",
+      "contract_scope": "Universal inductive proof: for ANY transaction list and ANY UTXO state, if `connectBlockTxs` succeeds then UTXO conservation AND anti-double-spend hold simultaneously. Chain-level composition via `utxo_apply_basic_chain_refinement`. No axioms, no fixture dependence.",
       "limitations": [
-        "This is a narrow trace-backed executable contract over the current supported replay subset, not a universal proof for all possible UTXO states or transaction inputs.",
-        "`CV-U-16` is intentionally excluded because it is a post-activation SLH row while the current formal `applyNonCoinbaseTxBasic` model on `main` remains pre-rotation.",
-        "The contract checks outcome, fee, and resulting UTXO count for the included replay rows; stronger universal state-equivalence theorems remain separate work.",
-        "The bridge now fails closed on id-set drift: if the supported UTXO replay ids change without updating `utxoApplyBasicExpectedIds`, the theorem and the repository-wide refinement checker both fail."
+        "`CV-U-16` is intentionally excluded from the narrow contract because it is a post-activation SLH row while the current formal model remains pre-rotation.",
+        "The universal theorems cover `connectBlockTxs` (non-coinbase transaction processing). Header linkage, PoW, and coinbase checks are proved elsewhere.",
+        "The bridge fails closed on id-set drift in the narrow contract layer."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.utxo_conservation_theorem",
+        "RubinFormal.no_double_spend_theorem",
+        "RubinFormal.utxo_apply_basic_chain_refinement",
+        "RubinFormal.chainConsistency_inductive",
+        "RubinFormal.utxo_apply_basic_go_trace_contract_proved"
       ]
     },
     {
