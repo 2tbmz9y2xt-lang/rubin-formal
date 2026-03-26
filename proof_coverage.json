@@ -88,11 +88,11 @@
         "RubinFormal.Refinement.parse_tx_go_trace_contract_proved": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean"
       },
       "limitations": [
-        "Full transaction parse-serialize roundtrip not claimed — serialize direction not yet covered.",
-        "PARSE-16 error-priority drift: Lean reports TX_ERR_SIG_ALG_INVALID, Go reports TX_ERR_WITNESS_OVERFLOW. Both reject the same invalid input; check order differs. Documented in isKnownParseDrift.",
-        "The Go-trace contract covers the current 16 CV-PARSE fixture vectors, not all possible transaction byte sequences."
+        "Full transaction parse-serialize roundtrip not claimed — coverage limited to CompactSize + primitive LE encoding roundtrips.",
+        "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via txHexLen.",
+        "Serialize direction (Lean→bytes→Go roundtrip) not covered by parse_tx contract."
       ],
-      "notes": "Parse-direction coverage upgraded: Go-trace replay contract (parse_tx_go_trace_contract_proved via native_decide) proves Lean parseTx matches Go implementation on all 16 CV-PARSE vectors. PARSE-16 has documented error-priority drift (both reject, different first error). CompactSize + primitive LE encoding roundtrips remain from prior coverage."
+      "notes": "Includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16)."
     },
     {
       "section_key": "transaction_identifiers",

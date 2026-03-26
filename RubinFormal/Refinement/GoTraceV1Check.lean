@@ -37,11 +37,15 @@ private def decodeHexOpt? (s : Option String) : Option Bytes :=
     Both implementations reject the same input; only the first-reported error
     differs because validation checks run in a different order.
     PARSE-16: Lean hits SIG_ALG_INVALID before WITNESS_OVERFLOW;
-              Go hits WITNESS_OVERFLOW first. Both reject. -/
-private def isKnownParseDrift (id gotErr expectedErr : String) : Bool :=
+              Go hits WITNESS_OVERFLOW first. Both reject.
+    The txHexLen pin (100046) ties this exception to the concrete PARSE-16
+    fixture payload — if the vector content changes, the length won't match
+    and native_decide will fail closed. -/
+private def isKnownParseDrift (id gotErr expectedErr : String) (txHexLen : Nat) : Bool :=
   id == "PARSE-16" &&
   gotErr == "TX_ERR_SIG_ALG_INVALID" &&
-  expectedErr == "TX_ERR_WITNESS_OVERFLOW"
+  expectedErr == "TX_ERR_WITNESS_OVERFLOW" &&
+  txHexLen == 100046
 
 private def checkParse (o : ParseOut) : Bool :=
   match findById? o.id RubinFormal.Conformance.cvParseVectors (fun v => v.id) with
@@ -69,7 +73,7 @@ private def checkParse (o : ParseOut) : Bool :=
             | some e =>
                 let got := e.toString
                 r.ok == false && o.consumed == 0 &&
-                (got == o.err || isKnownParseDrift o.id got o.err)
+                (got == o.err || isKnownParseDrift o.id got o.err v.txHex.length)
 
 private def checkSighash (o : SighashOut) : Bool :=
   match findById? o.id RubinFormal.Conformance.cvSighashVectors (fun v => v.id) with
@@ -252,7 +256,8 @@ private def parseSupportedIdsOk : Bool :=
   parseOutIds == parseExpectedIds
 
 /-- Per-gate Bool: all CV-PARSE Go-trace vectors pass through Lean's parseTx.
-    Pinned by `parseExpectedIds` — the proof fails closed on id-set drift. -/
+    Pinned by `parseExpectedIds` — the proof fails closed on id-set drift.
+    PARSE-16 drift exception is payload-pinned via txHexLen in `isKnownParseDrift`. -/
 def parseGoTraceV1Pass : Bool :=
   parseSupportedIdsOk && !parseOuts.isEmpty && parseOuts.all checkParse
 
