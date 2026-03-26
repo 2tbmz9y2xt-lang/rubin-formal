@@ -98,19 +98,34 @@ theorem fi_rot_03_sentinel_zero_cost (reg : SuiteRegistry) :
   unfold suiteAwareCost RubinFormal.SUITE_ID_SENTINEL
   simp
 
-/-- ML-DSA-87 cost matches hardcoded VERIFY_COST_ML_DSA_87 in pre-rotation registry. -/
+/-- ML-DSA-87 cost matches VERIFY_COST_ML_DSA_87 in any single-ML-DSA-87 registry (#287). -/
+theorem ml_dsa_cost_matches_canonical (reg : SuiteRegistry)
+    (hreg : reg = [ML_DSA_87_ENTRY]) :
+    suiteAwareCost reg TxWeightV2.SUITE_ID_ML_DSA_87 =
+    TxWeightV2.VERIFY_COST_ML_DSA_87 := by
+  subst hreg; native_decide
+
+/-- Pre-rotation corollary. -/
 theorem fi_rot_03_ml_dsa_cost_matches :
     suiteAwareCost PRE_ROTATION_REGISTRY TxWeightV2.SUITE_ID_ML_DSA_87 =
-    TxWeightV2.VERIFY_COST_ML_DSA_87 := by
-  native_decide
+    TxWeightV2.VERIFY_COST_ML_DSA_87 :=
+  ml_dsa_cost_matches_canonical PRE_ROTATION_REGISTRY rfl
 
-/-- Unknown suite cost matches VERIFY_COST_UNKNOWN_SUITE in pre-rotation registry. -/
+/-- Unknown suite cost matches VERIFY_COST_UNKNOWN_SUITE in any registry (#287). -/
+theorem unknown_suite_cost_any_registry (reg : SuiteRegistry) (sid : Nat)
+    (hnotSentinel : sid ≠ RubinFormal.SUITE_ID_SENTINEL)
+    (hnotRegistered : registryLookup reg sid = none) :
+    suiteAwareCost reg sid =
+    TxWeightV2.VERIFY_COST_UNKNOWN_SUITE := by
+  rw [suiteAwareCost_nonSentinel _ _ hnotSentinel, hnotRegistered]
+
+/-- Pre-rotation corollary. -/
 theorem fi_rot_03_unknown_suite_cost (sid : Nat)
     (hnotSentinel : sid ≠ RubinFormal.SUITE_ID_SENTINEL)
     (hnotRegistered : registryLookup PRE_ROTATION_REGISTRY sid = none) :
     suiteAwareCost PRE_ROTATION_REGISTRY sid =
-    TxWeightV2.VERIFY_COST_UNKNOWN_SUITE := by
-  rw [suiteAwareCost_nonSentinel _ _ hnotSentinel, hnotRegistered]
+    TxWeightV2.VERIFY_COST_UNKNOWN_SUITE :=
+  unknown_suite_cost_any_registry PRE_ROTATION_REGISTRY sid hnotSentinel hnotRegistered
 
 /-! ### Active suites are never sentinel
 
@@ -181,17 +196,31 @@ theorem weight_suite_aware_correct_create
   refine ⟨entry, hlookup, ?_⟩
   rw [suiteAwareCost_nonSentinel _ _ hnotSentinel, hlookup]
 
-/-- Pre-rotation concrete check: totalSigCost for [ML_DSA_87, ML_DSA_87] = 16. -/
+/-- Two ML-DSA-87 sigs cost 16 in any single-ML-DSA-87 registry (#287). -/
+theorem two_ml_dsa_sigs_cost_canonical (reg : SuiteRegistry)
+    (hreg : reg = [ML_DSA_87_ENTRY]) :
+    totalSigCost reg
+      [TxWeightV2.SUITE_ID_ML_DSA_87, TxWeightV2.SUITE_ID_ML_DSA_87] = 16 := by
+  subst hreg; native_decide
+
+/-- Pre-rotation corollary. -/
 theorem fi_rot_03_pre_rotation_two_sigs :
     totalSigCost PRE_ROTATION_REGISTRY
-      [TxWeightV2.SUITE_ID_ML_DSA_87, TxWeightV2.SUITE_ID_ML_DSA_87] = 16 := by
-  native_decide
+      [TxWeightV2.SUITE_ID_ML_DSA_87, TxWeightV2.SUITE_ID_ML_DSA_87] = 16 :=
+  two_ml_dsa_sigs_cost_canonical PRE_ROTATION_REGISTRY rfl
 
-/-- Pre-rotation concrete check: totalSigCost for [SENTINEL, ML_DSA_87] = 8. -/
+/-- Sentinel + ML-DSA-87 costs 8 in any single-ML-DSA-87 registry (#287). -/
+theorem sentinel_plus_ml_dsa_cost_canonical (reg : SuiteRegistry)
+    (hreg : reg = [ML_DSA_87_ENTRY]) :
+    totalSigCost reg
+      [RubinFormal.SUITE_ID_SENTINEL, TxWeightV2.SUITE_ID_ML_DSA_87] = 8 := by
+  subst hreg; native_decide
+
+/-- Pre-rotation corollary. -/
 theorem fi_rot_03_pre_rotation_sentinel_plus_sig :
     totalSigCost PRE_ROTATION_REGISTRY
-      [RubinFormal.SUITE_ID_SENTINEL, TxWeightV2.SUITE_ID_ML_DSA_87] = 8 := by
-  native_decide
+      [RubinFormal.SUITE_ID_SENTINEL, TxWeightV2.SUITE_ID_ML_DSA_87] = 8 :=
+  sentinel_plus_ml_dsa_cost_canonical PRE_ROTATION_REGISTRY rfl
 
 end WeightSuiteAware
 
