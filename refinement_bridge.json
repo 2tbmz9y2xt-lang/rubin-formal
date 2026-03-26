@@ -27,7 +27,7 @@
       "op": "retarget_v1",
       "gate": "CV-POW",
       "model_theorem": "RubinFormal.retarget_v1_go_trace_contract_proved",
-      "lean_file": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+      "lean_file": "rubin-formal/RubinFormal/RefinementBridgeV1.lean",
       "evidence_level": "machine_checked_contract",
       "contract_scope": "Behavioral decomposition of the live retarget formula (three-way clamp) with constant pins, candidate monotonicity, 4x stability boundary, lo≤hi under valid preconditions, strengthened clamped range, timestamp clamping, and CV-POW conformance replay.",
       "limitations": [
