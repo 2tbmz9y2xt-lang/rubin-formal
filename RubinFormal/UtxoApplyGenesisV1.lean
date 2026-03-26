@@ -14,7 +14,6 @@ open RubinFormal.CovenantGenesisV1
 
 /- Pre-rotation suite constants (re-exported from CovenantGenesisV1).
    Post-rotation (Q-FORMAL-ROTATION-02/04): use `Rotation.registryLookup`. -/
-def SUITE_ID_SENTINEL : Nat := CovenantGenesisV1.SUITE_ID_SENTINEL
 def SUITE_ID_ML_DSA_87 : Nat := CovenantGenesisV1.SUITE_ID_ML_DSA_87
 
 def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
@@ -57,7 +56,7 @@ def validateP2PKSpendPreSig (entry : UtxoEntry) (w : WitnessItem) (_blockHeight 
 /-- **Pre-rotation scope**: hardcoded ML-DSA-87 pubkey/sig bounds.
     Post-rotation (Q-FORMAL-ROTATION-02): bounds from `Rotation.registryLookup`. -/
 def validateWitnessItemLengths (w : WitnessItem) (_blockHeight : Nat) : Except String Unit := do
-  if w.suiteId == SUITE_ID_SENTINEL then
+  if w.suiteId == RubinFormal.SUITE_ID_SENTINEL then
     if w.pubkey.size != 0 || w.signature.size != 0 then
       throw "TX_ERR_PARSE"
     pure ()
@@ -80,7 +79,7 @@ def validateThresholdSigSpendNoCrypto
     throw "TX_ERR_PARSE"
   let mut valid : Nat := 0
   for (w, key) in List.zip ws keys do
-    if w.suiteId == SUITE_ID_SENTINEL then
+    if w.suiteId == RubinFormal.SUITE_ID_SENTINEL then
       pure ()
     else if w.suiteId == SUITE_ID_ML_DSA_87 then
       if SHA3.sha3_256 w.pubkey != key then
@@ -100,7 +99,7 @@ def validateHTLCSpendNoCrypto
     (blockMtp : Nat) : Except String Unit := do
   let c ← CovenantGenesisV1.parseHtlcCovenantData entry.covenantData
 
-  if pathItem.suiteId != SUITE_ID_SENTINEL then
+  if pathItem.suiteId != RubinFormal.SUITE_ID_SENTINEL then
     throw "TX_ERR_PARSE"
   if pathItem.pubkey.size != 32 then
     throw "TX_ERR_PARSE"

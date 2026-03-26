@@ -42,7 +42,7 @@ open TxWeightV2
     Looks up verifyCost from registry; falls back to VERIFY_COST_UNKNOWN_SUITE
     for unregistered suites; sentinel has zero cost. -/
 def suiteAwareCost (reg : SuiteRegistry) (suiteId : Nat) : Nat :=
-  if suiteId == TxWeightV2.SUITE_ID_SENTINEL then 0
+  if suiteId == RubinFormal.SUITE_ID_SENTINEL then 0
   else match registryLookup reg suiteId with
   | some entry => entry.verifyCost
   | none       => TxWeightV2.VERIFY_COST_UNKNOWN_SUITE
@@ -59,11 +59,11 @@ private theorem nat_beq_ne_zero {n : Nat} (h : n ≠ 0) : Nat.beq n 0 = false :=
 
 /-- Helper: suiteAwareCost unfolds for non-sentinel suites. -/
 private theorem suiteAwareCost_nonSentinel (reg : SuiteRegistry) (sid : Nat)
-    (h : sid ≠ TxWeightV2.SUITE_ID_SENTINEL) :
+    (h : sid ≠ RubinFormal.SUITE_ID_SENTINEL) :
     suiteAwareCost reg sid = match registryLookup reg sid with
       | some entry => entry.verifyCost
       | none => TxWeightV2.VERIFY_COST_UNKNOWN_SUITE := by
-  unfold suiteAwareCost TxWeightV2.SUITE_ID_SENTINEL
+  unfold suiteAwareCost RubinFormal.SUITE_ID_SENTINEL
   have hbeq : (sid == (0 : Nat)) = false := by
     show Nat.beq sid 0 = false
     exact nat_beq_ne_zero h
@@ -94,8 +94,8 @@ theorem fi_rot_03_total_sig_cost_deterministic
 
 /-- Sentinel suite has zero cost. -/
 theorem fi_rot_03_sentinel_zero_cost (reg : SuiteRegistry) :
-    suiteAwareCost reg TxWeightV2.SUITE_ID_SENTINEL = 0 := by
-  unfold suiteAwareCost TxWeightV2.SUITE_ID_SENTINEL
+    suiteAwareCost reg RubinFormal.SUITE_ID_SENTINEL = 0 := by
+  unfold suiteAwareCost RubinFormal.SUITE_ID_SENTINEL
   simp
 
 /-- ML-DSA-87 cost matches hardcoded VERIFY_COST_ML_DSA_87 in pre-rotation registry. -/
@@ -106,7 +106,7 @@ theorem fi_rot_03_ml_dsa_cost_matches :
 
 /-- Unknown suite cost matches VERIFY_COST_UNKNOWN_SUITE in pre-rotation registry. -/
 theorem fi_rot_03_unknown_suite_cost (sid : Nat)
-    (hnotSentinel : sid ≠ TxWeightV2.SUITE_ID_SENTINEL)
+    (hnotSentinel : sid ≠ RubinFormal.SUITE_ID_SENTINEL)
     (hnotRegistered : registryLookup PRE_ROTATION_REGISTRY sid = none) :
     suiteAwareCost PRE_ROTATION_REGISTRY sid =
     TxWeightV2.VERIFY_COST_UNKNOWN_SUITE := by
@@ -119,21 +119,21 @@ theorem fi_rot_03_unknown_suite_cost (sid : Nat)
 
 /-- Any spend-active suite is not sentinel. -/
 theorem active_spend_suite_not_sentinel
-    (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (hactive : sid ∈ NativeSpendSuites h d) :
-    sid ≠ NativeSuiteRotation.SUITE_ID_SENTINEL := by
-  obtain ⟨_, holdNS, hnewNS, _, _⟩ := hwf
+    sid ≠ RubinFormal.SUITE_ID_SENTINEL := by
+  obtain ⟨_, holdNS, hnewNS, _, _, _⟩ := hwf
   have hor := NativeRegistryResolution.spend_suites_subset d h sid hactive
   rcases hor with rfl | rfl <;> assumption
 
 /-- Any create-active suite is not sentinel. -/
 theorem active_create_suite_not_sentinel
-    (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat) (sid : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (hactive : sid ∈ NativeCreateSuites h d) :
-    sid ≠ NativeSuiteRotation.SUITE_ID_SENTINEL := by
-  obtain ⟨_, holdNS, hnewNS, _, _⟩ := hwf
+    sid ≠ RubinFormal.SUITE_ID_SENTINEL := by
+  obtain ⟨_, holdNS, hnewNS, _, _, _⟩ := hwf
   have hor := NativeRegistryResolution.create_suites_subset d h sid hactive
   rcases hor with rfl | rfl <;> assumption
 
@@ -157,14 +157,13 @@ theorem active_create_suite_not_sentinel
 theorem weight_suite_aware_correct
     (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat) (sid : Nat)
     (hnd : registryNoDuplicates reg)
-    (hcons : descriptorRegistryConsistent d reg)
-    (hwf : wellFormedDescriptor d)
+    (hwf : wellFormedDescriptor reg d)
     (hactive : sid ∈ NativeSpendSuites h d) :
     ∃ entry, registryLookup reg sid = some entry ∧
       suiteAwareCost reg sid = entry.verifyCost := by
-  have hnotSentinel : sid ≠ TxWeightV2.SUITE_ID_SENTINEL :=
-    active_spend_suite_not_sentinel d h sid hwf hactive
-  have ⟨entry, hlookup, _⟩ := fi_rot_03_active_suite_resolves d reg h sid hnd hcons hwf hactive
+  have hnotSentinel : sid ≠ RubinFormal.SUITE_ID_SENTINEL :=
+    active_spend_suite_not_sentinel reg d h sid hwf hactive
+  have ⟨entry, hlookup, _⟩ := fi_rot_03_active_suite_resolves d reg h sid hnd hwf hactive
   refine ⟨entry, hlookup, ?_⟩
   rw [suiteAwareCost_nonSentinel _ _ hnotSentinel, hlookup]
 
@@ -172,14 +171,13 @@ theorem weight_suite_aware_correct
 theorem weight_suite_aware_correct_create
     (d : RotationDeploymentDescriptor) (reg : SuiteRegistry) (h : Nat) (sid : Nat)
     (hnd : registryNoDuplicates reg)
-    (hcons : descriptorRegistryConsistent d reg)
-    (hwf : wellFormedDescriptor d)
+    (hwf : wellFormedDescriptor reg d)
     (hactive : sid ∈ NativeCreateSuites h d) :
     ∃ entry, registryLookup reg sid = some entry ∧
       suiteAwareCost reg sid = entry.verifyCost := by
-  have hnotSentinel : sid ≠ TxWeightV2.SUITE_ID_SENTINEL :=
-    active_create_suite_not_sentinel d h sid hwf hactive
-  have ⟨entry, hlookup, _⟩ := fi_rot_03_active_create_suite_resolves d reg h sid hnd hcons hwf hactive
+  have hnotSentinel : sid ≠ RubinFormal.SUITE_ID_SENTINEL :=
+    active_create_suite_not_sentinel reg d h sid hwf hactive
+  have ⟨entry, hlookup, _⟩ := fi_rot_03_active_create_suite_resolves d reg h sid hnd hwf hactive
   refine ⟨entry, hlookup, ?_⟩
   rw [suiteAwareCost_nonSentinel _ _ hnotSentinel, hlookup]
 
@@ -192,7 +190,7 @@ theorem fi_rot_03_pre_rotation_two_sigs :
 /-- Pre-rotation concrete check: totalSigCost for [SENTINEL, ML_DSA_87] = 8. -/
 theorem fi_rot_03_pre_rotation_sentinel_plus_sig :
     totalSigCost PRE_ROTATION_REGISTRY
-      [TxWeightV2.SUITE_ID_SENTINEL, TxWeightV2.SUITE_ID_ML_DSA_87] = 8 := by
+      [RubinFormal.SUITE_ID_SENTINEL, TxWeightV2.SUITE_ID_ML_DSA_87] = 8 := by
   native_decide
 
 end WeightSuiteAware

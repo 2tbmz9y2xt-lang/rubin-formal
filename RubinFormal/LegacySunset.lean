@@ -29,8 +29,8 @@ open NativeSpendCreateGate
 
 /-- Before H4 (or H4 undefined), old suite is in NATIVE_SPEND_SUITES(h). -/
 theorem fi_rot_06_old_suite_spendable_before_h4
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (_hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (_hwf : wellFormedDescriptor reg d)
     (hno_sunset : d.h4 = none ∨ ∃ h4val, d.h4 = some h4val ∧ h < h4val) :
     d.oldSuiteId ∈ NativeSpendSuites h d := by
   unfold NativeSpendSuites
@@ -46,21 +46,21 @@ theorem fi_rot_06_old_suite_spendable_before_h4
 
 /-- Before H4, old suite spend gate accepts. -/
 theorem fi_rot_06_old_suite_spend_accepted_before_h4
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (hno_sunset : d.h4 = none ∨ ∃ h4val, d.h4 = some h4val ∧ h < h4val) :
     nativeSpendGate d h d.oldSuiteId = GateResult.accept := by
-  have hmem := fi_rot_06_old_suite_spendable_before_h4 d h hwf hno_sunset
+  have hmem := fi_rot_06_old_suite_spendable_before_h4 reg d h hwf hno_sunset
   exact (fi_rot_04_spend_gate_iff d h d.oldSuiteId).mpr hmem
 
 /-- At/after H4, old suite is NOT in NATIVE_SPEND_SUITES(h). -/
 theorem fi_rot_06_old_suite_not_spendable_after_h4
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (h4val : Nat) (hh4 : d.h4 = some h4val) (hge : h4val ≤ h) :
     d.oldSuiteId ∉ NativeSpendSuites h d := by
   unfold NativeSpendSuites
-  obtain ⟨hneq, _, _, hh12, hh24⟩ := hwf
+  obtain ⟨hneq, _, _, _, hh12, hh24⟩ := hwf
   split
   · -- h < h1: spend = [old], but h4val ≤ h and h1 < h2 < h4val, contradiction
     have : d.h2 < h4val := hh24 h4val hh4
@@ -72,21 +72,21 @@ theorem fi_rot_06_old_suite_not_spendable_after_h4
     This is the universal sunset: ALL native covenant types (P2PK, MULTISIG,
     VAULT, STEALTH) reject old suite spends after H4. -/
 theorem fi_rot_06_old_suite_rejected_after_h4
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (h4val : Nat) (hh4 : d.h4 = some h4val) (hge : h4val ≤ h) :
     nativeSpendGate d h d.oldSuiteId = GateResult.reject_sig_alg_invalid := by
   exact fi_rot_04_spend_gate_rejects d h d.oldSuiteId
-    (fi_rot_06_old_suite_not_spendable_after_h4 d h hwf h4val hh4 hge)
+    (fi_rot_06_old_suite_not_spendable_after_h4 reg d h hwf h4val hh4 hge)
 
 /-- After H4, new suite remains spendable (new suite is always in spend set
     once h ≥ h1, and H4 > h2 > h1 by well-formedness). -/
 theorem fi_rot_06_new_suite_always_spendable_after_h4
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (h4val : Nat) (hh4 : d.h4 = some h4val) (hge : h4val ≤ h) :
     d.newSuiteId ∈ NativeSpendSuites h d := by
-  obtain ⟨_, _, _, hh12, hh24⟩ := hwf
+  obtain ⟨_, _, _, _, hh12, hh24⟩ := hwf
   have : d.h2 < h4val := hh24 h4val hh4
   unfold NativeSpendSuites
   have : ¬ h < d.h1 := by omega
@@ -101,12 +101,12 @@ theorem fi_rot_06_new_suite_always_spendable_after_h4
 /-- H2 create cutoff only restricts NATIVE_CREATE_SUITES, not NATIVE_SPEND_SUITES.
     After H2, old suite can still be spent (until H4). -/
 theorem fi_rot_06_spend_unaffected_by_h2_create_cutoff
-    (d : RotationDeploymentDescriptor) (h : Nat)
-    (hwf : wellFormedDescriptor d)
+    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor) (h : Nat)
+    (hwf : wellFormedDescriptor reg d)
     (_hge_h2 : d.h2 ≤ h)
     (hno_sunset : d.h4 = none ∨ ∃ h4val, d.h4 = some h4val ∧ h < h4val) :
     d.oldSuiteId ∈ NativeSpendSuites h d := by
-  exact fi_rot_06_old_suite_spendable_before_h4 d h hwf hno_sunset
+  exact fi_rot_06_old_suite_spendable_before_h4 reg d h hwf hno_sunset
 
 end LegacySunset
 

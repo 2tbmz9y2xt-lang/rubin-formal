@@ -1,4 +1,5 @@
 import Std
+import RubinFormal.Types
 
 namespace RubinFormal
 
@@ -15,9 +16,6 @@ v2 (Q-FORMAL-GAP-01, F-04 fix, 2026-03-06):
 - `coreExtTighteningStatement` in PinnedSections now includes the rejection property.
 -/
 
-/-- CORE_EXT suite ID constants (CANONICAL §5.4). -/
-def SUITE_ID_SENTINEL : Nat := 0x00
-
 structure WitnessItemMini where
   suiteId : Nat
 deriving DecidableEq
@@ -31,7 +29,7 @@ def coreExtLegacyAllowed (_w : WitnessItemMini) : Prop :=
 /-- Post-activation semantics: witness item's suiteId must be in the allowed set
     AND must not be the SENTINEL (0x00, which means anyone-can-spend). -/
 def coreExtActiveAllowed (allowedSuiteIds : List Nat) (w : WitnessItemMini) : Prop :=
-  w.suiteId ∈ allowedSuiteIds ∧ w.suiteId ≠ SUITE_ID_SENTINEL
+  w.suiteId ∈ allowedSuiteIds ∧ w.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL
 
 /-- Soft-fork tightening: post-activation validity implies legacy validity.
     This is trivially true because legacy = anyone-can-spend = always valid.
@@ -47,15 +45,15 @@ theorem core_ext_softfork_tightening (allowedSuiteIds : List Nat) (w : WitnessIt
     a witness with suite_id = 0 is accepted pre-activation but rejected post-activation.
     Combined with `core_ext_softfork_tightening`, this shows the rule is a strict subset. -/
 theorem core_ext_active_rejects_sentinel (allowedSuiteIds : List Nat) :
-    ¬ coreExtActiveAllowed allowedSuiteIds { suiteId := SUITE_ID_SENTINEL } := by
-  unfold coreExtActiveAllowed SUITE_ID_SENTINEL
+    ¬ coreExtActiveAllowed allowedSuiteIds { suiteId := RubinFormal.SUITE_ID_SENTINEL } := by
+  unfold coreExtActiveAllowed RubinFormal.SUITE_ID_SENTINEL
   intro ⟨_, hne⟩
   exact hne rfl
 
 /-- The legacy rule accepts SENTINEL — completing the strict tightening proof:
     legacy accepts sentinel, active rejects sentinel. -/
 theorem core_ext_legacy_accepts_sentinel :
-    coreExtLegacyAllowed { suiteId := SUITE_ID_SENTINEL } := by
+    coreExtLegacyAllowed { suiteId := RubinFormal.SUITE_ID_SENTINEL } := by
   trivial
 
 def cursorEnd (inputCount slots : Nat) : Nat :=

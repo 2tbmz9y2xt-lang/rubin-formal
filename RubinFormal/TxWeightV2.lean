@@ -22,7 +22,6 @@ def MAX_WITNESS_BYTES_PER_TX : Nat := 100000
 
 /- Pre-rotation suite ID constants.  See `RotationPrelude.lean` for
    the registry-based model used by Q-FORMAL-ROTATION-01..06. -/
-def SUITE_ID_SENTINEL : Nat := 0x00
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
 def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
@@ -91,7 +90,7 @@ def parseWitnessItemForCounts (c : Cursor) : Option (Cursor × Bool × Bool × B
   let _ ← requireMinimal minimal2
   let (sig, c5) ← c4.getBytes? sigLen
 
-  if suiteID == SUITE_ID_SENTINEL then
+  if suiteID == RubinFormal.SUITE_ID_SENTINEL then
     -- canonical sentinel encodings (see CANONICAL §5.4); only needed to preserve parse parity
     if pubLen == 0 && sigLen == 0 then
       pure (c5, false, false, false)
