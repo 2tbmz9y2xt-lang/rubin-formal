@@ -4,11 +4,14 @@ import RubinFormal.Conformance.CVPowReplay
 /-!
 # Difficulty Retarget Behavioral Proofs (§15)
 
-LIVE behavioral proofs on the retarget algorithm from `PowV1.lean`.
+Behavioral proofs on the retarget formula expressions from `PowV1.lean`.
+These theorems operate on the pure arithmetic core (lines 143-146 of retargetV1),
+not on the monadic `retargetV1` function directly. Live-function coverage is
+provided by CV-POW conformance replay (`retarget_cv_replay_pass`).
 Covers the three-way clamp path (lo/hi/candidate), constant pins,
 timestamp clamping, candidate monotonicity, and 4x adjustment boundary.
 
-Evidence level: machine_checked_contract for the full §15 retarget formula.
+Evidence level: machine_checked_contract (model + CV replay) for §15 retarget.
 Combines:
 
 1. Constant pins: windowSize, targetBlockInterval, tExpected, maxTimestampStepPerBlock, powLimit
@@ -224,7 +227,7 @@ theorem retarget_cv_replay_pass :
   RubinFormal.Conformance.cv_pow_vectors_pass
 /-! ## Behavioral closure summary
 
-  The difficulty_update section (§15) is now behaviourally closed:
+  The difficulty_update section (§15) model-level behavioral coverage:
 
   - **Constants**: all 6 normative constants pinned to literal values
   - **Identity**: tActual=tExpected → candidate = targetOldNat
