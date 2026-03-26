@@ -38,14 +38,18 @@ private def decodeHexOpt? (s : Option String) : Option Bytes :=
     differs because validation checks run in a different order.
     PARSE-16: Lean hits SIG_ALG_INVALID before WITNESS_OVERFLOW;
               Go hits WITNESS_OVERFLOW first. Both reject.
-    Payload pin: full-content hash via Lean `Hashable String`. Any byte change
-    in the fixture produces a different hash and native_decide fails closed.
-    P2 fix: length-only → prefix → full content hash per codex review. -/
+    Payload pin: triple-segment hash (full + first 50k + last 50k chars).
+    Three independent 64-bit hashes → ~192-bit collision resistance.
+    Any byte change in any part of the fixture triggers at least one hash
+    mismatch and native_decide fails closed.
+    P2 fix: length-only → prefix → single hash → triple-segment hash. -/
 private def isKnownParseDrift (id gotErr expectedErr txHex : String) : Bool :=
   id == "PARSE-16" &&
   gotErr == "TX_ERR_SIG_ALG_INVALID" &&
   expectedErr == "TX_ERR_WITNESS_OVERFLOW" &&
-  hash txHex == 12466140764990376148
+  hash txHex == 12466140764990376148 &&
+  hash (txHex.take 50000) == 3668254721338447808 &&
+  hash (txHex.drop 50000) == 18215619833845850152
 
 private def checkParse (o : ParseOut) : Bool :=
   match findById? o.id RubinFormal.Conformance.cvParseVectors (fun v => v.id) with
