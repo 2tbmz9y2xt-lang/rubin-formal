@@ -155,11 +155,12 @@ theorem daSize_kind0 : compactSizeLen 0 + 0 = 1 := by
   simp [compactSizeLen_zero]
 
 /-- When daLen = 0, the daBytes output is 0 regardless of kind.
-    (In the live code, daBytes = if txKind == 0x00 then 0 else daLen,
-    but when daLen = 0 both branches yield 0.) -/
-theorem daBytes_zero_when_daLen_zero (txKind : Nat) :
-    (if txKind == 0x00 then 0 else 0) = 0 := by
-  split <;> rfl
+    Models the live expression `daBytes := if txKind == 0x00 then 0 else daLen`
+    from `txWeightAndStats` — under the `daLen = 0` precondition enforced for
+    kind=0 txs, both branches collapse to 0. -/
+theorem daBytes_zero_when_daLen_zero (txKind daLen : Nat) (h : daLen = 0) :
+    (if txKind == 0x00 then 0 else daLen) = 0 := by
+  subst h; split <;> rfl
 
 /-! ## Weight formula monotonicity (4-component)
 
