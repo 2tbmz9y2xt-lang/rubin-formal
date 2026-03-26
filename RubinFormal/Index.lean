@@ -10,6 +10,7 @@ import RubinFormal.PowV1
 import RubinFormal.ChainWorkV1
 import RubinFormal.ForkChoiceV1
 import RubinFormal.TxWeightV2
+import RubinFormal.TxWeightBehavioral
 import RubinFormal.UtxoBasicV1
 import RubinFormal.VaultStateMachine
 import RubinFormal.BlockBasicV1
