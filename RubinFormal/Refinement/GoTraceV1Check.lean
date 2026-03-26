@@ -13,6 +13,8 @@ import RubinFormal.Conformance.CVSighashVectors
 import RubinFormal.Conformance.CVPowVectors
 import RubinFormal.Conformance.CVUtxoBasicVectors
 import RubinFormal.Conformance.CVBlockBasicVectors
+import RubinFormal.Conformance.CVForkChoiceVectors
+import RubinFormal.Conformance.CVForkChoiceReplay
 
 set_option maxHeartbeats 10000000
 set_option maxRecDepth 50000
@@ -271,12 +273,53 @@ def parseGoTraceV1Pass : Bool :=
 theorem parse_tx_go_trace_contract_proved : parseGoTraceV1Pass = true := by
   native_decide
 
+/-- Fork-choice-select CV vectors filtered from the full CV-FORK-CHOICE fixture. -/
+private def forkChoiceSelectVectors : List Conformance.CVForkChoiceVector :=
+  Conformance.cvForkChoiceVectors.filter (fun v => v.op == "fork_choice_select")
+
+/-- Pinned id set for the fork-choice-select CV bridge.
+    If fixture regeneration adds, removes, or reorders vectors,
+    the theorem fails closed instead of silently narrowing coverage. -/
+private def forkChoiceSelectExpectedIds : List String :=
+  ["CV-FC-03", "NEG-FC-EMPTY-CHAINS", "NEG-FC-CHAIN-NO-TARGETS",
+   "NEG-FC-CHAIN-ZERO-TARGET-IN-LIST", "CV-FC-EQUAL-WORK-TIE-BREAK",
+   "CV-FC-EQUAL-WORK-TIE-BREAK-REVERSED", "CV-FC-HEAVIER-WINS-DISTINCT-TIPS",
+   "CV-FC-THREE-CHAIN-HEAVIEST", "CV-FC-SHORT-HEAVY-BEATS-LONG-LIGHT",
+   "NEG-FC-ALL-INVALID-TARGETS"]
+
+private def forkChoiceSelectVectorIds : List String :=
+  forkChoiceSelectVectors.map (fun v => v.id)
+
+private def forkChoiceSelectSupportedIdsOk : Bool :=
+  forkChoiceSelectVectorIds == forkChoiceSelectExpectedIds
+
+/-- Narrow machine-checked bridge for fork_choice_select.
+    All 10 CV-FORK-CHOICE vectors with op=fork_choice_select (6 positive +
+    4 negative) are rechecked against `selectWinner` which exercises
+    `chainTotalWork` + `bytesLT` tie-break — the live fork-choice path.
+    Proved by `native_decide`, axiom-free.  No `block_hash_collision_resistance`
+    in the theorem dependency chain.
+    Data source: CV-FORK-CHOICE conformance vectors (not Go trace — the Go
+    trace v1 corpus does not contain fork_choice_select operations). -/
+def forkChoiceSelectCVPass : Bool :=
+  forkChoiceSelectSupportedIdsOk &&
+  !forkChoiceSelectVectors.isEmpty &&
+  forkChoiceSelectVectors.all Conformance.checkForkChoiceVector
+
+/-- Machine-checked refinement: fork_choice_select conformance vectors
+    verified via native_decide.  Proves fork_choice_select at
+    evidence_level = machine_checked_contract (axiom-free). -/
+theorem fork_choice_select_cv_contract_proved :
+    forkChoiceSelectCVPass = true := by
+  native_decide
+
 def allGoTraceV1Ok : Bool :=
   parseOuts.all checkParse &&
   sighashOuts.all checkSighash &&
   powOuts.all checkPow &&
   utxoApplyBasicGoTraceV1Pass &&
-  blockBasicOuts.all checkBlockBasic
+  blockBasicOuts.all checkBlockBasic &&
+  forkChoiceSelectCVPass
 
 def firstGoTraceV1Mismatch : Option String :=
   let mk (gate : String) (id : String) : Option String := some (gate ++ ":" ++ id)
@@ -297,6 +340,12 @@ def firstGoTraceV1Mismatch : Option String :=
                 | none =>
                     match blockBasicOuts.find? (fun o => !checkBlockBasic o) with
                     | some o => mk "CV-BLOCK-BASIC" o.id
-                    | none => none
+                    | none =>
+                        if !forkChoiceSelectSupportedIdsOk then
+                          mk "CV-FORK-CHOICE" "ID-SET"
+                        else
+                          match forkChoiceSelectVectors.find? (fun o => !Conformance.checkForkChoiceVector o) with
+                          | some o => mk "CV-FORK-CHOICE" o.id
+                          | none => none
 
 end RubinFormal.Refinement
