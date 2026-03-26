@@ -257,7 +257,7 @@ private def parseSupportedIdsOk : Bool :=
 
 /-- Per-gate Bool: all CV-PARSE Go-trace vectors pass through Lean's parseTx.
     Pinned by `parseExpectedIds` — the proof fails closed on id-set drift.
-    PARSE-16 drift exception is payload-pinned via txHexLen in `isKnownParseDrift`. -/
+    PARSE-16 drift exception is payload-pinned via full content hash in `isKnownParseDrift`. -/
 def parseGoTraceV1Pass : Bool :=
   parseSupportedIdsOk && !parseOuts.isEmpty && parseOuts.all checkParse
 
