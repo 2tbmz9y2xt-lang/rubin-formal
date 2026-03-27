@@ -347,6 +347,7 @@ jobs:
                 const allMissing = refs.every((name) => !content.includes(name));
                 if (allMissing) continue;
               }
+              const key = `${f.file}:${f.line}:${cat}`;
               if (seen.has(key)) continue;
               seen.add(key);
               filtered.push(f);
