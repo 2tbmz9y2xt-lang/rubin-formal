@@ -1,31 +1,38 @@
 /-
   GovernanceReplayToken.lean — governance replay-token contract proofs (#297)
   Models the live GovernanceReplayToken from core_ext.rs and proves:
-  - Wire roundtrip (to_bytes → from_bytes = identity)
   - Validation semantics (5 outcomes, canonical check order)
   - Size invariant (always 26 bytes)
   - Overflow saturation (expiry_height never wraps)
+  - Field bounds match Rust u16/u64 wire types
 -/
 import RubinFormal.Types
 import RubinFormal.OutputDescriptorV2
+import Std.Tactic.Omega
+import Std.Data.UInt
 
 namespace RubinFormal
 
 open WireEnc
 
 -- ═══════════════════════════════════════════════════════════════════
--- §1  Structure and wire format
+-- §1  Structure and wire format (bounded fields)
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- GovernanceReplayToken binds a profile authorization to a specific
     height window, preventing replay of governance actions across
-    activation/deactivation cycles. -/
+    activation/deactivation cycles.
+    Fields carry intrinsic bounds matching Rust's u16/u64 wire types,
+    so the model cannot represent states unreachable in the live impl. -/
 structure GovernanceReplayToken where
-  ext_id : Nat            -- u16
-  nonce : Nat             -- u64
-  issued_at_height : Nat  -- u64
-  validity_window : Nat   -- u64
-  deriving DecidableEq, Repr
+  ext_id : Nat
+  nonce : Nat
+  issued_at_height : Nat
+  validity_window : Nat
+  h_ext_id : ext_id < 65536
+  h_nonce : nonce < UInt64.size
+  h_iat : issued_at_height < UInt64.size
+  h_vw : validity_window < UInt64.size
 
 def GOVERNANCE_REPLAY_TOKEN_BYTES : Nat := 26
 
@@ -42,27 +49,80 @@ def GovernanceReplayToken.expiryHeight (t : GovernanceReplayToken) : Nat :=
 def GovernanceReplayToken.toBytes (t : GovernanceReplayToken) : Bytes :=
   u16le t.ext_id ++ u64le t.nonce ++ u64le t.issued_at_height ++ u64le t.validity_window
 
-/-- Deserialize a token from 26 bytes. Returns none on wrong length. -/
+-- Helper: every UInt8 has toNat ≤ 255.
+-- Use b.val.isLt with explicit type ascription to avoid opaque UInt8.size.
+private theorem byte_le (b : UInt8) : b.toNat ≤ 255 := by
+  have h : b.toNat < 256 := b.val.isLt
+  omega
+
+-- Helper: u32-range LE value from 4 bytes is bounded
+private theorem u32_from_bytes_bound (b0 b1 b2 b3 : UInt8) :
+    b0.toNat + b1.toNat * 256 + b2.toNat * 65536 + b3.toNat * 16777216 < 4294967296 := by
+  have h0 := byte_le b0
+  have h1 : b1.toNat * 256 ≤ 255 * 256 := Nat.mul_le_mul_right 256 (byte_le b1)
+  have h2 : b2.toNat * 65536 ≤ 255 * 65536 := Nat.mul_le_mul_right 65536 (byte_le b2)
+  have h3 : b3.toNat * 16777216 ≤ 255 * 16777216 := Nat.mul_le_mul_right 16777216 (byte_le b3)
+  omega
+
+-- Helper: lo < 2^32 ∧ hi < 2^32 → lo + hi * 2^32 < 2^64
+private theorem combine_u32_to_u64 (lo hi : Nat) (hlo : lo < 4294967296) (hhi : hi < 4294967296) :
+    lo + hi * 4294967296 < 18446744073709551616 := by
+  have : hi * 4294967296 ≤ 4294967295 * 4294967296 := Nat.mul_le_mul_right 4294967296 (by omega)
+  omega
+
+-- Helper: reconstruction of u64 from 8 bytes is bounded.
+-- Strategy: split into lo(4 bytes) + hi(4 bytes) * 2^32, bound each half < 2^32.
+private theorem u64_from_bytes_bound (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) :
+    b0.toNat + b1.toNat * 256 + b2.toNat * 65536 + b3.toNat * 16777216 +
+    b4.toNat * 4294967296 + b5.toNat * 1099511627776 +
+    b6.toNat * 281474976710656 + b7.toNat * 72057594037927936 < UInt64.size := by
+  -- Algebraic identity: the flat sum equals lo + hi * 2^32
+  have key : b0.toNat + b1.toNat * 256 + b2.toNat * 65536 + b3.toNat * 16777216 +
+      b4.toNat * 4294967296 + b5.toNat * 1099511627776 +
+      b6.toNat * 281474976710656 + b7.toNat * 72057594037927936 =
+      (b0.toNat + b1.toNat * 256 + b2.toNat * 65536 + b3.toNat * 16777216) +
+      (b4.toNat + b5.toNat * 256 + b6.toNat * 65536 + b7.toNat * 16777216) * 4294967296 := by
+    omega
+  rw [key]; simp only [UInt64.size]
+  exact combine_u32_to_u64 _ _ (u32_from_bytes_bound b0 b1 b2 b3) (u32_from_bytes_bound b4 b5 b6 b7)
+
+-- Helper: reconstruction of u16 from 2 bytes is bounded
+private theorem u16_from_bytes_bound (b0 b1 : UInt8) :
+    b0.toNat + b1.toNat * 256 < 65536 := by
+  have h0 := byte_le b0
+  have h1 : b1.toNat * 256 ≤ 255 * 256 := Nat.mul_le_mul_right 256 (byte_le b1)
+  omega
+
+/-- Deserialize a token from 26 bytes. Returns none on wrong length.
+    Reconstructed fields are intrinsically bounded by UInt8 range. -/
 def GovernanceReplayToken.fromBytes (data : Bytes) : Option GovernanceReplayToken :=
   if data.size ≠ GOVERNANCE_REPLAY_TOKEN_BYTES then none
   else
-    let ext_id := (data.get! 0).toNat + (data.get! 1).toNat * 256
-    let nonce :=
-      (data.get! 2).toNat + (data.get! 3).toNat * 256 +
-      (data.get! 4).toNat * 65536 + (data.get! 5).toNat * 16777216 +
-      (data.get! 6).toNat * 4294967296 + (data.get! 7).toNat * 1099511627776 +
-      (data.get! 8).toNat * 281474976710656 + (data.get! 9).toNat * 72057594037927936
-    let issued_at_height :=
-      (data.get! 10).toNat + (data.get! 11).toNat * 256 +
-      (data.get! 12).toNat * 65536 + (data.get! 13).toNat * 16777216 +
-      (data.get! 14).toNat * 4294967296 + (data.get! 15).toNat * 1099511627776 +
-      (data.get! 16).toNat * 281474976710656 + (data.get! 17).toNat * 72057594037927936
-    let validity_window :=
-      (data.get! 18).toNat + (data.get! 19).toNat * 256 +
-      (data.get! 20).toNat * 65536 + (data.get! 21).toNat * 16777216 +
-      (data.get! 22).toNat * 4294967296 + (data.get! 23).toNat * 1099511627776 +
-      (data.get! 24).toNat * 281474976710656 + (data.get! 25).toNat * 72057594037927936
-    some { ext_id, nonce, issued_at_height, validity_window }
+    some {
+      ext_id := (data.get! 0).toNat + (data.get! 1).toNat * 256
+      nonce :=
+        (data.get! 2).toNat + (data.get! 3).toNat * 256 +
+        (data.get! 4).toNat * 65536 + (data.get! 5).toNat * 16777216 +
+        (data.get! 6).toNat * 4294967296 + (data.get! 7).toNat * 1099511627776 +
+        (data.get! 8).toNat * 281474976710656 + (data.get! 9).toNat * 72057594037927936
+      issued_at_height :=
+        (data.get! 10).toNat + (data.get! 11).toNat * 256 +
+        (data.get! 12).toNat * 65536 + (data.get! 13).toNat * 16777216 +
+        (data.get! 14).toNat * 4294967296 + (data.get! 15).toNat * 1099511627776 +
+        (data.get! 16).toNat * 281474976710656 + (data.get! 17).toNat * 72057594037927936
+      validity_window :=
+        (data.get! 18).toNat + (data.get! 19).toNat * 256 +
+        (data.get! 20).toNat * 65536 + (data.get! 21).toNat * 16777216 +
+        (data.get! 22).toNat * 4294967296 + (data.get! 23).toNat * 1099511627776 +
+        (data.get! 24).toNat * 281474976710656 + (data.get! 25).toNat * 72057594037927936
+      h_ext_id := u16_from_bytes_bound (data.get! 0) (data.get! 1)
+      h_nonce := u64_from_bytes_bound (data.get! 2) (data.get! 3) (data.get! 4) (data.get! 5)
+                                       (data.get! 6) (data.get! 7) (data.get! 8) (data.get! 9)
+      h_iat := u64_from_bytes_bound (data.get! 10) (data.get! 11) (data.get! 12) (data.get! 13)
+                                     (data.get! 14) (data.get! 15) (data.get! 16) (data.get! 17)
+      h_vw := u64_from_bytes_bound (data.get! 18) (data.get! 19) (data.get! 20) (data.get! 21)
+                                    (data.get! 22) (data.get! 23) (data.get! 24) (data.get! 25)
+    }
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §2  Validation semantics (canonical check order from Rust)
@@ -168,7 +228,7 @@ theorem GovernanceReplayToken.fromBytes_wrong_len (data : Bytes)
   simp [GovernanceReplayToken.fromBytes, h]
 
 -- ═══════════════════════════════════════════════════════════════════
--- §7  Validation completeness
+-- §7  Validation completeness + helpers
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- validate always returns one of the five outcomes (exhaustiveness). -/
