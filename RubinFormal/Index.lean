@@ -64,3 +64,4 @@ import RubinFormal.TxContextBehavioral
 import RubinFormal.ConnectBlockFull
 import RubinFormal.PerTxStateMachine
 import RubinFormal.UtxoMapProperties
+import RubinFormal.FeatureActivationFSM
