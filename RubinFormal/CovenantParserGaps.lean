@@ -5,7 +5,8 @@
   Zero MODEL / native_decide theorems.
 
   Coverage:
-    Multisig parser:    size guard, keyCount bounds, threshold bounds
+    Multisig parser:    size guard, keyCount bounds, threshold bounds, size-match,
+                        keys sorted post-condition (through forIn)
     HTLC parser:        size guard, 3 post-conditions (claim≠refund, lockMode, lockValue)
     validateOutGenesis: unknown covenant type exhaustion
 -/
@@ -71,7 +72,66 @@ theorem multisig_threshold_bounds_guard (covData : Bytes)
       rcases h_th with h_lo | h_hi <;> simp_all
 
 -- ═══════════════════════════════════════════════════════════════════
--- §4  HTLC parser — size guard  [LIVE]
+-- §4  Multisig parser — size-match guard  [LIVE]
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- [LIVE] ∀ input passing size/keyCount/threshold guards but
+    covData.size ≠ 2 + 32 * keyCount → rejected.
+    Mirrors Go/Rust `if len(covData) != 2 + 32*keyCount`. -/
+theorem multisig_size_match_guard (covData : Bytes)
+    (h_size : ¬(covData.size < 34))
+    (h_kc : ¬((covData.get! 1).toNat < 1 ∨ (covData.get! 1).toNat > MAX_MULTISIG_KEYS))
+    (_h_th : ¬((covData.get! 0).toNat < 1 ∨ (covData.get! 0).toNat > (covData.get! 1).toNat))
+    (h_len : covData.size ≠ 2 + 32 * (covData.get! 1).toNat) :
+    parseMultisigCovenantData covData = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  unfold parseMultisigCovenantData MAX_MULTISIG_KEYS
+  simp only [h_size, ite_false]
+  dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure,
+             throwThe, MonadExcept.throw, MonadExceptOf.throw]
+  split
+  · rename_i h_bad; exfalso; unfold MAX_MULTISIG_KEYS at h_kc; simp_all
+  · split
+    · -- threshold bad → parser already throws here
+      simp [Bind.bind, Except.bind, throwThe, MonadExcept.throw]
+    · -- threshold good → proceed to size-match check
+      split
+      · simp [Bind.bind, Except.bind, throwThe, MonadExcept.throw]
+      · rename_i h_len_ok; exfalso
+        simp_all [bne, beq_iff_eq]
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §5  Multisig post-condition: keys are strictly sorted  [LIVE]
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- [LIVE] ∀ successful multisig parse, strictlySortedUnique32 holds on output keys.
+    Proof traverses the forIn loop opaquely and then splits on the
+    post-loop `if !strictlySortedUnique32 keys` guard. -/
+theorem multisig_ok_keys_sorted (covData : Bytes) (v : MultisigCovenant)
+    (h : parseMultisigCovenantData covData = .ok v) :
+    strictlySortedUnique32 v.keys = true := by
+  unfold parseMultisigCovenantData MAX_MULTISIG_KEYS at h
+  split at h
+  · simp only [Bind.bind, Except.bind, throwThe, MonadExcept.throw, MonadExceptOf.throw] at h
+  · dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure,
+               throwThe, MonadExcept.throw, MonadExceptOf.throw] at h
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · -- past all 4 pre-loop guards, forIn + strictlySortedUnique32 check remain
+          split at h
+          · simp at h  -- forIn error branch
+          · -- forIn ok branch, h still has strictlySortedUnique32 check
+            split at h
+            · simp at h  -- strictlySortedUnique32 fails → .error contradicts .ok
+            · -- strictlySortedUnique32 passes → .ok { ... keys := keys' } = .ok v
+              cases h
+              simp_all
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §6  HTLC parser — size guard  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ input whose size ≠ MAX_HTLC_COVENANT_DATA (105) → rejected.
@@ -86,7 +146,7 @@ theorem htlc_size_guard (covData : Bytes) (h : covData.size ≠ MAX_HTLC_COVENAN
     simp [bne, beq_iff_eq, h]
 
 -- ═══════════════════════════════════════════════════════════════════
--- §5  validateOutGenesis — unknown type exhaustion  [LIVE]
+-- §7  validateOutGenesis — unknown type exhaustion  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ covenantType outside the six known types → rejected.
@@ -118,7 +178,7 @@ theorem validate_out_genesis_rejects_unknown (out : TxOut) (txKind bh : Nat)
 -- ═══════════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════════
--- §6  HTLC post-condition: claim ≠ refund  [LIVE]
+-- §8  HTLC post-condition: claim ≠ refund  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ successful HTLC parse, claimKeyId ≠ refundKeyId (Bool-level).
@@ -145,7 +205,7 @@ theorem htlc_ok_claim_neq_refund (covData : Bytes) (v : HtlcCovenant)
           revert h_cr; simp
 
 -- ═══════════════════════════════════════════════════════════════════
--- §7  HTLC post-condition: lockMode valid  [LIVE]
+-- §9  HTLC post-condition: lockMode valid  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ successful HTLC parse, lockMode ∈ {HEIGHT, TIMESTAMP}.
@@ -173,7 +233,7 @@ theorem htlc_ok_lock_mode_valid (covData : Bytes) (v : HtlcCovenant)
           revert h_lm; simp
 
 -- ═══════════════════════════════════════════════════════════════════
--- §8  HTLC post-condition: lockValue > 0  [LIVE]
+-- §10  HTLC post-condition: lockValue > 0  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ successful HTLC parse, lockValue ≠ 0.
