@@ -66,3 +66,4 @@ import RubinFormal.PerTxStateMachine
 import RubinFormal.UtxoMapProperties
 import RubinFormal.FeatureActivationFSM
 import RubinFormal.CovenantParserGaps
+import RubinFormal.VaultThresholdBound
