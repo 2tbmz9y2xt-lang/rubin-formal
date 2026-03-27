@@ -65,3 +65,4 @@ import RubinFormal.ConnectBlockFull
 import RubinFormal.PerTxStateMachine
 import RubinFormal.UtxoMapProperties
 import RubinFormal.FeatureActivationFSM
+import RubinFormal.CovenantParserGaps
