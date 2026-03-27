@@ -5,7 +5,7 @@
   Zero MODEL / native_decide theorems.
 
   Coverage:
-    Multisig parser:    size guard
+    Multisig parser:    size guard, keyCount bounds, threshold bounds
     HTLC parser:        size guard, 3 post-conditions (claim≠refund, lockMode, lockValue)
     validateOutGenesis: unknown covenant type exhaustion
 -/
@@ -30,7 +30,48 @@ theorem multisig_size_guard (covData : Bytes) (h : covData.size < 34) :
   simp [h, Bind.bind, Except.bind, throw, MonadExcept.throw, Except.error]
 
 -- ═══════════════════════════════════════════════════════════════════
--- §2  HTLC parser — size guard  [LIVE]
+-- §2  Multisig parser — keyCount bounds guard  [LIVE]
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- [LIVE] ∀ input where size ≥ 34 but keyCount ∉ [1..12] → rejected.
+    Mirrors Go/Rust `if keyCount < 1 || keyCount > 12`. -/
+theorem multisig_keycount_bounds_guard (covData : Bytes)
+    (h_size : ¬(covData.size < 34))
+    (h_kc : (covData.get! 1).toNat < 1 ∨ (covData.get! 1).toNat > MAX_MULTISIG_KEYS) :
+    parseMultisigCovenantData covData = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  unfold parseMultisigCovenantData MAX_MULTISIG_KEYS
+  simp only [h_size, ite_false]
+  dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure,
+             throwThe, MonadExcept.throw, MonadExceptOf.throw]
+  split
+  · simp [Bind.bind, Except.bind, throwThe, MonadExcept.throw]
+  · rename_i h_in; exfalso; unfold MAX_MULTISIG_KEYS at h_kc
+    rcases h_kc with h_lo | h_hi <;> simp_all
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §3  Multisig parser — threshold bounds guard  [LIVE]
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- [LIVE] ∀ input passing size+keyCount guards but threshold ∉ [1..keyCount] → rejected.
+    Mirrors Go/Rust `if threshold < 1 || threshold > keyCount`. -/
+theorem multisig_threshold_bounds_guard (covData : Bytes)
+    (h_size : ¬(covData.size < 34))
+    (h_kc : ¬((covData.get! 1).toNat < 1 ∨ (covData.get! 1).toNat > MAX_MULTISIG_KEYS))
+    (h_th : (covData.get! 0).toNat < 1 ∨ (covData.get! 0).toNat > (covData.get! 1).toNat) :
+    parseMultisigCovenantData covData = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  unfold parseMultisigCovenantData MAX_MULTISIG_KEYS
+  simp only [h_size, ite_false]
+  dsimp only [Bind.bind, Except.bind, Pure.pure, Except.pure,
+             throwThe, MonadExcept.throw, MonadExceptOf.throw]
+  split
+  · rename_i h_bad; exfalso; unfold MAX_MULTISIG_KEYS at h_kc; simp_all
+  · split
+    · simp [Bind.bind, Except.bind, throwThe, MonadExcept.throw]
+    · rename_i h_th_in; exfalso
+      rcases h_th with h_lo | h_hi <;> simp_all
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §4  HTLC parser — size guard  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ input whose size ≠ MAX_HTLC_COVENANT_DATA (105) → rejected.
@@ -45,7 +86,7 @@ theorem htlc_size_guard (covData : Bytes) (h : covData.size ≠ MAX_HTLC_COVENAN
     simp [bne, beq_iff_eq, h]
 
 -- ═══════════════════════════════════════════════════════════════════
--- §3  validateOutGenesis — unknown type exhaustion  [LIVE]
+-- §5  validateOutGenesis — unknown type exhaustion  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ covenantType outside the six known types → rejected.
@@ -77,7 +118,7 @@ theorem validate_out_genesis_rejects_unknown (out : TxOut) (txKind bh : Nat)
 -- ═══════════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════════
--- §4  HTLC post-condition: claim ≠ refund  [LIVE]
+-- §6  HTLC post-condition: claim ≠ refund  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ successful HTLC parse, claimKeyId ≠ refundKeyId (Bool-level).
@@ -104,7 +145,7 @@ theorem htlc_ok_claim_neq_refund (covData : Bytes) (v : HtlcCovenant)
           revert h_cr; simp
 
 -- ═══════════════════════════════════════════════════════════════════
--- §5  HTLC post-condition: lockMode valid  [LIVE]
+-- §7  HTLC post-condition: lockMode valid  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ successful HTLC parse, lockMode ∈ {HEIGHT, TIMESTAMP}.
@@ -132,7 +173,7 @@ theorem htlc_ok_lock_mode_valid (covData : Bytes) (v : HtlcCovenant)
           revert h_lm; simp
 
 -- ═══════════════════════════════════════════════════════════════════
--- §6  HTLC post-condition: lockValue > 0  [LIVE]
+-- §8  HTLC post-condition: lockValue > 0  [LIVE]
 -- ═══════════════════════════════════════════════════════════════════
 
 /-- [LIVE] ∀ successful HTLC parse, lockValue ≠ 0.
