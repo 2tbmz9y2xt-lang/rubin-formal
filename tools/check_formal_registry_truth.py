@@ -46,66 +46,71 @@ def fail(msg: str) -> int:
     print(f"ERROR: {msg}", file=sys.stderr)
     return 1
 
+
+def _consume_string(text: str, i: int, out: list[str]) -> int:
+    out.append(text[i])
+    i += 1
+    while i < len(text):
+        ch = text[i]
+        out.append(ch)
+        if ch == "\\" and i + 1 < len(text):
+            out.append(text[i + 1])
+            i += 2
+            continue
+        i += 1
+        if ch == "\"":
+            break
+    return i
+
+
+def _consume_line_comment(text: str, i: int, out: list[str]) -> int:
+    while i < len(text) and text[i] != "\n":
+        out.append(" ")
+        i += 1
+    if i < len(text):
+        out.append("\n")
+        i += 1
+    return i
+
+
+def _consume_block_comment(text: str, i: int, out: list[str]) -> int:
+    depth = 1
+    while i < len(text) and depth > 0:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+        if ch == "/" and nxt == "-":
+            out.extend((" ", " "))
+            depth += 1
+            i += 2
+            continue
+        if ch == "-" and nxt == "/":
+            out.extend((" ", " "))
+            depth -= 1
+            i += 2
+            continue
+        out.append("\n" if ch == "\n" else " ")
+        i += 1
+    return i
+
+
 def strip_lean_comments(text: str) -> str:
     out: list[str] = []
     i = 0
-    block_depth = 0
-    in_line_comment = False
-    in_string = False
 
     while i < len(text):
         ch = text[i]
         nxt = text[i + 1] if i + 1 < len(text) else ""
 
-        if in_line_comment:
-            if ch == "\n":
-                out.append("\n")
-                in_line_comment = False
-            else:
-                out.append(" ")
-            i += 1
-            continue
-
-        if block_depth > 0:
-            if ch == "/" and nxt == "-":
-                out.extend((" ", " "))
-                block_depth += 1
-                i += 2
-                continue
-            if ch == "-" and nxt == "/":
-                out.extend((" ", " "))
-                block_depth -= 1
-                i += 2
-                continue
-            out.append("\n" if ch == "\n" else " ")
-            i += 1
-            continue
-
-        if in_string:
-            out.append(ch)
-            if ch == "\\" and i + 1 < len(text):
-                out.append(text[i + 1])
-                i += 2
-                continue
-            if ch == "\"":
-                in_string = False
-            i += 1
-            continue
-
         if ch == "\"":
-            out.append(ch)
-            in_string = True
-            i += 1
+            i = _consume_string(text, i, out)
             continue
         if ch == "-" and nxt == "-":
             out.extend((" ", " "))
-            in_line_comment = True
-            i += 2
+            i = _consume_line_comment(text, i + 2, out)
             continue
         if ch == "/" and nxt == "-":
             out.extend((" ", " "))
-            block_depth = 1
-            i += 2
+            i = _consume_block_comment(text, i + 2, out)
             continue
 
         out.append(ch)
