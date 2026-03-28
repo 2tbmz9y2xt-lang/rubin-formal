@@ -31,7 +31,10 @@ END_RE = re.compile(r"^\s*end(?:\s+([A-Za-z0-9_'.]+))?\s*$")
 DECLARATION_RE = re.compile(
     r"^\s*(?:@\[[^\]]+\]\s*)*"
     r"(?:(?:private|protected|noncomputable|unsafe|partial)\s+)*"
-    r"(?:theorem|lemma|def|abbrev)\s+([A-Za-z0-9_'.?!]+)(?=\s|$|[:({\[])"
+    r"(?:theorem|lemma|def|abbrev)\s+"
+    r"([A-Za-z0-9_'?!]+(?:\.[A-Za-z0-9_'?!]+)*)"
+    r"(?:\.\{[^}]+\})?"
+    r"(?=\s|$|[:({\[])"
 )
 
 

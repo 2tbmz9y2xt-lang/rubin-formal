@@ -30,11 +30,13 @@ end RubinFormal.Real
 namespace RubinFormal
 theorem Wire.roundtrip_ok : True := by trivial
 theorem listFind?_ok! : True := by trivial
+theorem universe_ok.{u, v} : True := by trivial
 end RubinFormal
 """
         names = extract_declared_names(text)
         self.assertIn("RubinFormal.Wire.roundtrip_ok", names)
         self.assertIn("RubinFormal.listFind?_ok!", names)
+        self.assertIn("RubinFormal.universe_ok", names)
 
     def test_theorem_exists_in_file_requires_exact_qualified_name(self) -> None:
         with TemporaryDirectory() as tmp:
