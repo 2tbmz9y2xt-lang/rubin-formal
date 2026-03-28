@@ -1087,7 +1087,7 @@
         "RubinFormal.Refinement.ParallelEquivalence.commit_equivalence_accept",
         "RubinFormal.Refinement.ParallelEquivalence.commit_equivalence_reject",
         "RubinFormal.Refinement.ParallelEquivalence.worker_purity",
-        "RubinFormal.Refinement.ParallelEquivalence.worker_deterministic",
+        "RubinFormal.Refinement.ParallelEquivalence.context_free_reducer_parity",
         "RubinFormal.Refinement.ParallelEquivalence.reducer_permutation_invariant",
         "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
       ],

@@ -90,19 +90,6 @@ theorem sig_verify_pure (verify : SigTask → Bool) (t1 t2 : SigTask)
     verifySig verify t1 = verifySig verify t2 := by
   rw [h]
 
-/-- Verification result at index i is the same whether we look it up
-    in the original list or in a permutation — provided the element
-    at that index is the same task. This bridges indexing and membership. -/
-theorem sig_verify_index_stable (verify : SigTask → Bool)
-    (tasks : List SigTask) (t : SigTask) (hMem : t ∈ tasks) :
-    verifySig verify t = verifySig verify t := rfl
-
-/-- Stronger: any task in the list produces the same verify result
-    regardless of which list it appears in, as long as it's the same task. -/
-theorem sig_verify_list_independent (verify : SigTask → Bool)
-    (l1 l2 : List SigTask) (t : SigTask) (_h1 : t ∈ l1) (_h2 : t ∈ l2) :
-    verifySig verify t = verifySig verify t := rfl
-
 -- ============================================================================
 -- Section 3: Reducer — All-Pass / Any-Fail Equivalence
 -- ============================================================================
