@@ -51,6 +51,13 @@ def lean_repo_path(repo_root: Path, rel_path: str) -> Path:
     raise ValueError(f"unsupported non-repo path in registry: {rel_path}")
 
 
+def try_lean_repo_path(repo_root: Path, rel_path: str) -> Optional[Path]:
+    try:
+        return lean_repo_path(repo_root, rel_path)
+    except ValueError:
+        return None
+
+
 def olean_path(repo_root: Path, rel_path: str) -> Path:
     normalized = rel_path
     if normalized.startswith(REPO_PREFIX):
@@ -132,10 +139,9 @@ def iter_registered_theorems(coverage: dict, bridge: dict) -> tuple[list[Theorem
 def validate_registered_paths(repo_root: Path, registered_paths: set[str]) -> list[str]:
     errors: list[str] = []
     for declared_path in sorted(registered_paths):
-        try:
-            abs_path = lean_repo_path(repo_root, declared_path)
-        except ValueError as exc:
-            errors.append(str(exc))
+        abs_path = try_lean_repo_path(repo_root, declared_path)
+        if abs_path is None:
+            errors.append(f"unsupported non-repo path in registry: {declared_path}")
             continue
         if not abs_path.exists():
             errors.append(f"referenced Lean file does not exist: {declared_path}")
@@ -161,7 +167,10 @@ def validate_coverage_theorems(
     errors: list[str] = []
     for theorem, declared_path in refs:
         if declared_path:
-            if theorem_exists_in_file(theorem, declared_path):
+            declared_result = theorem_exists_in_file(theorem, declared_path)
+            if declared_result is None:
+                continue
+            if declared_result:
                 continue
             errors.append(f"proof_coverage theorem `{theorem}` not found in declared file `{declared_path}`")
             continue
@@ -177,8 +186,12 @@ def validate_bridge_theorems(
 ) -> list[str]:
     errors: list[str] = []
     for theorem, declared_path in refs:
-        if declared_path and theorem_exists_in_file(theorem, declared_path):
-            continue
+        if declared_path:
+            declared_result = theorem_exists_in_file(theorem, declared_path)
+            if declared_result is None:
+                continue
+            if declared_result:
+                continue
         if theorem_exists_anywhere(theorem):
             continue
         location = declared_path if declared_path else "RubinFormal/"
@@ -240,21 +253,27 @@ def main() -> int:
         return any(pattern.search(file_text(path)) for path in lean_files)
 
     @lru_cache(maxsize=None)
-    def theorem_exists_in_file(qualified: str, rel_path: str) -> bool:
-        abs_path = lean_repo_path(repo_root, rel_path)
+    def theorem_exists_in_file(qualified: str, rel_path: str) -> Optional[bool]:
+        abs_path = try_lean_repo_path(repo_root, rel_path)
+        if abs_path is None:
+            return None
         if not abs_path.exists():
             return False
         return bool(declaration_regex(short_name(qualified)).search(file_text(abs_path)))
 
     registered_paths = iter_registry_paths(coverage, bridge)
-    coverage_theorems, bridge_theorems = iter_registered_theorems(coverage, bridge)
+    coverage_theorem_refs, bridge_theorem_refs = iter_registered_theorems(coverage, bridge)
     coverage_rows = indexed_rows(coverage.get("coverage", []), "section_key")
     bridge_rows = indexed_rows(bridge.get("critical_ops", []), "op")
 
     errors = []
     errors.extend(validate_registered_paths(repo_root, registered_paths))
-    errors.extend(validate_coverage_theorems(coverage_theorems, theorem_exists_in_file, theorem_exists_anywhere))
-    errors.extend(validate_bridge_theorems(bridge_theorems, theorem_exists_in_file, theorem_exists_anywhere))
+    errors.extend(
+        validate_coverage_theorems(coverage_theorem_refs, theorem_exists_in_file, theorem_exists_anywhere)
+    )
+    errors.extend(
+        validate_bridge_theorems(bridge_theorem_refs, theorem_exists_in_file, theorem_exists_anywhere)
+    )
     errors.extend(validate_shared_op_parity(coverage_rows, bridge_rows))
 
     if errors:
@@ -265,8 +284,8 @@ def main() -> int:
     print(
         "OK: formal registry truth passed "
         f"({len(registered_paths)} registered Lean files reachable, "
-        f"{len(coverage_theorems)} proof_coverage theorem refs, "
-        f"{len(bridge_theorems)} refinement_bridge theorem refs, "
+        f"{len(coverage_theorem_refs)} proof_coverage theorem refs, "
+        f"{len(bridge_theorem_refs)} refinement_bridge theorem refs, "
         f"{len(SHARED_OP_PARITY)} shared-op parity rows)."
     )
     return 0
