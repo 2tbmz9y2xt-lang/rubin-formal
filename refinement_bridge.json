@@ -19,9 +19,36 @@
     {
       "op": "sighash_v1",
       "gate": "CV-SIGHASH",
-      "model_theorem": "RubinFormal.sighash_v1_proved",
-      "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "evidence_level": "baseline"
+      "model_theorem": "RubinFormal.Conformance.cv_sighash_vectors_pass",
+      "lean_file": "rubin-formal/RubinFormal/Conformance/CVSighashReplay.lean",
+      "theorem_file": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
+      "evidence_level": "machine_checked_contract",
+      "spec_section": "§12",
+      "go_function": "DigestV1",
+      "contract_scope": "CV-SIGHASH replay plus substantive live sighash-selection rejection theorems on selectHashPrevouts/selectHashSequences/selectHashOutputs and exhaustive hasValidBaseType coverage. This closes the currently shipped fixture subset and the live invalid-type selection surface without claiming a universal tx-level digest equivalence theorem.",
+      "limitations": [
+        "This remains a contract-level bridge: the executable replay covers the current CV-SIGHASH fixture set, not every possible raw transaction / witness-carried sighash_type combination.",
+        "No cryptographic injectivity claim over SHA3-256 digests is made here; buildPreimageFrameParts_injective reasons about frame parts, not collision resistance.",
+        "TXCTX-aware allowed_sighash_set policy is tracked in the separate §14 TxContext row, not claimed here as extra §12 bridge strength."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.sighash_v1_proved",
+        "RubinFormal.Conformance.cv_sighash_vectors_pass",
+        "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
+        "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs",
+        "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input",
+        "RubinFormal.SighashV1.selectHashSequences_all_commits_all_inputs",
+        "RubinFormal.SighashV1.selectHashSequences_anyonecanpay_commits_current_input",
+        "RubinFormal.SighashV1.selectHashOutputs_all_commits_all_outputs",
+        "RubinFormal.SighashV1.selectHashOutputs_none_commits_no_outputs",
+        "RubinFormal.SighashV1.selectHashOutputs_single_commits_selected_output",
+        "RubinFormal.SighashV1.selectHashOutputs_single_oob_commits_empty",
+        "RubinFormal.selectHashPrevouts_invalid_returns_none",
+        "RubinFormal.selectHashSequences_invalid_returns_none",
+        "RubinFormal.selectHashOutputs_invalid_returns_none",
+        "RubinFormal.hasValidBaseType_exhaustive"
+      ],
+      "notes": "Bridge upgraded from baseline because the shared-op surface now has both executable CV-SIGHASH replay and substantive live theorems on the real sighash helper functions. This is still an honest contract lane, not a universal claim for every raw tx / witness path."
     },
     {
       "op": "retarget_v1",
@@ -112,10 +139,13 @@
       "model_theorem": "RubinFormal.da_gate_ok_implies_das_ok",
       "lean_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "machine_checked_behavioral",
       "spec_section": "§21",
       "go_function": "validateDASetIntegrity",
-      "limitations": [],
+      "limitations": [
+        "This row closes the live DA validator by behavioral decomposition and replay, not by a single universal end-to-end theorem over every possible monadic path.",
+        "The bridge surface is live and machine-checked, but it is still expressed through extracted recursive helpers plus validateDASetIntegrity / validateDaIntegrityGate, not through a byte-for-byte import of Go or Rust code."
+      ],
       "supporting_theorems": [
         "RubinFormal.da_batch_exceeded",
         "RubinFormal.da_batch_ok",
@@ -171,7 +201,7 @@
         "RubinFormal.witness_sig_noncanonical_rejects",
         "RubinFormal.witness_all_ok"
       ],
-      "notes": "validateWitnessErrors extracted from parseDATx as LIVE sub-function. Exhaustive 4-code error taxonomy proved (validateWitnessErrors_taxonomy). All parseDATx error codes now machine-checked: TX_ERR_PARSE from structure, TX_ERR_WITNESS_OVERFLOW/TX_ERR_SIG_ALG_INVALID/TX_ERR_SIG_NONCANONICAL from validateWitnessErrors."
+      "notes": "Behavioral closure of the live DA validator surface. validateWitnessErrors is extracted as a LIVE sub-function; the full DA pipeline is decomposed into recursive helpers (accumulateDATxs, verifyCommitIntegrity, collectChunkPayloads, checkOrphanChunks) plus gate-level error propagation, with CV-DA replay backing the same surface."
     },
     {
       "op": "weight_accounting",
@@ -179,7 +209,7 @@
       "model_theorem": "RubinFormal.weight_cv_replay_pass",
       "lean_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "machine_checked_behavioral",
       "spec_section": "§9",
       "go_function": "CalcTxWeight",
       "contract_scope": "Behavioral decomposition of the live weight formula (base/witness/DA/signature) with abstract model bridge + conformance replay. Constants pinned, all 4 components independently monotone, DA-component kind=0 proved, sigCost decomposition proved.",
