@@ -1080,19 +1080,22 @@
       "section_heading": "## Parallel Validation — Sequential Equivalence (Q-PV-19)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Refinement.ParallelEquivalence.cursor_determinism",
-        "RubinFormal.Refinement.ParallelEquivalence.cursor_pure",
         "RubinFormal.Refinement.ParallelEquivalence.reducer_equivalence",
+        "RubinFormal.Refinement.ParallelEquivalence.reducePar_eq_flushAccepts",
+        "RubinFormal.Refinement.ParallelEquivalence.validatePar_eq_validateParLive",
         "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence",
-        "RubinFormal.Refinement.ParallelEquivalence.commit_equivalence_accept",
-        "RubinFormal.Refinement.ParallelEquivalence.commit_equivalence_reject",
-        "RubinFormal.Refinement.ParallelEquivalence.worker_purity",
-        "RubinFormal.Refinement.ParallelEquivalence.worker_deterministic",
+        "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence_live",
+        "RubinFormal.Refinement.ParallelEquivalence.context_free_reducer_parity",
         "RubinFormal.Refinement.ParallelEquivalence.reducer_permutation_invariant",
         "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
       ],
       "file": "RubinFormal/Refinement/ParallelEquivalence.lean",
-      "evidence_level": "machine_checked_universal"
+      "notes": "Helper-level bridge for the live parallel signature queue contract. The counted surface now closes only the accept/reject behavior that Go SigCheckQueue.Flush actually promises: success iff every queued signature verifies, rejection iff any queued signature fails. The row no longer counts cursor/signature purity wrappers or corollary wrappers as substantive evidence.",
+      "limitations": [
+        "This row does not claim an end-to-end theorem for ConnectBlockBasicInMemoryAtHeight versus ConnectBlockParallelSigVerify over the full block pipeline.",
+        "Auxiliary tagged-result lowest-index theorems remain in ParallelEquivalence.lean for helper reasoning only; they are not counted here because the live queue may early-abort and surface a deterministic submission-order error instead of the absolute lowest failing index."
+      ],
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "txctx_coreext_fixture_replay",
