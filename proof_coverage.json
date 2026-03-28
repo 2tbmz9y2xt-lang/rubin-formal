@@ -686,14 +686,24 @@
       "section_heading": "## 1. Replay-Domain Checks (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_replay_vectors_pass"
+        "RubinFormal.Conformance.cv_replay_vectors_pass",
+        "RubinFormal.replay_domain_checks_proved",
+        "RubinFormal.parsed_nonce_duplicate_not_replay_free",
+        "RubinFormal.replay_domain_nonce_contract"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "evidence_level": "cv_replay_only",
+      "theorem_files": {
+        "RubinFormal.replay_domain_checks_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.parsed_nonce_duplicate_not_replay_free": "rubin-formal/RubinFormal/ReplayDomainBehavioral.lean",
+        "RubinFormal.replay_domain_nonce_contract": "rubin-formal/RubinFormal/ReplayDomainBehavioral.lean"
+      },
+      "evidence_level": "machine_checked_contract",
       "limitations": [
-        "This section is evidenced by conformance vector replay only (native_decide). No structural or behavioral theorems are present. Coverage is bounded by the fixture set."
+        "This remains a contract-level row: the non-fixture theorem surface covers duplicate-nonce rejection and parseTx nonce determinism, while CV-REPLAY replay covers the shipped duplicate-set fixtures and block-basic replay vectors.",
+        "No universal theorem is claimed here for arbitrary multi-transaction blocks, chain-wide nonce indexing, or the exact executable duplicate-finder implementation over all possible nonce lists.",
+        "The section does not claim a full end-to-end proof that every block-level replay rejection in the live node is derived solely from `nonceReplayFree`; broader state-threading remains owned by the surrounding validation rows."
       ],
-      "notes": "CV replay pass only. No additional structural or behavioral theorems for this section."
+      "notes": "Section §1 is no longer replay-only: `replay_domain_checks_proved` restores the structural duplicate-nonce invariant from `PinnedSections/CriticalInvariants`, and `ReplayDomainBehavioral.lean` now adds live parseTx nonce-determinism + duplicate replay-domain contract theorems. CV-REPLAY remains the executable evidence for the current fixture set."
     },
     {
       "section_key": "utxo_state_model",
