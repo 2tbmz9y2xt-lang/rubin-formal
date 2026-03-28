@@ -231,8 +231,8 @@
         "RubinFormal.sigCost_monotone_unknown",
         "RubinFormal.daSize_kind0",
         "RubinFormal.compactSizeLen_small",
-        "RubinFormal.weight_suite_aware_correct",
-        "RubinFormal.weight_suite_aware_correct_create",
+        "RubinFormal.WeightSuiteAware.weight_suite_aware_correct",
+        "RubinFormal.WeightSuiteAware.weight_suite_aware_correct_create",
         "RubinFormal.weight_accounting_proved"
       ],
       "notes": "Behavioral closure of §9 weight formula. The live txWeightAndStats function is validated against CV vectors (native_decide), and the weight formula is decomposed into pure functions with full monotonicity and abstract model equivalence. Suite-aware cost model (post-rotation) covered by WeightSuiteAware.lean."

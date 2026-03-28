@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Tuple
@@ -24,19 +25,156 @@ SHARED_OP_PARITY = {
 DECL_KINDS = ("theorem", "lemma", "def", "abbrev")
 TheoremRef = Tuple[str, Optional[str]]
 
+NAMESPACE_RE = re.compile(r"^\s*namespace\s+([A-Za-z0-9_'.]+)\s*$")
+SECTION_RE = re.compile(r"^\s*section(?:\s+([A-Za-z0-9_'.]+))?\s*$")
+END_RE = re.compile(r"^\s*end(?:\s+([A-Za-z0-9_'.]+))?\s*$")
+DECLARATION_RE = re.compile(
+    r"^\s*(?:@\[[^\]]+\]\s*)*"
+    r"(?:(?:private|protected|noncomputable|unsafe|partial)\s+)*"
+    r"(?:theorem|lemma|def|abbrev)\s+"
+    r"([A-Za-z0-9_'?!]+(?:\.[A-Za-z0-9_'?!]+)*)"
+    r"(?:\.\{[^}]+\})?"
+    r"(?=\s|$|[:({\[])"
+)
+
+
+@dataclass(frozen=True)
+class ScopeFrame:
+    kind: str
+    label: Optional[str]
+    parts: tuple[str, ...]
+
 
 def fail(msg: str) -> int:
     print(f"ERROR: {msg}", file=sys.stderr)
     return 1
 
 
-def short_name(qualified: str) -> str:
-    return qualified.split(".")[-1]
+def _consume_string(text: str, i: int, out: list[str]) -> int:
+    out.append(text[i])
+    i += 1
+    while i < len(text):
+        ch = text[i]
+        out.append(ch)
+        if ch == "\\" and i + 1 < len(text):
+            out.append(text[i + 1])
+            i += 2
+            continue
+        i += 1
+        if ch == "\"":
+            break
+    return i
 
 
-def declaration_regex(name: str) -> re.Pattern[str]:
-    kinds = "|".join(DECL_KINDS)
-    return re.compile(rf"(?m)^\s*(?:private\s+|protected\s+)?(?:{kinds})\s+{re.escape(name)}\b")
+def _consume_line_comment(text: str, i: int, out: list[str]) -> int:
+    while i < len(text) and text[i] != "\n":
+        out.append(" ")
+        i += 1
+    if i < len(text):
+        out.append("\n")
+        i += 1
+    return i
+
+
+def _comment_pair_delta(text: str, i: int) -> int:
+    nxt = text[i + 1] if i + 1 < len(text) else ""
+    if text[i] == "/" and nxt == "-":
+        return 1
+    if text[i] == "-" and nxt == "/":
+        return -1
+    return 0
+
+
+def _consume_block_comment(text: str, i: int, out: list[str]) -> int:
+    depth = 1
+    while i < len(text) and depth > 0:
+        delta = _comment_pair_delta(text, i)
+        if delta:
+            out.extend((" ", " "))
+            depth += delta
+            i += 2
+            continue
+        out.append("\n" if text[i] == "\n" else " ")
+        i += 1
+    return i
+
+
+def strip_lean_comments(text: str) -> str:
+    out: list[str] = []
+    i = 0
+
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if ch == "\"":
+            i = _consume_string(text, i, out)
+            continue
+        if ch == "-" and nxt == "-":
+            out.extend((" ", " "))
+            i = _consume_line_comment(text, i + 2, out)
+            continue
+        if ch == "/" and nxt == "-":
+            out.extend((" ", " "))
+            i = _consume_block_comment(text, i + 2, out)
+            continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def _current_namespace_parts(stack: list[ScopeFrame]) -> list[str]:
+    parts: list[str] = []
+    for frame in stack:
+        if frame.kind == "namespace":
+            parts.extend(frame.parts)
+    return parts
+
+
+def _qualify_decl_name(local_name: str, namespace_parts: list[str]) -> str:
+    if local_name.startswith("_root_."):
+        return local_name[len("_root_.") :]
+    if namespace_parts:
+        return ".".join([*namespace_parts, local_name])
+    return local_name
+
+
+def _pop_scope(stack: list[ScopeFrame], label: Optional[str]) -> None:
+    if not stack:
+        return
+    if label is None:
+        stack.pop()
+        return
+    for idx in range(len(stack) - 1, -1, -1):
+        if stack[idx].label == label:
+            del stack[idx:]
+            return
+    stack.pop()
+
+
+def extract_declared_names(text: str) -> set[str]:
+    stripped = strip_lean_comments(text)
+    stack: list[ScopeFrame] = []
+    names: set[str] = set()
+
+    for line in stripped.splitlines():
+        if match := NAMESPACE_RE.match(line):
+            label = match.group(1)
+            parts = tuple(part for part in label.split(".") if part)
+            stack.append(ScopeFrame("namespace", label, parts))
+            continue
+        if match := SECTION_RE.match(line):
+            stack.append(ScopeFrame("section", match.group(1), ()))
+            continue
+        if match := END_RE.match(line):
+            _pop_scope(stack, match.group(1))
+            continue
+        if match := DECLARATION_RE.match(line):
+            names.add(_qualify_decl_name(match.group(1), _current_namespace_parts(stack)))
+
+    return names
 
 
 def rel_repo_path(repo_root: Path, path: Path) -> str:
@@ -124,7 +262,9 @@ def bridge_theorems(row: dict) -> list[TheoremRef]:
     return refs
 
 
-def iter_registered_theorems(coverage: dict, bridge: dict) -> tuple[list[TheoremRef], list[TheoremRef]]:
+def iter_registered_theorems(
+    coverage: dict, bridge: dict
+) -> tuple[list[TheoremRef], list[TheoremRef]]:
     coverage_refs: list[TheoremRef] = []
     bridge_refs: list[TheoremRef] = []
     for row in coverage.get("coverage", []):
@@ -215,7 +355,9 @@ def indexed_rows(rows: list[dict], key: str) -> dict[str, dict]:
     }
 
 
-def validate_shared_op_parity(coverage_rows: dict[str, dict], bridge_rows: dict[str, dict]) -> list[str]:
+def validate_shared_op_parity(
+    coverage_rows: dict[str, dict], bridge_rows: dict[str, dict]
+) -> list[str]:
     errors: list[str] = []
     for op, section_key in SHARED_OP_PARITY.items():
         bridge_row = bridge_rows.get(op)
@@ -256,9 +398,12 @@ def theorem_lookups(repo_root: Path, lean_files: list[Path]):
         return path.read_text(encoding="utf-8")
 
     @lru_cache(maxsize=None)
+    def declared_names(path: Path) -> frozenset[str]:
+        return frozenset(extract_declared_names(file_text(path)))
+
+    @lru_cache(maxsize=None)
     def theorem_exists_anywhere(qualified: str) -> bool:
-        pattern = declaration_regex(short_name(qualified))
-        return any(pattern.search(file_text(path)) for path in lean_files)
+        return any(qualified in declared_names(path) for path in lean_files)
 
     @lru_cache(maxsize=None)
     def theorem_exists_in_file(qualified: str, rel_path: str) -> Optional[bool]:
@@ -267,7 +412,7 @@ def theorem_lookups(repo_root: Path, lean_files: list[Path]):
             return None
         if not abs_path.exists():
             return False
-        return bool(declaration_regex(short_name(qualified)).search(file_text(abs_path)))
+        return qualified in declared_names(abs_path)
 
     return theorem_exists_anywhere, theorem_exists_in_file
 
