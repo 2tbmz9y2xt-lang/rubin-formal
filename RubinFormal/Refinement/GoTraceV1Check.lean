@@ -144,6 +144,41 @@ def retargetGoTraceV1Pass : Bool :=
   let retargetRows := powOuts.filter (fun o => o.op == "retarget_v1")
   !retargetRows.isEmpty && retargetRows.all checkPow
 
+/-- Pinned CV-SIGHASH id set. Missing or reordered trace rows must fail closed
+    instead of letting the aggregate gate pass vacuously on a surviving subset. -/
+private def sighashExpectedIds : List String :=
+  ["SIGHASH-01", "SIGHASH-02", "SIGHASH-03", "SIGHASH-04", "SIGHASH-05"]
+
+private def sighashOutIds : List String :=
+  sighashOuts.map (fun o => o.id)
+
+private def sighashSupportedIdsOk : Bool :=
+  sighashOutIds == sighashExpectedIds
+
+/-- All currently shipped Go-trace sighash rows pass against Lean's executable
+    digestV1 surface, with the exact fixture id set pinned above. -/
+def sighashGoTraceV1Pass : Bool :=
+  sighashSupportedIdsOk && !sighashOuts.isEmpty && sighashOuts.all checkSighash
+
+/-- Pinned CV-POW id set for the aggregate Go-trace gate.
+    Unlike `retargetGoTraceV1Pass`, this includes block_hash and pow_check rows,
+    so the aggregate executable gate cannot silently narrow to a smaller family. -/
+private def powExpectedIds : List String :=
+  ["POW-01", "POW-02", "POW-03", "POW-03A", "POW-03B", "POW-03C", "POW-03D",
+   "POW-04", "POW-05", "POW-06", "POW-07", "POW-08", "POW-08A", "POW-09",
+   "POW-10"]
+
+private def powOutIds : List String :=
+  powOuts.map (fun o => o.id)
+
+private def powSupportedIdsOk : Bool :=
+  powOutIds == powExpectedIds
+
+/-- Aggregate CV-POW executable gate over the full current trace family.
+    This is separate from the narrower retarget-only contract theorem. -/
+def powGoTraceV1Pass : Bool :=
+  powSupportedIdsOk && !powOuts.isEmpty && powOuts.all checkPow
+
 private def toUtxoPairs? (us : List RubinFormal.Conformance.CVUtxoEntry) : Option (List (Outpoint × UtxoEntry)) :=
   us.mapM (fun u => do
     let txid <- RubinFormal.decodeHex? u.txidHex
@@ -248,6 +283,21 @@ private def checkBlockBasic (o : BlockBasicOut) : Bool :=
           | .error e =>
               (!o.ok) && (o.err == e)
 
+/-- Pinned CV-BLOCK-BASIC id set for the aggregate Go-trace gate. -/
+private def blockBasicExpectedIds : List String :=
+  ["CV-B-01", "CV-B-02", "CV-B-03", "CV-B-04", "CV-B-05", "CV-B-06",
+   "CV-B-07", "CV-B-08", "CV-B-09", "CV-B-10"]
+
+private def blockBasicOutIds : List String :=
+  blockBasicOuts.map (fun o => o.id)
+
+private def blockBasicSupportedIdsOk : Bool :=
+  blockBasicOutIds == blockBasicExpectedIds
+
+/-- Aggregate CV-BLOCK-BASIC executable gate over the full current trace family. -/
+def blockBasicGoTraceV1Pass : Bool :=
+  blockBasicSupportedIdsOk && !blockBasicOuts.isEmpty && blockBasicOuts.all checkBlockBasic
+
 /-- Pinned CV-PARSE id set.  If trace regeneration drops or reorders vectors,
     the theorem fails closed instead of silently narrowing coverage. -/
 private def parseExpectedIds : List String :=
@@ -314,38 +364,50 @@ theorem fork_choice_select_cv_contract_proved :
   native_decide
 
 def allGoTraceV1Ok : Bool :=
-  parseOuts.all checkParse &&
-  sighashOuts.all checkSighash &&
-  powOuts.all checkPow &&
+  parseGoTraceV1Pass &&
+  sighashGoTraceV1Pass &&
+  powGoTraceV1Pass &&
   utxoApplyBasicGoTraceV1Pass &&
-  blockBasicOuts.all checkBlockBasic &&
+  blockBasicGoTraceV1Pass &&
   forkChoiceSelectCVPass
 
 def firstGoTraceV1Mismatch : Option String :=
   let mk (gate : String) (id : String) : Option String := some (gate ++ ":" ++ id)
-  match parseOuts.find? (fun o => !checkParse o) with
-  | some o => mk "CV-PARSE" o.id
-  | none =>
-      match sighashOuts.find? (fun o => !checkSighash o) with
-      | some o => mk "CV-SIGHASH" o.id
-      | none =>
-          match powOuts.find? (fun o => !checkPow o) with
-          | some o => mk "CV-POW" (o.id ++ "/" ++ o.op)
+  if !parseSupportedIdsOk then
+    mk "CV-PARSE" "ID-SET"
+  else
+    match parseOuts.find? (fun o => !checkParse o) with
+    | some o => mk "CV-PARSE" o.id
+    | none =>
+        if !sighashSupportedIdsOk then
+          mk "CV-SIGHASH" "ID-SET"
+        else
+          match sighashOuts.find? (fun o => !checkSighash o) with
+          | some o => mk "CV-SIGHASH" o.id
           | none =>
-              if !utxoApplyBasicSupportedIdsOk then
-                mk "CV-UTXO-BASIC" "ID-SET"
+              if !powSupportedIdsOk then
+                mk "CV-POW" "ID-SET"
               else
-                match utxoApplyBasicBridgeRows.find? (fun o => !checkUtxoBasic o) with
-                | some o => mk "CV-UTXO-BASIC" o.id
+                match powOuts.find? (fun o => !checkPow o) with
+                | some o => mk "CV-POW" (o.id ++ "/" ++ o.op)
                 | none =>
-                    match blockBasicOuts.find? (fun o => !checkBlockBasic o) with
-                    | some o => mk "CV-BLOCK-BASIC" o.id
-                    | none =>
-                        if !forkChoiceSelectSupportedIdsOk then
-                          mk "CV-FORK-CHOICE" "ID-SET"
-                        else
-                          match forkChoiceSelectVectors.find? (fun o => !Conformance.checkForkChoiceVector o) with
-                          | some o => mk "CV-FORK-CHOICE" o.id
-                          | none => none
+                    if !utxoApplyBasicSupportedIdsOk then
+                      mk "CV-UTXO-BASIC" "ID-SET"
+                    else
+                      match utxoApplyBasicBridgeRows.find? (fun o => !checkUtxoBasic o) with
+                      | some o => mk "CV-UTXO-BASIC" o.id
+                      | none =>
+                          if !blockBasicSupportedIdsOk then
+                            mk "CV-BLOCK-BASIC" "ID-SET"
+                          else
+                            match blockBasicOuts.find? (fun o => !checkBlockBasic o) with
+                            | some o => mk "CV-BLOCK-BASIC" o.id
+                            | none =>
+                                if !forkChoiceSelectSupportedIdsOk then
+                                  mk "CV-FORK-CHOICE" "ID-SET"
+                                else
+                                  match forkChoiceSelectVectors.find? (fun o => !Conformance.checkForkChoiceVector o) with
+                                  | some o => mk "CV-FORK-CHOICE" o.id
+                                  | none => none
 
 end RubinFormal.Refinement
