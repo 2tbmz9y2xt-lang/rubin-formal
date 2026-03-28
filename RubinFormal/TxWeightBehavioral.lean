@@ -10,7 +10,10 @@ Bridges the decomposed weight computation (base/witness/DA/signature)
 to the abstract `weight` model in `CriticalInvariants.lean` and the
 conformance replay in `CVWeightReplay.lean`.
 
-Evidence level: machine_checked_contract for the full §9 weight formula.
+Evidence level: machine_checked_behavioral for the shared §9 row:
+the live formula is behaviorally decomposed and bridged to the abstract model,
+then replayed on CV-WEIGHT vectors; this is stronger than a narrow contract
+but still not a monadic end-to-end proof.
 Combines:
 
 1. Constant pins: WITNESS_DISCOUNT_DIVISOR, VERIFY_COST_ML_DSA_87, VERIFY_COST_UNKNOWN_SUITE

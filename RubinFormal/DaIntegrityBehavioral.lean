@@ -6,7 +6,9 @@ import RubinFormal.Conformance.CVDaIntegrityReplay
 
 LIVE behavioral proofs on `validateDASetIntegrity` and `validateDaIntegrityGate`
 (DaIntegrityV1.lean). All DA sub-functions extracted and wired LIVE.
-Evidence level: machine_checked_contract for all DA-specific paths.
+Evidence level: machine_checked_behavioral for the shared §21 row:
+behavioral decomposition over the live validator surface plus CV replay,
+not a single universal end-to-end theorem.
 All DA sub-functions recursive (no foldlM/List.range), fully proved
 with induction (missing/step/empty). parseDATx error taxonomy fully
 machine-checked via 3-phase decomposition (no cross-section assumption).
