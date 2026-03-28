@@ -49,3 +49,7 @@ import RubinFormal.Conformance.CVExtVectors
 import RubinFormal.Conformance.CVExtReplay
 import RubinFormal.Conformance.CVTxctxVectors
 import RubinFormal.Conformance.CVTxctxReplay
+import RubinFormal.Conformance.CVNativeRotationCutoffVectors
+import RubinFormal.Conformance.CVNativeRotationCutoffReplay
+import RubinFormal.Conformance.CVNativeRotationSunsetVectors
+import RubinFormal.Conformance.CVNativeRotationSunsetReplay
