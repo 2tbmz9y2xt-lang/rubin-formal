@@ -46,16 +46,6 @@ def fail(msg: str) -> int:
     print(f"ERROR: {msg}", file=sys.stderr)
     return 1
 
-
-def short_name(qualified: str) -> str:
-    return qualified.split(".")[-1]
-
-
-def declaration_regex(name: str) -> re.Pattern[str]:
-    kinds = "|".join(DECL_KINDS)
-    return re.compile(rf"(?m)^\s*(?:private\s+|protected\s+)?(?:{kinds})\s+{re.escape(name)}\b")
-
-
 def strip_lean_comments(text: str) -> str:
     out: list[str] = []
     i = 0
@@ -161,7 +151,8 @@ def extract_declared_names(text: str) -> set[str]:
     for line in stripped.splitlines():
         if match := NAMESPACE_RE.match(line):
             label = match.group(1)
-            stack.append(ScopeFrame("namespace", label, tuple(part for part in label.split(".") if part)))
+            parts = tuple(part for part in label.split(".") if part)
+            stack.append(ScopeFrame("namespace", label, parts))
             continue
         if match := SECTION_RE.match(line):
             stack.append(ScopeFrame("section", match.group(1), ()))
@@ -260,7 +251,9 @@ def bridge_theorems(row: dict) -> list[TheoremRef]:
     return refs
 
 
-def iter_registered_theorems(coverage: dict, bridge: dict) -> tuple[list[TheoremRef], list[TheoremRef]]:
+def iter_registered_theorems(
+    coverage: dict, bridge: dict
+) -> tuple[list[TheoremRef], list[TheoremRef]]:
     coverage_refs: list[TheoremRef] = []
     bridge_refs: list[TheoremRef] = []
     for row in coverage.get("coverage", []):
@@ -351,7 +344,9 @@ def indexed_rows(rows: list[dict], key: str) -> dict[str, dict]:
     }
 
 
-def validate_shared_op_parity(coverage_rows: dict[str, dict], bridge_rows: dict[str, dict]) -> list[str]:
+def validate_shared_op_parity(
+    coverage_rows: dict[str, dict], bridge_rows: dict[str, dict]
+) -> list[str]:
     errors: list[str] = []
     for op, section_key in SHARED_OP_PARITY.items():
         bridge_row = bridge_rows.get(op)
