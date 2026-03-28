@@ -102,14 +102,22 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
-        "RubinFormal.Conformance.cv_sig_vectors_pass"
+        "RubinFormal.Conformance.cv_sig_vectors_pass",
+        "RubinFormal.transaction_identifiers_proved",
+        "RubinFormal.txid_wtxid_identifier_domain_contract"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "evidence_level": "cv_replay_only",
+      "theorem_files": {
+        "RubinFormal.transaction_identifiers_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
+        "RubinFormal.txid_wtxid_identifier_domain_contract": "rubin-formal/RubinFormal/TxIdBehavioral.lean"
+      },
+      "evidence_level": "machine_checked_contract",
       "limitations": [
-        "This section is evidenced by conformance vector replay only (native_decide). No structural or behavioral theorems are present. Coverage is bounded by the fixture set."
+        "This remains a contract-level section: the non-fixture theorem surface proves preimage/domain separation for the witness-present path, while CV-PARSE/CV-SIG replay covers concrete emitted txid/wtxid outputs on the shipped fixtures.",
+        "No universal claim is made that SHA3(tx.extract 0 coreEnd) and SHA3(tx) differ as digests for every raw transaction; that would require an explicit cryptographic collision-resistance assumption beyond the current structural proofs.",
+        "Witness-empty transactions still rely on the executable replay path for concrete txid=wtxid behavior; this row does not claim a full end-to-end theorem over every parse path in TxParseV2."
       ],
-      "notes": "CV replay pass only. No additional structural or behavioral theorems for this section."
+      "notes": "Section §8 is no longer replay-only: `transaction_identifiers_proved` restores the real-byte preimage distinctness theorem from `PinnedSections/CriticalInvariants`, and `txid_wtxid_identifier_domain_contract` adds a section-local contract theorem tying those payload bytes to the actual txid/wtxid Merkle leaf domains. CV-PARSE and CV-SIG replay remain the executable evidence for concrete emitted txid/wtxid values."
     },
     {
       "section_key": "weight_accounting",
