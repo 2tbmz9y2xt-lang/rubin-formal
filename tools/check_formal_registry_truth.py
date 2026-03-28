@@ -73,22 +73,25 @@ def _consume_line_comment(text: str, i: int, out: list[str]) -> int:
     return i
 
 
+def _comment_pair_delta(text: str, i: int) -> int:
+    nxt = text[i + 1] if i + 1 < len(text) else ""
+    if text[i] == "/" and nxt == "-":
+        return 1
+    if text[i] == "-" and nxt == "/":
+        return -1
+    return 0
+
+
 def _consume_block_comment(text: str, i: int, out: list[str]) -> int:
     depth = 1
     while i < len(text) and depth > 0:
-        ch = text[i]
-        nxt = text[i + 1] if i + 1 < len(text) else ""
-        if ch == "/" and nxt == "-":
+        delta = _comment_pair_delta(text, i)
+        if delta:
             out.extend((" ", " "))
-            depth += 1
+            depth += delta
             i += 2
             continue
-        if ch == "-" and nxt == "/":
-            out.extend((" ", " "))
-            depth -= 1
-            i += 2
-            continue
-        out.append("\n" if ch == "\n" else " ")
+        out.append("\n" if text[i] == "\n" else " ")
         i += 1
     return i
 
