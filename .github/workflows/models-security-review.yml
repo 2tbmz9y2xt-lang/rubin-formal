@@ -52,15 +52,24 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
         with:
           name: pr-diff
-      - name: Install jsonrepair
-        run: npm install jsonrepair@3.12.0
+      - name: Install jsonrepair in isolated directory
+        run: |
+          set -euo pipefail
+          mkdir -p "$JSONREPAIR_DIR"
+          cd "$JSONREPAIR_DIR"
+          npm init -y >/dev/null 2>&1
+          npm install --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org/ jsonrepair@3.12.0
+        env:
+          JSONREPAIR_DIR: ${{ runner.temp }}/jsonrepair
       - name: Run security review
         id: review
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          JSONREPAIR_DIR: ${{ runner.temp }}/jsonrepair
         with:
           script: |
             const fs = require('fs');
-            const { jsonrepair } = require('./node_modules/jsonrepair');
+            const { jsonrepair } = require(require('path').join(process.env.JSONREPAIR_DIR, 'node_modules', 'jsonrepair'));
             const path = require('path');
             const { execSync } = require('child_process');
             const rawOutputPath = 'deepseek-raw-output.txt';
