@@ -52,12 +52,15 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4
         with:
           name: pr-diff
+      - name: Install jsonrepair
+        run: npm install jsonrepair@3.12.0
       - name: Run security review
         id: review
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
+            const { jsonrepair } = require('./node_modules/jsonrepair');
             const path = require('path');
             const { execSync } = require('child_process');
             const rawOutputPath = 'deepseek-raw-output.txt';
@@ -95,13 +98,78 @@ jobs:
               }
               return fs.readFileSync(realPath, 'utf8');
             };
-            const changedFilePayload = changedLeanFiles
-              .map((file) => {
-                const content = readChangedLeanFile(file).slice(0, 8000);
-                return `FILE: ${file}\n${content}`;
-              })
-              .join('\n\n---\n\n')
-              .slice(0, 64000);
+            const PER_FILE_CAP = 30000;
+            const TOTAL_FILE_BUDGET = 100000;
+            const SEPARATOR = '\n\n---\n\n';
+            const entries = [];
+            let usedBytes = 0;
+            for (const file of changedLeanFiles) {
+              let content;
+              try { content = readChangedLeanFile(file); } catch { continue; }
+              const header = `FILE: ${file}\n`;
+              const frameSize = header.length + (entries.length > 0 ? SEPARATOR.length : 0);
+              if (usedBytes + frameSize + 200 > TOTAL_FILE_BUDGET) continue;
+              const remainingBudget = TOTAL_FILE_BUDGET - usedBytes - frameSize;
+              const contentBudget = Math.min(PER_FILE_CAP, remainingBudget);
+              const entry = header + content.slice(0, contentBudget);
+              entries.push(entry);
+              usedBytes += entry.length + (entries.length > 1 ? SEPARATOR.length : 0);
+            }
+            const changedFilePayload = entries.join(SEPARATOR);
+            // ── Previous findings dedup ─────────────────────────────
+            // Fetch prior security review comments to avoid re-reporting.
+            const TRUSTED_AUTHORS = new Set(['github-actions[bot]']);
+            let previousFindings = '';
+            try {
+              const allComments = [];
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  per_page: 100,
+                }
+              )) {
+                allComments.push(...response.data);
+              }
+              const reviewComments = allComments
+                .filter(c => c.body
+                  && TRUSTED_AUTHORS.has(c.user?.login ?? '')
+                  && c.body.includes('Formal Review')
+                  && c.body.includes('deepseek'))
+                .slice(-3);
+              if (reviewComments.length > 0) {
+                const titles = [];
+                for (const c of reviewComments) {
+                  const jsonMatch = c.body.match(/```json\n([\s\S]*?)```/);
+                  if (jsonMatch) {
+                    try {
+                      const parsed = JSON.parse(jsonMatch[1]);
+                      for (const f of (parsed.findings || [])) {
+                        const sev = String(f.severity || '').replace(/[^A-Z]/g, '').slice(0, 10);
+                        const title = String(f.title || '')
+                          .replace(/[\r\n]+/g, ' ')
+                          .replace(/[^\x20-\x7E]/g, '')
+                          .slice(0, 120);
+                        const file = String(f.file || '')
+                          .replace(/[^\x20-\x7E]/g, '')
+                          .slice(0, 200);
+                        if (sev && title) {
+                          titles.push(`[${sev}] ${title}` + (file ? ` (in ${file})` : ''));
+                        }
+                      }
+                    } catch {}
+                  }
+                }
+                if (titles.length > 0) {
+                  previousFindings = '\n\nPREVIOUSLY REPORTED (do NOT re-report these — they are already tracked):\n' +
+                    [...new Set(titles)].join('\n');
+                }
+              }
+            } catch (err) {
+              core.warning(`Could not fetch previous reviews: ${err.message}`);
+            }
+
             const systemPrompt = [
               '<role>',
               'You are a HOSTILE formal verification reviewer — a merge gate for Lean 4 / RUBIN protocol PRs.',
@@ -202,6 +270,9 @@ jobs:
               '- You receive BOTH diff AND changed file content (truncated to 8k chars/file, 64k total).',
               '  Use provided content to verify definitions and imports, but if content appears truncated,',
               '  do NOT claim definitions are absent — flag the file as partially reviewed instead.',
+              '- DEDUPLICATION (MANDATORY): Check the PREVIOUSLY REPORTED section below the diff.',
+              '  If a finding describes the same underlying issue as one already reported — even with',
+              '  different wording or title — SKIP IT. Only report genuinely NEW issues.',
               '</hard-rules>',
               '',
               '<output-format>',
@@ -231,7 +302,14 @@ jobs:
               try {
                 return { parsed: JSON.parse(normalized), candidate: normalized, normalized };
               } catch (err) {
-                return { parsed: null, candidate: normalized, normalized, error: err };
+                // Fallback: try jsonrepair before giving up
+                try {
+                  const repaired = jsonrepair(normalized);
+                  core.warning(`Model returned malformed JSON: ${err.message}. jsonrepair succeeded.`);
+                  return { parsed: JSON.parse(repaired), candidate: normalized, normalized };
+                } catch (err2) {
+                  return { parsed: null, candidate: normalized, normalized, error: err2 };
+                }
               }
             };
             const modelId = 'deepseek/DeepSeek-R1-0528';
@@ -244,7 +322,7 @@ jobs:
                   `PR body:\n${prBody}`,
                   `Changed Lean files:\n${changedLeanFiles.join('\n')}`,
                   `Current changed Lean file contents:\n\n${changedFilePayload}`,
-                  `PR diff:\n\n${diff}`
+                  `PR diff:\n\n${diff}${previousFindings}`
                 ].join('\n\n')
               }
             ];
