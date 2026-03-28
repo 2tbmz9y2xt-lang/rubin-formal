@@ -529,14 +529,46 @@
       "section_heading": "## 14. Covenant Type Registry (Normative)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_covenant_genesis_vectors_pass"
+        "RubinFormal.Conformance.cv_covenant_genesis_vectors_pass",
+        "RubinFormal.covenant_types_pairwise_distinct",
+        "RubinFormal.cov_type_p2pk_value",
+        "RubinFormal.cov_type_anchor_value",
+        "RubinFormal.cov_type_htlc_value",
+        "RubinFormal.cov_type_da_commit_value",
+        "RubinFormal.validate_out_genesis_p2pk_canonical_ok",
+        "RubinFormal.validate_out_genesis_anchor_canonical_ok",
+        "RubinFormal.validate_out_genesis_vault_canonical_ok",
+        "RubinFormal.validate_out_genesis_multisig_canonical_ok",
+        "RubinFormal.validate_out_genesis_htlc_canonical_ok",
+        "RubinFormal.validate_out_genesis_da_commit_canonical_ok",
+        "RubinFormal.validate_out_genesis_rejects_unknown",
+        "RubinFormal.validate_out_genesis_reserved_future_rejects",
+        "RubinFormal.dispatch_unknown_covenant_error"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
-      "evidence_level": "cv_replay_only",
+      "theorem_files": {
+        "RubinFormal.covenant_types_pairwise_distinct": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.cov_type_p2pk_value": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.cov_type_anchor_value": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.cov_type_htlc_value": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.cov_type_da_commit_value": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_p2pk_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_anchor_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_vault_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_multisig_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_htlc_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_da_commit_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.validate_out_genesis_rejects_unknown": "rubin-formal/RubinFormal/CovenantParserGaps.lean",
+        "RubinFormal.validate_out_genesis_reserved_future_rejects": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean"
+      },
+      "evidence_level": "machine_checked_contract",
       "limitations": [
-        "This section is evidenced by conformance vector replay only (native_decide). No structural or behavioral theorems are present. Coverage is bounded by the fixture set."
+        "This remains a contract-level row: canonical accept coverage is proved on explicit live sample outputs for the supported covenant tags, while unknown-tag rejection is proved on the live registry/dispatch helpers.",
+        "No universal theorem is claimed here for every malformed covenant payload on every known tag; deep parser semantics for vault/multisig/htlc remain owned by their dedicated rows and replay bundles.",
+        "Spend-side dispatch is still covered through the documented live helper `dispatchCovenantValidation`, not a direct theorem over the full inline loop in `applyNonCoinbaseTxBasicNoCrypto`."
       ],
-      "notes": "CV replay pass only. No additional structural or behavioral theorems for this section."
+      "notes": "Section §14 is no longer replay-only. `CovenantRegistryExhaustive.lean` now covers canonical registry values, pairwise tag distinctness, canonical accept cases for each supported output covenant type, and universal unknown-tag rejection on `validateOutGenesis`; `dispatch_unknown_covenant_error` supplies the live spend-side unknown-covenant reject path. CV-COVENANT-GENESIS replay remains the executable evidence for the shipped fixture set."
     },
     {
       "section_key": "difficulty_update",
