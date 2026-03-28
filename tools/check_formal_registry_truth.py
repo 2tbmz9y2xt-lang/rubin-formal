@@ -6,6 +6,7 @@ import re
 import sys
 from functools import lru_cache
 from pathlib import Path
+from typing import Optional, Tuple
 
 
 REPO_PREFIX = "rubin-formal/"
@@ -21,6 +22,7 @@ SHARED_OP_PARITY = {
 }
 
 DECL_KINDS = ("theorem", "lemma", "def", "abbrev")
+TheoremRef = Tuple[str, Optional[str]]
 
 
 def fail(msg: str) -> int:
@@ -59,51 +61,157 @@ def olean_path(repo_root: Path, rel_path: str) -> Path:
     return repo_root / ".lake" / "build" / "lib" / f"{suffix}.olean"
 
 
-def iter_registry_paths(coverage: dict, bridge: dict) -> set[str]:
+def coverage_paths(row: dict) -> set[str]:
     refs: set[str] = set()
-    for row in coverage.get("coverage", []):
-        if not isinstance(row, dict):
-            continue
-        if isinstance(row.get("file"), str):
-            refs.add(row["file"])
-        theorem_files = row.get("theorem_files", {})
-        if isinstance(theorem_files, dict):
-            for path in theorem_files.values():
-                if isinstance(path, str):
-                    refs.add(path)
-    for row in bridge.get("critical_ops", []):
-        if not isinstance(row, dict):
-            continue
-        for key in ("lean_file", "theorem_file"):
-            if isinstance(row.get(key), str):
-                refs.add(row[key])
+    row_file = row.get("file")
+    if isinstance(row_file, str):
+        refs.add(row_file)
+    theorem_files = row.get("theorem_files", {})
+    if isinstance(theorem_files, dict):
+        for path in theorem_files.values():
+            if isinstance(path, str):
+                refs.add(path)
     return refs
 
 
-def iter_registered_theorems(coverage: dict, bridge: dict) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]]]:
-    coverage_theorems: list[tuple[str, str | None]] = []
-    for row in coverage.get("coverage", []):
-        if not isinstance(row, dict):
-            continue
-        theorem_files = row.get("theorem_files", {})
-        theorem_map = theorem_files if isinstance(theorem_files, dict) else {}
-        for theorem in row.get("theorems", []):
-            if isinstance(theorem, str):
-                coverage_theorems.append((theorem, theorem_map.get(theorem)))
+def bridge_paths(row: dict) -> set[str]:
+    refs: set[str] = set()
+    for key in ("lean_file", "theorem_file"):
+        path = row.get(key)
+        if isinstance(path, str):
+            refs.add(path)
+    return refs
 
-    bridge_theorems: list[tuple[str, str | None]] = []
+
+def iter_registry_paths(coverage: dict, bridge: dict) -> set[str]:
+    refs: set[str] = set()
+    for row in coverage.get("coverage", []):
+        if isinstance(row, dict):
+            refs.update(coverage_paths(row))
     for row in bridge.get("critical_ops", []):
-        if not isinstance(row, dict):
+        if isinstance(row, dict):
+            refs.update(bridge_paths(row))
+    return refs
+
+
+def coverage_theorems(row: dict) -> list[TheoremRef]:
+    refs: list[TheoremRef] = []
+    theorem_files = row.get("theorem_files", {})
+    theorem_map = theorem_files if isinstance(theorem_files, dict) else {}
+    for theorem in row.get("theorems", []):
+        if isinstance(theorem, str):
+            refs.append((theorem, theorem_map.get(theorem)))
+    return refs
+
+
+def bridge_theorems(row: dict) -> list[TheoremRef]:
+    refs: list[TheoremRef] = []
+    lean_file = row.get("lean_file") if isinstance(row.get("lean_file"), str) else None
+    theorem_file = row.get("theorem_file") if isinstance(row.get("theorem_file"), str) else None
+    model_theorem = row.get("model_theorem")
+    if isinstance(model_theorem, str):
+        refs.append((model_theorem, lean_file))
+    for theorem in row.get("supporting_theorems", []):
+        if isinstance(theorem, str):
+            refs.append((theorem, theorem_file))
+    return refs
+
+
+def iter_registered_theorems(coverage: dict, bridge: dict) -> tuple[list[TheoremRef], list[TheoremRef]]:
+    coverage_refs: list[TheoremRef] = []
+    bridge_refs: list[TheoremRef] = []
+    for row in coverage.get("coverage", []):
+        if isinstance(row, dict):
+            coverage_refs.extend(coverage_theorems(row))
+    for row in bridge.get("critical_ops", []):
+        if isinstance(row, dict):
+            bridge_refs.extend(bridge_theorems(row))
+    return coverage_refs, bridge_refs
+
+
+def validate_registered_paths(repo_root: Path, registered_paths: set[str]) -> list[str]:
+    errors: list[str] = []
+    for declared_path in sorted(registered_paths):
+        try:
+            abs_path = lean_repo_path(repo_root, declared_path)
+        except ValueError as exc:
+            errors.append(str(exc))
             continue
-        lean_file = row.get("lean_file") if isinstance(row.get("lean_file"), str) else None
-        theorem_file = row.get("theorem_file") if isinstance(row.get("theorem_file"), str) else None
-        model_theorem = row.get("model_theorem")
-        if isinstance(model_theorem, str):
-            bridge_theorems.append((model_theorem, lean_file))
-        for theorem in row.get("supporting_theorems", []):
-            if isinstance(theorem, str):
-                bridge_theorems.append((theorem, theorem_file))
-    return coverage_theorems, bridge_theorems
+        if not abs_path.exists():
+            errors.append(f"referenced Lean file does not exist: {declared_path}")
+            continue
+        try:
+            built = olean_path(repo_root, declared_path)
+        except ValueError as exc:
+            errors.append(str(exc))
+            continue
+        if not built.exists():
+            errors.append(
+                "registered Lean file is outside the default build graph or failed to build: "
+                f"{declared_path} (missing {rel_repo_path(repo_root, built)})"
+            )
+    return errors
+
+
+def validate_coverage_theorems(
+    refs: list[TheoremRef],
+    theorem_exists_in_file,
+    theorem_exists_anywhere,
+) -> list[str]:
+    errors: list[str] = []
+    for theorem, declared_path in refs:
+        if declared_path:
+            if theorem_exists_in_file(theorem, declared_path):
+                continue
+            errors.append(f"proof_coverage theorem `{theorem}` not found in declared file `{declared_path}`")
+            continue
+        if not theorem_exists_anywhere(theorem):
+            errors.append(f"proof_coverage theorem `{theorem}` not found in RubinFormal/")
+    return errors
+
+
+def validate_bridge_theorems(
+    refs: list[TheoremRef],
+    theorem_exists_in_file,
+    theorem_exists_anywhere,
+) -> list[str]:
+    errors: list[str] = []
+    for theorem, declared_path in refs:
+        if declared_path and theorem_exists_in_file(theorem, declared_path):
+            continue
+        if theorem_exists_anywhere(theorem):
+            continue
+        location = declared_path if declared_path else "RubinFormal/"
+        errors.append(f"refinement_bridge theorem `{theorem}` not found in `{location}`")
+    return errors
+
+
+def indexed_rows(rows: list[dict], key: str) -> dict[str, dict]:
+    return {
+        row[key]: row
+        for row in rows
+        if isinstance(row, dict) and isinstance(row.get(key), str)
+    }
+
+
+def validate_shared_op_parity(coverage_rows: dict[str, dict], bridge_rows: dict[str, dict]) -> list[str]:
+    errors: list[str] = []
+    for op, section_key in SHARED_OP_PARITY.items():
+        bridge_row = bridge_rows.get(op)
+        coverage_row = coverage_rows.get(section_key)
+        if bridge_row is None:
+            errors.append(f"shared-op parity row missing in refinement_bridge.json: {op}")
+            continue
+        if coverage_row is None:
+            errors.append(f"shared-op parity row missing in proof_coverage.json: {section_key}")
+            continue
+        if bridge_row.get("evidence_level") != coverage_row.get("evidence_level"):
+            errors.append(
+                f"shared-op evidence level drift for {op}: "
+                f"refinement_bridge={bridge_row.get('evidence_level')} vs "
+                f"proof_coverage[{section_key}]={coverage_row.get('evidence_level')}"
+            )
+    return errors
 
 
 def main() -> int:
@@ -138,93 +246,25 @@ def main() -> int:
             return False
         return bool(declaration_regex(short_name(qualified)).search(file_text(abs_path)))
 
-    bad = False
-
-    for rel_path in sorted(iter_registry_paths(coverage, bridge)):
-        try:
-            abs_path = lean_repo_path(repo_root, rel_path)
-        except ValueError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            bad = True
-            continue
-        if not abs_path.exists():
-            print(f"ERROR: referenced Lean file does not exist: {rel_path}", file=sys.stderr)
-            bad = True
-            continue
-        try:
-            built = olean_path(repo_root, rel_path)
-        except ValueError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            bad = True
-            continue
-        if not built.exists():
-            print(
-                f"ERROR: registered Lean file is outside the default build graph or failed to build: "
-                f"{rel_path} (missing {rel_repo_path(repo_root, built)})",
-                file=sys.stderr,
-            )
-            bad = True
-
+    registered_paths = iter_registry_paths(coverage, bridge)
     coverage_theorems, bridge_theorems = iter_registered_theorems(coverage, bridge)
+    coverage_rows = indexed_rows(coverage.get("coverage", []), "section_key")
+    bridge_rows = indexed_rows(bridge.get("critical_ops", []), "op")
 
-    for theorem, rel_path in coverage_theorems:
-        if rel_path:
-            if not theorem_exists_in_file(theorem, rel_path):
-                print(
-                    f"ERROR: proof_coverage theorem `{theorem}` not found in declared file `{rel_path}`",
-                    file=sys.stderr,
-                )
-                bad = True
-        elif not theorem_exists_anywhere(theorem):
-            print(f"ERROR: proof_coverage theorem `{theorem}` not found in RubinFormal/", file=sys.stderr)
-            bad = True
+    errors = []
+    errors.extend(validate_registered_paths(repo_root, registered_paths))
+    errors.extend(validate_coverage_theorems(coverage_theorems, theorem_exists_in_file, theorem_exists_anywhere))
+    errors.extend(validate_bridge_theorems(bridge_theorems, theorem_exists_in_file, theorem_exists_anywhere))
+    errors.extend(validate_shared_op_parity(coverage_rows, bridge_rows))
 
-    for theorem, rel_path in bridge_theorems:
-        if rel_path and theorem_exists_in_file(theorem, rel_path):
-            continue
-        if theorem_exists_anywhere(theorem):
-            continue
-        location = rel_path if rel_path else "RubinFormal/"
-        print(f"ERROR: refinement_bridge theorem `{theorem}` not found in `{location}`", file=sys.stderr)
-        bad = True
-
-    coverage_rows = {
-        row["section_key"]: row
-        for row in coverage.get("coverage", [])
-        if isinstance(row, dict) and isinstance(row.get("section_key"), str)
-    }
-    bridge_rows = {
-        row["op"]: row
-        for row in bridge.get("critical_ops", [])
-        if isinstance(row, dict) and isinstance(row.get("op"), str)
-    }
-
-    for op, section_key in SHARED_OP_PARITY.items():
-        bridge_row = bridge_rows.get(op)
-        coverage_row = coverage_rows.get(section_key)
-        if bridge_row is None:
-            print(f"ERROR: shared-op parity row missing in refinement_bridge.json: {op}", file=sys.stderr)
-            bad = True
-            continue
-        if coverage_row is None:
-            print(f"ERROR: shared-op parity row missing in proof_coverage.json: {section_key}", file=sys.stderr)
-            bad = True
-            continue
-        if bridge_row.get("evidence_level") != coverage_row.get("evidence_level"):
-            print(
-                f"ERROR: shared-op evidence level drift for {op}: "
-                f"refinement_bridge={bridge_row.get('evidence_level')} vs "
-                f"proof_coverage[{section_key}]={coverage_row.get('evidence_level')}",
-                file=sys.stderr,
-            )
-            bad = True
-
-    if bad:
+    if errors:
+        for msg in errors:
+            print(f"ERROR: {msg}", file=sys.stderr)
         return 1
 
     print(
         "OK: formal registry truth passed "
-        f"({len(iter_registry_paths(coverage, bridge))} registered Lean files reachable, "
+        f"({len(registered_paths)} registered Lean files reachable, "
         f"{len(coverage_theorems)} proof_coverage theorem refs, "
         f"{len(bridge_theorems)} refinement_bridge theorem refs, "
         f"{len(SHARED_OP_PARITY)} shared-op parity rows)."
