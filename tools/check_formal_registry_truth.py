@@ -166,6 +166,24 @@ def theorem_lookup_error(label: str, theorem: str, declared_path: Optional[str])
     return f"{label} theorem `{theorem}` not found in `{location}`"
 
 
+def validate_single_theorem_ref(
+    theorem: str,
+    declared_path: Optional[str],
+    theorem_exists_in_file,
+    theorem_exists_anywhere,
+    *,
+    label: str,
+    allow_global_fallback: bool,
+) -> Optional[str]:
+    if declared_path:
+        declared_result = theorem_exists_in_file(theorem, declared_path)
+        if declared_result is None or declared_result:
+            return None
+    if theorem_exists_anywhere(theorem) and (allow_global_fallback or not declared_path):
+        return None
+    return theorem_lookup_error(label, theorem, declared_path)
+
+
 def validate_theorem_refs(
     refs: list[TheoremRef],
     theorem_exists_in_file,
@@ -176,17 +194,16 @@ def validate_theorem_refs(
 ) -> list[str]:
     errors: list[str] = []
     for theorem, declared_path in refs:
-        if declared_path:
-            declared_result = theorem_exists_in_file(theorem, declared_path)
-            if declared_result is None:
-                continue
-            if declared_result:
-                continue
-        if allow_global_fallback and theorem_exists_anywhere(theorem):
-            continue
-        if not declared_path and theorem_exists_anywhere(theorem):
-            continue
-        errors.append(theorem_lookup_error(label, theorem, declared_path))
+        error = validate_single_theorem_ref(
+            theorem,
+            declared_path,
+            theorem_exists_in_file,
+            theorem_exists_anywhere,
+            label=label,
+            allow_global_fallback=allow_global_fallback,
+        )
+        if error is not None:
+            errors.append(error)
     return errors
 
 
@@ -218,22 +235,22 @@ def validate_shared_op_parity(coverage_rows: dict[str, dict], bridge_rows: dict[
     return errors
 
 
-def main() -> int:
-    repo_root = Path(__file__).resolve().parents[1]
+def load_registry_inputs(repo_root: Path) -> tuple[dict, dict, list[Path]]:
     coverage_path = repo_root / "proof_coverage.json"
     bridge_path = repo_root / "refinement_bridge.json"
-
     if not coverage_path.exists():
-        return fail("proof_coverage.json not found")
+        raise FileNotFoundError("proof_coverage.json not found")
     if not bridge_path.exists():
-        return fail("refinement_bridge.json not found")
-
+        raise FileNotFoundError("refinement_bridge.json not found")
     coverage = json.loads(coverage_path.read_text(encoding="utf-8"))
     bridge = json.loads(bridge_path.read_text(encoding="utf-8"))
     lean_files = sorted((repo_root / "RubinFormal").rglob("*.lean"))
     if not lean_files:
-        return fail("no Lean files found under RubinFormal/")
+        raise FileNotFoundError("no Lean files found under RubinFormal/")
+    return coverage, bridge, lean_files
 
+
+def theorem_lookups(repo_root: Path, lean_files: list[Path]):
     @lru_cache(maxsize=None)
     def file_text(path: Path) -> str:
         return path.read_text(encoding="utf-8")
@@ -252,11 +269,20 @@ def main() -> int:
             return False
         return bool(declaration_regex(short_name(qualified)).search(file_text(abs_path)))
 
+    return theorem_exists_anywhere, theorem_exists_in_file
+
+
+def collect_registry_errors(
+    repo_root: Path,
+    coverage: dict,
+    bridge: dict,
+    theorem_exists_anywhere,
+    theorem_exists_in_file,
+) -> tuple[set[str], list[TheoremRef], list[TheoremRef], list[str]]:
     registered_paths = iter_registry_paths(coverage, bridge)
     coverage_theorem_refs, bridge_theorem_refs = iter_registered_theorems(coverage, bridge)
     coverage_rows = indexed_rows(coverage.get("coverage", []), "section_key")
     bridge_rows = indexed_rows(bridge.get("critical_ops", []), "op")
-
     errors = []
     errors.extend(validate_registered_paths(repo_root, registered_paths))
     errors.extend(
@@ -278,7 +304,20 @@ def main() -> int:
         )
     )
     errors.extend(validate_shared_op_parity(coverage_rows, bridge_rows))
+    return registered_paths, coverage_theorem_refs, bridge_theorem_refs, errors
 
+
+def main() -> int:
+    repo_root = Path(__file__).resolve().parents[1]
+    try:
+        coverage, bridge, lean_files = load_registry_inputs(repo_root)
+    except FileNotFoundError as exc:
+        return fail(str(exc))
+
+    theorem_exists_anywhere, theorem_exists_in_file = theorem_lookups(repo_root, lean_files)
+    registered_paths, coverage_theorem_refs, bridge_theorem_refs, errors = collect_registry_errors(
+        repo_root, coverage, bridge, theorem_exists_anywhere, theorem_exists_in_file
+    )
     if errors:
         for msg in errors:
             print(f"ERROR: {msg}", file=sys.stderr)
