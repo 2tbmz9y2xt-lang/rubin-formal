@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Tuple
@@ -24,6 +25,22 @@ SHARED_OP_PARITY = {
 DECL_KINDS = ("theorem", "lemma", "def", "abbrev")
 TheoremRef = Tuple[str, Optional[str]]
 
+NAMESPACE_RE = re.compile(r"^\s*namespace\s+([A-Za-z0-9_'.]+)\s*$")
+SECTION_RE = re.compile(r"^\s*section(?:\s+([A-Za-z0-9_'.]+))?\s*$")
+END_RE = re.compile(r"^\s*end(?:\s+([A-Za-z0-9_'.]+))?\s*$")
+DECLARATION_RE = re.compile(
+    r"^\s*(?:@\[[^\]]+\]\s*)*"
+    r"(?:(?:private|protected|noncomputable|unsafe|partial)\s+)*"
+    r"(?:theorem|lemma|def|abbrev)\s+([A-Za-z0-9_'.?!]+)(?=\s|$|[:({\[])"
+)
+
+
+@dataclass(frozen=True)
+class ScopeFrame:
+    kind: str
+    label: Optional[str]
+    parts: tuple[str, ...]
+
 
 def fail(msg: str) -> int:
     print(f"ERROR: {msg}", file=sys.stderr)
@@ -37,6 +54,125 @@ def short_name(qualified: str) -> str:
 def declaration_regex(name: str) -> re.Pattern[str]:
     kinds = "|".join(DECL_KINDS)
     return re.compile(rf"(?m)^\s*(?:private\s+|protected\s+)?(?:{kinds})\s+{re.escape(name)}\b")
+
+
+def strip_lean_comments(text: str) -> str:
+    out: list[str] = []
+    i = 0
+    block_depth = 0
+    in_line_comment = False
+    in_string = False
+
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if in_line_comment:
+            if ch == "\n":
+                out.append("\n")
+                in_line_comment = False
+            else:
+                out.append(" ")
+            i += 1
+            continue
+
+        if block_depth > 0:
+            if ch == "/" and nxt == "-":
+                out.extend((" ", " "))
+                block_depth += 1
+                i += 2
+                continue
+            if ch == "-" and nxt == "/":
+                out.extend((" ", " "))
+                block_depth -= 1
+                i += 2
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        if in_string:
+            out.append(ch)
+            if ch == "\\" and i + 1 < len(text):
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == "\"":
+                in_string = False
+            i += 1
+            continue
+
+        if ch == "\"":
+            out.append(ch)
+            in_string = True
+            i += 1
+            continue
+        if ch == "-" and nxt == "-":
+            out.extend((" ", " "))
+            in_line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "-":
+            out.extend((" ", " "))
+            block_depth = 1
+            i += 2
+            continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def _current_namespace_parts(stack: list[ScopeFrame]) -> list[str]:
+    parts: list[str] = []
+    for frame in stack:
+        if frame.kind == "namespace":
+            parts.extend(frame.parts)
+    return parts
+
+
+def _qualify_decl_name(local_name: str, namespace_parts: list[str]) -> str:
+    if local_name.startswith("_root_."):
+        return local_name[len("_root_.") :]
+    if namespace_parts:
+        return ".".join([*namespace_parts, local_name])
+    return local_name
+
+
+def _pop_scope(stack: list[ScopeFrame], label: Optional[str]) -> None:
+    if not stack:
+        return
+    if label is None:
+        stack.pop()
+        return
+    for idx in range(len(stack) - 1, -1, -1):
+        if stack[idx].label == label:
+            del stack[idx:]
+            return
+    stack.pop()
+
+
+def extract_declared_names(text: str) -> set[str]:
+    stripped = strip_lean_comments(text)
+    stack: list[ScopeFrame] = []
+    names: set[str] = set()
+
+    for line in stripped.splitlines():
+        if match := NAMESPACE_RE.match(line):
+            label = match.group(1)
+            stack.append(ScopeFrame("namespace", label, tuple(part for part in label.split(".") if part)))
+            continue
+        if match := SECTION_RE.match(line):
+            stack.append(ScopeFrame("section", match.group(1), ()))
+            continue
+        if match := END_RE.match(line):
+            _pop_scope(stack, match.group(1))
+            continue
+        if match := DECLARATION_RE.match(line):
+            names.add(_qualify_decl_name(match.group(1), _current_namespace_parts(stack)))
+
+    return names
 
 
 def rel_repo_path(repo_root: Path, path: Path) -> str:
@@ -256,9 +392,12 @@ def theorem_lookups(repo_root: Path, lean_files: list[Path]):
         return path.read_text(encoding="utf-8")
 
     @lru_cache(maxsize=None)
+    def declared_names(path: Path) -> frozenset[str]:
+        return frozenset(extract_declared_names(file_text(path)))
+
+    @lru_cache(maxsize=None)
     def theorem_exists_anywhere(qualified: str) -> bool:
-        pattern = declaration_regex(short_name(qualified))
-        return any(pattern.search(file_text(path)) for path in lean_files)
+        return any(qualified in declared_names(path) for path in lean_files)
 
     @lru_cache(maxsize=None)
     def theorem_exists_in_file(qualified: str, rel_path: str) -> Optional[bool]:
@@ -267,7 +406,7 @@ def theorem_lookups(repo_root: Path, lean_files: list[Path]):
             return None
         if not abs_path.exists():
             return False
-        return bool(declaration_regex(short_name(qualified)).search(file_text(abs_path)))
+        return qualified in declared_names(abs_path)
 
     return theorem_exists_anywhere, theorem_exists_in_file
 
