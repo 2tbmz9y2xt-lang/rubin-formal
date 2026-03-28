@@ -159,10 +159,20 @@ def validate_registered_paths(repo_root: Path, registered_paths: set[str]) -> li
     return errors
 
 
-def validate_coverage_theorems(
+def theorem_lookup_error(label: str, theorem: str, declared_path: Optional[str]) -> str:
+    if label == "proof_coverage" and declared_path:
+        return f"proof_coverage theorem `{theorem}` not found in declared file `{declared_path}`"
+    location = declared_path if declared_path else "RubinFormal/"
+    return f"{label} theorem `{theorem}` not found in `{location}`"
+
+
+def validate_theorem_refs(
     refs: list[TheoremRef],
     theorem_exists_in_file,
     theorem_exists_anywhere,
+    *,
+    label: str,
+    allow_global_fallback: bool,
 ) -> list[str]:
     errors: list[str] = []
     for theorem, declared_path in refs:
@@ -172,30 +182,11 @@ def validate_coverage_theorems(
                 continue
             if declared_result:
                 continue
-            errors.append(f"proof_coverage theorem `{theorem}` not found in declared file `{declared_path}`")
+        if allow_global_fallback and theorem_exists_anywhere(theorem):
             continue
-        if not theorem_exists_anywhere(theorem):
-            errors.append(f"proof_coverage theorem `{theorem}` not found in RubinFormal/")
-    return errors
-
-
-def validate_bridge_theorems(
-    refs: list[TheoremRef],
-    theorem_exists_in_file,
-    theorem_exists_anywhere,
-) -> list[str]:
-    errors: list[str] = []
-    for theorem, declared_path in refs:
-        if declared_path:
-            declared_result = theorem_exists_in_file(theorem, declared_path)
-            if declared_result is None:
-                continue
-            if declared_result:
-                continue
-        if theorem_exists_anywhere(theorem):
+        if not declared_path and theorem_exists_anywhere(theorem):
             continue
-        location = declared_path if declared_path else "RubinFormal/"
-        errors.append(f"refinement_bridge theorem `{theorem}` not found in `{location}`")
+        errors.append(theorem_lookup_error(label, theorem, declared_path))
     return errors
 
 
@@ -269,10 +260,22 @@ def main() -> int:
     errors = []
     errors.extend(validate_registered_paths(repo_root, registered_paths))
     errors.extend(
-        validate_coverage_theorems(coverage_theorem_refs, theorem_exists_in_file, theorem_exists_anywhere)
+        validate_theorem_refs(
+            coverage_theorem_refs,
+            theorem_exists_in_file,
+            theorem_exists_anywhere,
+            label="proof_coverage",
+            allow_global_fallback=False,
+        )
     )
     errors.extend(
-        validate_bridge_theorems(bridge_theorem_refs, theorem_exists_in_file, theorem_exists_anywhere)
+        validate_theorem_refs(
+            bridge_theorem_refs,
+            theorem_exists_in_file,
+            theorem_exists_anywhere,
+            label="refinement_bridge",
+            allow_global_fallback=True,
+        )
     )
     errors.extend(validate_shared_op_parity(coverage_rows, bridge_rows))
 
