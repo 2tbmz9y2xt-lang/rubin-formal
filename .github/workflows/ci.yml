@@ -113,6 +113,10 @@ jobs:
           build-args: "--quiet"
           use-github-cache: true
 
+      - name: validate formal registry truth
+        run: |
+          python3 tools/check_formal_registry_truth.py
+
       - name: publish legacy status context "build"
         if: ${{ always() }}
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
