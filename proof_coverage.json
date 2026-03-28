@@ -1095,6 +1095,27 @@
       "evidence_level": "machine_checked_universal"
     },
     {
+      "section_key": "txctx_coreext_fixture_replay",
+      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Fixture Replay Lane",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.Conformance.cv_ext_vectors_pass",
+        "RubinFormal.Conformance.cv_txctx_vectors_pass"
+      ],
+      "file": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean",
+      "theorem_files": {
+        "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+        "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
+      },
+      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry checks the shipped bundle shape only: vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit. It does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
+      "limitations": [
+        "This lane is a structural fixture contract, not a universal theorem over live TxContext/CoreExt semantics.",
+        "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
+        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; this replay lane is complementary evidence only."
+      ],
+      "evidence_level": "machine_checked_contract"
+    },
+    {
       "section_key": "txcontext_formal",
       "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
       "status": "proved",
@@ -1123,7 +1144,7 @@
         "RubinFormal.SighashV1.checkSighashPolicy_exhaustive_256x256": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.checkSighashPolicy_invalid_base_rejected": "rubin-formal/RubinFormal/SighashV1.lean"
       },
-      "notes": "§14 pre-activation gate closure on the live Lean helper/computed TxContext surface. 10 closure theorems: ext_id ordering is wired into buildTxContext/buildTxContextLive via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, the carried continuing outputs list itself is bounded both at the TxContextContinuing type and at the built-bundle surface, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. The computed block helper derives continuing counts from the actual carried outputs inside the same continuingData bundle and extracts the sighash byte from a witness item instead of detached metadata. The legacy aggregate connectBlockFull wrapper remains compatibility surface and is not itself counted as the live gate path. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure.",
+      "notes": "§14 pre-activation gate closure on the live Lean helper/computed TxContext surface. 10 closure theorems: ext_id ordering is wired into buildTxContext/buildTxContextLive via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, the carried continuing outputs list itself is bounded both at the TxContextContinuing type and at the built-bundle surface, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. The computed block helper derives continuing counts from the actual carried outputs inside the same continuingData bundle and extracts the sighash byte from a witness item instead of detached metadata. The legacy aggregate connectBlockFull wrapper remains compatibility surface and is not itself counted as the live gate path. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure. Separate additive fixture-lane evidence now lives in txctx_coreext_fixture_replay and is not counted as an extra live closure theorem.",
       "limitations": [],
       "evidence_level": "machine_checked_behavioral"
     }
