@@ -1220,7 +1220,11 @@
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive": "RubinFormal/NativeSuiteRotation.lean"
       },
       "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). Conformance replay: 6 cutoff + 5 sunset vectors structurally verified. Model-level proofs on Lean definitions; no Go/Rust implementation exists yet for rotation, so no implementation bridge.",
-      "limitations": "Proofs are on a Lean state-machine model of §23.2.1, not on live Go/Rust code (rotation is not yet implemented in clients). Evidence level reflects model-only coverage. cv_replay_only vectors verify structural properties of conformance fixtures, not semantic execution.",
+      "limitations": [
+        "Proofs are on a Lean state-machine model of §23.2.1, not on live Go/Rust code (rotation is not yet implemented in clients)",
+        "Evidence level reflects model-only coverage",
+        "cv_replay_only vectors verify structural properties of conformance fixtures, not semantic execution"
+      ],
       "evidence_level": "machine_checked_behavioral"
     }
   ],
