@@ -335,7 +335,10 @@ private def forkChoiceSelectExpectedIds : List String :=
    "NEG-FC-CHAIN-ZERO-TARGET-IN-LIST", "CV-FC-EQUAL-WORK-TIE-BREAK",
    "CV-FC-EQUAL-WORK-TIE-BREAK-REVERSED", "CV-FC-HEAVIER-WINS-DISTINCT-TIPS",
    "CV-FC-THREE-CHAIN-HEAVIEST", "CV-FC-SHORT-HEAVY-BEATS-LONG-LIGHT",
-   "NEG-FC-ALL-INVALID-TARGETS"]
+   "NEG-FC-ALL-INVALID-TARGETS",
+   "CV-FC-IDENTICAL-CHAINS", "CV-FC-TIEBREAK-ZERO-VS-FF",
+   "CV-FC-SINGLE-CHAIN", "CV-FC-MAX-DIFF-LENGTH",
+   "CV-FC-OFF-BY-ONE-WORK", "CV-FC-TIEBREAK-LAST-BYTE"]
 
 private def forkChoiceSelectVectorIds : List String :=
   forkChoiceSelectVectors.map (fun v => v.id)
@@ -344,7 +347,7 @@ private def forkChoiceSelectSupportedIdsOk : Bool :=
   forkChoiceSelectVectorIds == forkChoiceSelectExpectedIds
 
 /-- Narrow machine-checked bridge for fork_choice_select.
-    All 10 CV-FORK-CHOICE vectors with op=fork_choice_select (6 positive +
+    All 16 CV-FORK-CHOICE vectors with op=fork_choice_select (12 positive +
     4 negative) are rechecked against `selectWinner` which exercises
     `chainTotalWork` + `bytesLT` tie-break — the live fork-choice path.
     Proved by `native_decide`, axiom-free.  No `block_hash_collision_resistance`
