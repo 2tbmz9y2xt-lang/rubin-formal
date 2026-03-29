@@ -66,7 +66,8 @@
         "RubinFormal.u64le_roundtrip_1M",
         "RubinFormal.u16le_roundtrip_258",
         "RubinFormal.u32le_roundtrip_16909060",
-        "RubinFormal.Refinement.parse_tx_go_trace_contract_proved"
+        "RubinFormal.Refinement.parse_tx_go_trace_contract_proved",
+        "RubinFormal.parseTx_result_integrity"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -86,14 +87,15 @@
         "RubinFormal.u64le_roundtrip_1M": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.u16le_roundtrip_258": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.u32le_roundtrip_16909060": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
-        "RubinFormal.Refinement.parse_tx_go_trace_contract_proved": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean"
+        "RubinFormal.Refinement.parse_tx_go_trace_contract_proved": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
+        "RubinFormal.parseTx_result_integrity": "rubin-formal/RubinFormal/TxWireRoundtrip.lean"
       },
       "limitations": [
         "Full transaction parse-serialize roundtrip not claimed — coverage limited to CompactSize + primitive LE encoding roundtrips.",
         "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via triple-segment content hash (~192-bit collision resistance).",
         "Serialize direction (Lean→bytes→Go roundtrip) not covered by parse_tx contract."
       ],
-      "notes": "Includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16).",
+      "notes": "Includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16). parseTx_result_integrity proves ok/err/txid/wtxid consistency (#337).",
       "evidence_level": "machine_checked_contract"
     },
     {
@@ -850,11 +852,17 @@
       "theorems": [
         "RubinFormal.Conformance.cv_subsidy_vectors_pass",
         "RubinFormal.subsidy_u128_safety_proved",
-        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved"
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved",
+        "RubinFormal.blockSubsidy_bounded",
+        "RubinFormal.blockSubsidy_in_u64",
+        "RubinFormal.subsidy_accumulation_in_u128"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
-        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved": "rubin-formal/RubinFormal/SubsidyV1.lean"
+        "RubinFormal.SubsidyV1.connectBlock_end_to_end_proved": "rubin-formal/RubinFormal/SubsidyV1.lean",
+        "RubinFormal.blockSubsidy_bounded": "rubin-formal/RubinFormal/ArithmeticSafety.lean",
+        "RubinFormal.blockSubsidy_in_u64": "rubin-formal/RubinFormal/ArithmeticSafety.lean",
+        "RubinFormal.subsidy_accumulation_in_u128": "rubin-formal/RubinFormal/ArithmeticSafety.lean"
       },
       "evidence_level": "machine_checked_universal"
     },
@@ -1046,18 +1054,24 @@
         "RubinFormal.Conformance.cv_timestamp_vectors_pass",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff",
-        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff"
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff",
+        "RubinFormal.timestamp_after_mtp_accepted",
+        "RubinFormal.timestamp_at_mtp_rejected",
+        "RubinFormal.timestamp_before_mtp_rejected"
       ],
       "file": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
       "theorem_files": {
-        "RubinFormal.Conformance.cv_timestamp_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTimestampReplay.lean"
+        "RubinFormal.Conformance.cv_timestamp_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTimestampReplay.lean",
+        "RubinFormal.timestamp_after_mtp_accepted": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.timestamp_at_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.timestamp_before_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean"
       },
       "notes": "Current entry combines executable replay for timestamp-bounds and block-basic timestamp vectors with universal theorems for the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied.",
       "limitations": [
         "The universal theorem layer is over `timestampBounds` given an already-derived median-time-past value; the list-to-MTP extraction path remains evidenced by executable replay rather than a standalone theorem.",
         "No chain-wide timestamp monotonicity claim beyond the covered `timestampBounds` gate and current replayed integration path is asserted here."
       ],
-      "evidence_level": "machine_checked_contract"
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "fork_choice",
@@ -1213,19 +1227,103 @@
       "theorems": [
         "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique",
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
-        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive"
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_registry_lookup_deterministic",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_unique_entry",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_ml_dsa_resolves",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_no_duplicates",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff",
+        "RubinFormal.RegistryResolutionLiveBridge.ml_dsa_87_params_bridge",
+        "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites",
+        "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only",
+        "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only",
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered"
       ],
       "file": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
       "theorem_files": {
         "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
-        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive": "rubin-formal/RubinFormal/NativeSuiteRotation.lean"
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_registry_lookup_deterministic": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_unique_entry": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_ml_dsa_resolves": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_no_duplicates": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.ml_dsa_87_params_bridge": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean"
       },
-      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). Conformance replay: 6 cutoff + 5 sunset vectors structurally verified. Model-level proofs on Lean definitions; no Go/Rust implementation exists yet for rotation, so no implementation bridge.",
+      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). FI-ROT-03: registry resolution deterministic. BRIDGE: RegistryResolutionLiveBridge proves universal IsRegistered characterization (iff sid=0x01), constant parity (pubkey/sig/cost), phase-dependent suite set bridges for all 5 rotation phases, and DefaultRotationProvider safety — matching Go suite_registry.go / Rust suite_registry.rs.",
       "limitations": [
-        "Proofs are on a Lean state-machine model of §23.2.1, not on live Go/Rust code (rotation is not yet implemented in clients)",
-        "Evidence level reflects model-only coverage",
-        "cv_replay_only vectors verify structural properties of conformance fixtures, not semantic execution"
+        "Post-rotation dispatch path not yet covered; pre-rotation ML-DSA-87 resolution proved and bridged",
+        "Bridge proves Lean model matches Go/Rust structure; byte-level trace bridge not yet formalized"
+      ],
+      "evidence_level": "machine_checked_behavioral"
+    },
+    {
+      "section_key": "spend_gate_bridge",
+      "section_heading": "## Spend Gate — Suite Acceptance Bridge",
+      "status": "LIVE+BRIDGE",
+      "theorems": [
+        "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence",
+        "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check",
+        "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge",
+        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge"
+      ],
+      "file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "theorem_files": {
+        "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
+      },
+      "notes": "Bridge theorems proving equivalence between the abstract spend-gate model and live suite-check functions. Pre-rotation scope: only ML-DSA-87 + SENTINEL.",
+      "limitations": [
+        "Pre-rotation scope only; post-rotation suite registry dispatch not yet bridged"
+      ],
+      "evidence_level": "machine_checked_behavioral"
+    },
+    {
+      "section_key": "feature_activation_fsm",
+      "section_heading": "## Feature Activation FSM (BIP9-like)",
+      "status": "LIVE+BRIDGE",
+      "theorems": [
+        "RubinFormal.active_terminal",
+        "RubinFormal.failed_terminal",
+        "RubinFormal.locked_in_always_activates",
+        "RubinFormal.flagday_exact_activation",
+        "RubinFormal.FeatureActivationLiveBridge.lockin_priority_over_timeout",
+        "RubinFormal.FeatureActivationLiveBridge.no_defined_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.no_started_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior",
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active"
+      ],
+      "file": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
+      "theorem_files": {
+        "RubinFormal.active_terminal": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
+        "RubinFormal.failed_terminal": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
+        "RubinFormal.locked_in_always_activates": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
+        "RubinFormal.flagday_exact_activation": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
+        "RubinFormal.FeatureActivationLiveBridge.lockin_priority_over_timeout": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.no_defined_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.no_started_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
+      },
+      "notes": "FSM correctness: terminal states absorbing, locked_in→active unconditional, flag-day activation at exact height. BRIDGE: FeatureActivationLiveBridge proves lock-in priority over timeout (consensus-critical evaluation order matching Go/Rust), no-skip transition guarantees (DEFINED→ACTIVE impossible in 1 step), exact iff-characterizations for core transitions, minimum-three-steps-to-active, and flagday complete behavioral bridge (exact activation + no-premature-activation + monotonicity as one-way latch) — matching Go featurebits.go/flagday.go and Rust featurebits.rs/flagday.rs.",
+      "limitations": [
+        "Bridge proves Lean FSM matches Go/Rust evaluation order; byte-level Go trace replay not yet formalized",
+        "FeatureBitStateAtHeightFromWindowCounts (multi-boundary fold) not yet bridged to Lean multi_step_monotone"
       ],
       "evidence_level": "machine_checked_behavioral"
     }
@@ -1236,20 +1334,23 @@
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; this is not a universal proof of CANONICAL semantics",
       "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
       "The pinned-section registry covers all 17 hash-pinned section keys. Each entry carries an explicit evidence_level distinguishing universal proofs from subset contracts, assumption-backed proofs, and CV-replay-only entries.",
-      "formal claims are bounded by explicit forbidden claims below"
+      "formal claims are bounded by explicit forbidden claims below",
+      "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
     "forbidden": [
       "formal verification of full RUBIN consensus / CANONICAL semantics",
       "cryptographic security proofs of ML-DSA / non-native candidate suites / SHA3-256",
       "bit-exact wire/serialization proof beyond what is exercised by conformance fixtures",
       "treating formal-only extra theorems as additional pinned-section coverage when they are not in the registry",
-      "universal mechanized refinement between spec text and Go/Rust implementations"
+      "universal mechanized refinement between spec text and Go/Rust implementations",
+      "claiming machine-checked Lean-to-Go/Rust equivalence for bridge theorems — Lean cannot import Go/Rust; parity is human-verified by code review"
     ]
   },
   "status_taxonomy": {
     "machine_checked_universal": "Universal inductive proof over all inputs. No axioms, no fixture dependence. A counterexample would require a Lean kernel bug.",
-    "machine_checked_behavioral": "Behavioral decomposition of a live formula into pure functions with full constant pins, monotonicity, and CV replay. Not monadic end-to-end but provides equivalent assurance via decomposition + conformance vectors.",
+    "machine_checked_behavioral": "Behavioral decomposition of a Lean transcription of a live Go/Rust formula into pure functions with full constant pins, monotonicity, and CV replay. Not monadic end-to-end. Lean-to-Go/Rust parity is human-verified by code review, not machine-checked.",
     "machine_checked_contract": "Fixture-backed contract: conformance vectors or Go-trace vectors replayed via native_decide. Sound for covered inputs only; not a universal proof.",
+    "machine_checked_model": "Property of a Lean model or helper definition with no live bridge to Go/Rust implementation. Honest about coverage gap; should be upgraded to behavioral or universal when a bridge is added.",
     "machine_checked_assumption_backed": "Universal proof that depends on one or more named axioms (e.g., block_hash_collision_resistance). Sound only if axioms hold.",
     "cv_replay_only": "Conformance vector replay pass with no additional structural or behavioral theorems. Weakest machine-checked level.",
     "baseline": "Metadata-only or stated claim. No machine-checked evidence yet."
