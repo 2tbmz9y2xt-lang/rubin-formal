@@ -1,10 +1,10 @@
 /-
-  TxWireRoundtrip.lean — transaction wire contract proofs (#295)
+  TxWireRoundtrip.lean — transaction wire contract proofs (#295, #337)
   LIVE theorems on ByteWireV2 wire-format properties:
   - CompactSize canonical → minimal encoding
   - Primitive encode output lengths
   - parseTx fail-path invariants
-  - Wire decoder determinism
+  - parseTx result integrity (ok↔identifiers↔err consistency)
   - Cursor advancement safety
 -/
 import RubinFormal.ByteWireV2
@@ -76,28 +76,36 @@ theorem fail_wtxid_none (e : TxErr) : (fail e).wtxid = none := rfl
 theorem fail_err_some (e : TxErr) : (fail e).err = some e := rfl
 
 -- ═══════════════════════════════════════════════════════════════════
--- §3  Wire decoder determinism (explicit)
+-- §3  parseTx result integrity (domain-specific parser guarantee)
 -- ═══════════════════════════════════════════════════════════════════
 
-/-- getU32le? is deterministic. -/
-theorem getU32le_deterministic (c : Cursor) :
-    ∀ r1 r2, c.getU32le? = some r1 → c.getU32le? = some r2 → r1 = r2 := by
-  intros r1 r2 h1 h2; exact Option.some.inj (h1.symm.trans h2)
+/-- Helper: `fail e` produces a result with ok=false, err=some, no identifiers. -/
+private theorem fail_integrity (e : TxErr) :
+    let r := TxV2.fail e
+    r.ok = false ∧ r.err = some e ∧ r.txid = none ∧ r.wtxid = none := by
+  exact ⟨rfl, rfl, rfl, rfl⟩
 
-/-- getU64le? is deterministic. -/
-theorem getU64le_deterministic (c : Cursor) :
-    ∀ r1 r2, c.getU64le? = some r1 → c.getU64le? = some r2 → r1 = r2 := by
-  intros r1 r2 h1 h2; exact Option.some.inj (h1.symm.trans h2)
+/-- **parseTx result integrity**: every result from `parseTx` satisfies exactly
+    one of two disjoint shapes:
+    - **Success**: `ok = true ∧ err = none ∧ txid.isSome ∧ wtxid.isSome`
+    - **Failure**: `ok = false ∧ err.isSome ∧ txid = none ∧ wtxid = none`
 
-/-- getCompactSize? is deterministic. -/
-theorem getCompactSize_deterministic (c : Cursor) :
-    ∀ r1 r2, c.getCompactSize? = some r1 → c.getCompactSize? = some r2 → r1 = r2 := by
-  intros r1 r2 h1 h2; exact Option.some.inj (h1.symm.trans h2)
+    This is NOT a language tautology — it is a domain property of this specific
+    parser implementation: every fail-path goes through `TxV2.fail e` (which
+    zeroes identifiers and sets err), and the single success-path fills both
+    identifiers and clears err.  A parser that leaked partial state would violate
+    this invariant.
 
-/-- parseTx is deterministic (explicit statement of a language property). -/
-theorem parseTx_deterministic (tx : Bytes) :
-    ∀ r1 r2, parseTx tx = r1 → parseTx tx = r2 → r1 = r2 := by
-  intros r1 r2 h1 h2; exact h1.symm.trans h2
+    Replaces the vacuous `parseTx_deterministic` (#337). -/
+theorem parseTx_result_integrity (tx : Bytes) :
+    let r := TxV2.parseTx tx
+    (r.ok = true  ∧ r.err = none    ∧ r.txid.isSome = true ∧ r.wtxid.isSome = true) ∨
+    (r.ok = false ∧ r.err.isSome = true ∧ r.txid = none      ∧ r.wtxid = none) := by
+  simp only [TxV2.parseTx]
+  -- Case split on every match branch in parseTx.
+  -- Each `fail e` branch resolves via `simp [TxV2.fail]`.
+  -- The single success branch resolves via `simp`.
+  repeat (first | split | simp [TxV2.fail])
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §4  Cursor advancement safety
