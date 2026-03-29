@@ -91,9 +91,9 @@ jobs:
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
-            const REGISTRY_FILES = ['proof_coverage.json', 'refinement_bridge.json', 'tools/check_formal_registry_truth.py'];
-            const changedRegistryFiles = execSync(
-              `git diff --diff-filter=ACMR --name-only ${baseSha} ${headSha} -- ${REGISTRY_FILES.map(f => `'${f}'`).join(' ')}`,
+            const REVIEW_CONTEXT_FILES = ['proof_coverage.json', 'refinement_bridge.json', 'tools/check_formal_registry_truth.py'];
+            const changedReviewContextFiles = execSync(
+              `git diff --diff-filter=ACMR --name-only ${baseSha} ${headSha} -- ${REVIEW_CONTEXT_FILES.map(f => `'${f}'`).join(' ')}`,
               { maxBuffer: 1024 * 1024 }
             )
               .toString()
@@ -101,8 +101,8 @@ jobs:
               .map(s => s.trim())
               .filter(Boolean);
             const JSON_REGISTRY_FILES = ['proof_coverage.json', 'refinement_bridge.json'];
-            const changedJsonRegistryFiles = changedRegistryFiles.filter(f => JSON_REGISTRY_FILES.includes(f));
-            const changedValidatorFiles = changedRegistryFiles.filter(f => !JSON_REGISTRY_FILES.includes(f));
+            const changedJsonRegistryFiles = changedReviewContextFiles.filter(f => JSON_REGISTRY_FILES.includes(f));
+            const changedValidatorFiles = changedReviewContextFiles.filter(f => !JSON_REGISTRY_FILES.includes(f));
             const isRegistryOnly = changedJsonRegistryFiles.length > 0 && changedLeanFiles.length === 0 && changedValidatorFiles.length === 0;
             const isValidatorOnly = changedValidatorFiles.length > 0 && changedLeanFiles.length === 0 && changedJsonRegistryFiles.length === 0;
             const readChangedLeanFile = (file) => {
@@ -142,7 +142,7 @@ jobs:
               usedBytes += entry.length + (entries.length > 1 ? SEPARATOR.length : 0);
             }
             // Include changed registry JSON files so the model can review claim honesty
-            for (const file of changedRegistryFiles) {
+            for (const file of changedReviewContextFiles) {
               let content;
               try { content = readChangedLeanFile(file); } catch { continue; }
               const header = `REGISTRY FILE: ${file}\n`;
@@ -386,7 +386,8 @@ jobs:
                   isRegistryOnly ? `PR type: REGISTRY-ONLY (no .lean changes — review JSON claim honesty)` :
                   isValidatorOnly ? `PR type: VALIDATOR-ONLY (no .lean or JSON changes — review validator for weakening)` : '',
                   changedLeanFiles.length > 0 ? `Changed Lean files:\n${changedLeanFiles.join('\n')}` : '',
-                  changedRegistryFiles.length > 0 ? `Changed registry files:\n${changedRegistryFiles.join('\n')}` : '',
+                  changedJsonRegistryFiles.length > 0 ? `Changed registry JSON files:\n${changedJsonRegistryFiles.join('\n')}` : '',
+                  changedValidatorFiles.length > 0 ? `Changed validator files:\n${changedValidatorFiles.join('\n')}` : '',
                   `Current changed file contents:\n\n${changedFilePayload}`,
                   `PR diff:\n\n${diff}${previousFindings}`
                 ].filter(Boolean).join('\n\n')
@@ -457,7 +458,7 @@ jobs:
                 .slice(0, 180);
               throw new Error(`Security review produced invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
             }
-            const allChangedFiles = [...changedLeanFiles, ...changedRegistryFiles];
+            const allChangedFiles = [...changedLeanFiles, ...changedReviewContextFiles];
             const changedSet = new Set(allChangedFiles);
             const fileContents = new Map(
               allChangedFiles.map((file) => {
