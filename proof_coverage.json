@@ -1348,6 +1348,7 @@
     "machine_checked_universal": "Universal inductive proof over all inputs. No axioms, no fixture dependence. A counterexample would require a Lean kernel bug.",
     "machine_checked_behavioral": "Behavioral decomposition of a live formula into pure functions with full constant pins, monotonicity, and CV replay. Not monadic end-to-end but provides equivalent assurance via decomposition + conformance vectors.",
     "machine_checked_contract": "Fixture-backed contract: conformance vectors or Go-trace vectors replayed via native_decide. Sound for covered inputs only; not a universal proof.",
+    "machine_checked_model": "Property of a Lean model or helper definition with no live bridge to Go/Rust implementation. Honest about coverage gap; should be upgraded to behavioral or universal when a bridge is added.",
     "machine_checked_assumption_backed": "Universal proof that depends on one or more named axioms (e.g., block_hash_collision_resistance). Sound only if axioms hold.",
     "cv_replay_only": "Conformance vector replay pass with no additional structural or behavioral theorems. Weakest machine-checked level.",
     "baseline": "Metadata-only or stated claim. No machine-checked evidence yet."
