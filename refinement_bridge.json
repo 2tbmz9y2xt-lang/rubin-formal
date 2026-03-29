@@ -98,15 +98,15 @@
       "model_theorem": "RubinFormal.Refinement.fork_choice_select_cv_contract_proved",
       "lean_file": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
       "evidence_level": "machine_checked_contract",
-      "contract_scope": "All 10 CV-FORK-CHOICE vectors with op=fork_choice_select (6 positive + 4 negative) replayed against selectWinner which exercises chainTotalWork + bytesLT tie-break. Exact id set pinned by forkChoiceSelectExpectedIds. Proved by native_decide, axiom-free — no block_hash_collision_resistance in the theorem dependency chain.",
+      "contract_scope": "All 10 CV-FORK-CHOICE vectors with op=fork_choice_select (6 positive + 4 negative) replayed against selectWinner which exercises chainTotalWork + bytesLT tie-break. Exact id set pinned by forkChoiceSelectExpectedIds. Proved by native_decide, axiom-free. Universal determinism proofs (forkSelect_exhaustive) are also fully axiom-free after block_hash_collision_resistance removal.",
       "limitations": [
         "Narrow trace-backed contract over current 10 CV-FORK-CHOICE fork_choice_select vectors, not a universal proof for all possible chain configurations.",
         "Data source is CV-FORK-CHOICE conformance vectors, not Go trace (go_trace_v1.jsonl does not contain fork_choice_select operations).",
-        "forkSelect model theorems (determinism, antisymmetry) in ForkChoiceSelect.lean still use block_hash_collision_resistance axiom for universal proofs; this contract supplements them with concrete axiom-free evidence.",
         "Equivalence with Go/Rust implementation is structural (same if/else chain), not proved via rfl."
       ],
       "supporting_theorems": [
         "RubinFormal.Conformance.cv_fork_choice_vectors_pass",
+        "RubinFormal.forkSelect_exhaustive",
         "RubinFormal.forkSelect_tiebreak_det",
         "RubinFormal.forkSelect_total_det",
         "RubinFormal.forkSelect_heavier",
