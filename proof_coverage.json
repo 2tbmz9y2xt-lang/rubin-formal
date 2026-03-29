@@ -1232,7 +1232,13 @@
         "RubinFormal.NativeRegistryResolution.fi_rot_03_unique_entry",
         "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves",
         "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_ml_dsa_resolves",
-        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_no_duplicates"
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_no_duplicates",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff",
+        "RubinFormal.RegistryResolutionLiveBridge.ml_dsa_87_params_bridge",
+        "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites",
+        "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only",
+        "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only",
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered"
       ],
       "file": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
       "theorem_files": {
@@ -1243,12 +1249,18 @@
         "RubinFormal.NativeRegistryResolution.fi_rot_03_unique_entry": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
         "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
         "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_ml_dsa_resolves": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
-        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_no_duplicates": "rubin-formal/RubinFormal/NativeRegistryResolution.lean"
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_no_duplicates": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.ml_dsa_87_params_bridge": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean"
       },
-      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). Conformance replay: 6 cutoff + 5 sunset vectors structurally verified. Model-level proofs on Lean definitions; no Go/Rust implementation exists yet for rotation, so no implementation bridge.",
+      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). FI-ROT-03: registry resolution deterministic. BRIDGE: RegistryResolutionLiveBridge proves universal IsRegistered characterization (iff sid=0x01), constant parity (pubkey/sig/cost), phase-dependent suite set bridges for all 5 rotation phases, and DefaultRotationProvider safety — matching Go suite_registry.go / Rust suite_registry.rs.",
       "limitations": [
-        "Lean theorems prove properties of a Lean SuiteRegistry model; bridge to live Go suite_registry.go / Rust suite_registry.rs not yet formalized",
-        "Post-rotation dispatch path not yet covered; pre-rotation ML-DSA-87 resolution proved"
+        "Post-rotation dispatch path not yet covered; pre-rotation ML-DSA-87 resolution proved and bridged",
+        "Bridge proves Lean model matches Go/Rust structure; byte-level trace bridge not yet formalized"
       ],
       "evidence_level": "machine_checked_behavioral"
     },
@@ -1278,24 +1290,40 @@
     {
       "section_key": "feature_activation_fsm",
       "section_heading": "## Feature Activation FSM (BIP9-like)",
-      "status": "MODEL",
+      "status": "LIVE+BRIDGE",
       "theorems": [
         "RubinFormal.active_terminal",
         "RubinFormal.failed_terminal",
         "RubinFormal.locked_in_always_activates",
-        "RubinFormal.flagday_exact_activation"
+        "RubinFormal.flagday_exact_activation",
+        "RubinFormal.FeatureActivationLiveBridge.lockin_priority_over_timeout",
+        "RubinFormal.FeatureActivationLiveBridge.no_defined_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.no_started_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_active_iff",
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active"
       ],
       "file": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
       "theorem_files": {
         "RubinFormal.active_terminal": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
         "RubinFormal.failed_terminal": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
         "RubinFormal.locked_in_always_activates": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
-        "RubinFormal.flagday_exact_activation": "rubin-formal/RubinFormal/FeatureActivationFSM.lean"
+        "RubinFormal.flagday_exact_activation": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
+        "RubinFormal.FeatureActivationLiveBridge.lockin_priority_over_timeout": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.no_defined_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.no_started_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_active_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
       },
-      "notes": "FSM correctness properties: terminal states are absorbing, locked_in always transitions to active, flag-day activation at exact height. Model-level proofs on Lean state-machine definitions.",
+      "notes": "FSM correctness: terminal states absorbing, locked_in→active unconditional, flag-day activation at exact height. BRIDGE: FeatureActivationLiveBridge proves lock-in priority over timeout (consensus-critical evaluation order matching Go/Rust), no-skip transition guarantees (DEFINED→ACTIVE impossible in 1 step), exact iff-characterizations for all transitions, and flagday activation bridge — matching Go featurebits.go/flagday.go and Rust featurebits.rs/flagday.rs.",
       "limitations": [
-        "Lean FSM model tracks live Go featurebits.go / Rust featurebits.rs; explicit bridge theorem not yet written",
-        "flagday activation proved on model; no Go/Rust trace bridge formalized yet"
+        "Bridge proves Lean FSM matches Go/Rust evaluation order; byte-level Go trace replay not yet formalized",
+        "FeatureBitStateAtHeightFromWindowCounts (multi-boundary fold) not yet bridged to Lean multi_step_monotone"
       ],
       "evidence_level": "machine_checked_behavioral"
     }
