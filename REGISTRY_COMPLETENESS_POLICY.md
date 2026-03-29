@@ -78,6 +78,7 @@ Before adding a theorem to the registry:
 ## 5. Audit
 
 The registry is auditable via:
+
 - `tools/check_formal_registry_truth.py` — validates all paths, theorem names,
   and evidence level parity between registries.
 - The gap between total theorems (code) and registered theorems (registry) is
@@ -86,6 +87,7 @@ The registry is auditable via:
 ## 6. Current Metrics
 
 As of 2026-03-29 (post-#334):
+
 - Total theorems/lemmas in code: ~1003
 - Registered in proof_coverage.json: ~443
 - Registered in refinement_bridge.json: ~129

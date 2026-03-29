@@ -1302,7 +1302,7 @@
         "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff",
         "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
         "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
-        "RubinFormal.FeatureActivationLiveBridge.flagday_active_iff",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior",
         "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active"
       ],
       "file": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
@@ -1317,10 +1317,10 @@
         "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
-        "RubinFormal.FeatureActivationLiveBridge.flagday_active_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
       },
-      "notes": "FSM correctness: terminal states absorbing, locked_in→active unconditional, flag-day activation at exact height. BRIDGE: FeatureActivationLiveBridge proves lock-in priority over timeout (consensus-critical evaluation order matching Go/Rust), no-skip transition guarantees (DEFINED→ACTIVE impossible in 1 step), exact iff-characterizations for all transitions, and flagday activation bridge — matching Go featurebits.go/flagday.go and Rust featurebits.rs/flagday.rs.",
+      "notes": "FSM correctness: terminal states absorbing, locked_in→active unconditional, flag-day activation at exact height. BRIDGE: FeatureActivationLiveBridge proves lock-in priority over timeout (consensus-critical evaluation order matching Go/Rust), no-skip transition guarantees (DEFINED→ACTIVE impossible in 1 step), exact iff-characterizations for core transitions, minimum-three-steps-to-active, and flagday complete behavioral bridge (exact activation + no-premature-activation + monotonicity as one-way latch) — matching Go featurebits.go/flagday.go and Rust featurebits.rs/flagday.rs.",
       "limitations": [
         "Bridge proves Lean FSM matches Go/Rust evaluation order; byte-level Go trace replay not yet formalized",
         "FeatureBitStateAtHeightFromWindowCounts (multi-boundary fold) not yet bridged to Lean multi_step_monotone"
