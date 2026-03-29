@@ -5,6 +5,9 @@ on:
     types: [opened, synchronize]
     paths:
       - '**/*.lean'
+      - 'proof_coverage.json'
+      - 'refinement_bridge.json'
+      - 'tools/check_formal_registry_truth.py'
 
 permissions:
   contents: read
@@ -88,6 +91,16 @@ jobs:
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
+            const REGISTRY_FILES = ['proof_coverage.json', 'refinement_bridge.json'];
+            const changedRegistryFiles = execSync(
+              `git diff --diff-filter=ACMR --name-only ${baseSha} ${headSha} -- ${REGISTRY_FILES.map(f => `'${f}'`).join(' ')}`,
+              { maxBuffer: 1024 * 1024 }
+            )
+              .toString()
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+            const isRegistryOnly = changedRegistryFiles.length > 0 && changedLeanFiles.length === 0;
             const readChangedLeanFile = (file) => {
               const fullPath = path.resolve(repoRoot, file);
               const rel = path.relative(repoRoot, fullPath);
@@ -116,6 +129,19 @@ jobs:
               let content;
               try { content = readChangedLeanFile(file); } catch { continue; }
               const header = `FILE: ${file}\n`;
+              const frameSize = header.length + (entries.length > 0 ? SEPARATOR.length : 0);
+              if (usedBytes + frameSize + 200 > TOTAL_FILE_BUDGET) continue;
+              const remainingBudget = TOTAL_FILE_BUDGET - usedBytes - frameSize;
+              const contentBudget = Math.min(PER_FILE_CAP, remainingBudget);
+              const entry = header + content.slice(0, contentBudget);
+              entries.push(entry);
+              usedBytes += entry.length + (entries.length > 1 ? SEPARATOR.length : 0);
+            }
+            // Include changed registry JSON files so the model can review claim honesty
+            for (const file of changedRegistryFiles) {
+              let content;
+              try { content = readChangedLeanFile(file); } catch { continue; }
+              const header = `REGISTRY FILE: ${file}\n`;
               const frameSize = header.length + (entries.length > 0 ? SEPARATOR.length : 0);
               if (usedBytes + frameSize + 200 > TOTAL_FILE_BUDGET) continue;
               const remainingBudget = TOTAL_FILE_BUDGET - usedBytes - frameSize;
@@ -244,6 +270,18 @@ jobs:
               '- WRAPPER is NOT substantive progress.',
               '</theorem-classification>',
               '',
+              '<registry-review>',
+              'If the PR changes proof_coverage.json or refinement_bridge.json:',
+              '1. Verify every registered theorem name is fully-qualified (e.g., RubinFormal.Module.theorem_name)',
+              '2. Verify theorem_files is a dict mapping qualified name to file path, NOT an array',
+              '3. Verify model_theorem in refinement_bridge is a SINGLE qualified name, not comma-separated',
+              '4. Check evidence_level: machine_checked_behavioral = model proofs only; machine_checked_universal = inductive + composition; machine_checked_contract = CV replay bridge',
+              '5. Check for phantom theorem names that do not exist in the declared Lean file',
+              '6. Check limitations field honestly describes what is NOT covered',
+              '7. Check for wrapper inflation — aliases registered as substantive LIVE theorems',
+              '8. For registry-only PRs (no .lean changes): the diff is still reviewable for claim honesty against existing codebase',
+              '</registry-review>',
+              '',
               '<review-process>',
               'For each claim/requirement in the PR, answer internally:',
               '1. Which exact theorem supposedly covers it?',
@@ -298,7 +336,7 @@ jobs:
               '- MEDIUM: missing boundary case; predicate-level without state-effect; partial branch coverage claimed as full.',
               '- LOW: unused premise; minor wrapper inflation honestly labeled.',
               '',
-              'If zero defects: {"model":"deepseek/DeepSeek-R1-0528","verdict":"ALLOW","findings":[],"overclaims":[],"summary":"No defects found in changed Lean files."}',
+              'If zero defects: {"model":"deepseek/DeepSeek-R1-0528","verdict":"ALLOW","findings":[],"overclaims":[],"summary":"No defects found in changed files."}',
               '</output-format>'
             ].join('\n');
             const stripOuterCodeFence = (text) => {
@@ -333,10 +371,12 @@ jobs:
                 content: [
                   `PR title:\n${prTitle}`,
                   `PR body:\n${prBody}`,
-                  `Changed Lean files:\n${changedLeanFiles.join('\n')}`,
-                  `Current changed Lean file contents:\n\n${changedFilePayload}`,
+                  isRegistryOnly ? `PR type: REGISTRY-ONLY (no .lean changes — review JSON claim honesty)` : '',
+                  changedLeanFiles.length > 0 ? `Changed Lean files:\n${changedLeanFiles.join('\n')}` : '',
+                  changedRegistryFiles.length > 0 ? `Changed registry files:\n${changedRegistryFiles.join('\n')}` : '',
+                  `Current changed file contents:\n\n${changedFilePayload}`,
                   `PR diff:\n\n${diff}${previousFindings}`
-                ].join('\n\n')
+                ].filter(Boolean).join('\n\n')
               }
             ];
             const callModel = async (useJsonMode) => {
