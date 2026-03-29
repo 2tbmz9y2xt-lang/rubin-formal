@@ -65,6 +65,8 @@ import RubinFormal.ConnectBlockFull
 import RubinFormal.PerTxStateMachine
 import RubinFormal.UtxoMapProperties
 import RubinFormal.FeatureActivationFSM
+import RubinFormal.FeatureActivationLiveBridge
+import RubinFormal.RegistryResolutionLiveBridge
 import RubinFormal.CovenantParserGaps
 import RubinFormal.VaultThresholdBound
 import RubinFormal.TxWireRoundtrip
