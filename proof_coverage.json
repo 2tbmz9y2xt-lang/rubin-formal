@@ -1144,7 +1144,7 @@
         "RubinFormal.Refinement.ParallelEquivalence.reducer_permutation_invariant",
         "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
       ],
-      "file": "RubinFormal/Refinement/ParallelEquivalence.lean",
+      "file": "rubin-formal/RubinFormal/Refinement/ParallelEquivalence.lean",
       "notes": "Helper-level bridge for the live parallel signature queue contract. The counted surface now closes only the accept/reject behavior that Go SigCheckQueue.Flush actually promises: success iff every queued signature verifies, rejection iff any queued signature fails. The row no longer counts cursor/signature purity wrappers or corollary wrappers as substantive evidence.",
       "limitations": [
         "This row does not claim an end-to-end theorem for ConnectBlockBasicInMemoryAtHeight versus ConnectBlockParallelSigVerify over the full block pipeline.",
@@ -1215,11 +1215,11 @@
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive"
       ],
-      "file": "RubinFormal/NativeSuiteRotation.lean",
+      "file": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
       "theorem_files": {
-        "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique": "RubinFormal/NativeSuiteRotation.lean",
-        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition": "RubinFormal/NativeSuiteRotation.lean",
-        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive": "RubinFormal/NativeSuiteRotation.lean"
+        "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive": "rubin-formal/RubinFormal/NativeSuiteRotation.lean"
       },
       "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). Conformance replay: 6 cutoff + 5 sunset vectors structurally verified. Model-level proofs on Lean definitions; no Go/Rust implementation exists yet for rotation, so no implementation bridge.",
       "limitations": [

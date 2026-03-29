@@ -11,7 +11,6 @@ from typing import Optional, Tuple
 
 
 REPO_PREFIX = "rubin-formal/"
-MODULE_PREFIX = "RubinFormal/"
 
 # Intentionally narrow shared-op parity scope after Q-FORMAL-REGISTRY-EVIDENCE-LEVEL-ALIGN-01.
 # `retarget_v1` and `fork_choice_select` remain honest supplemental bridge lanes whose
@@ -184,9 +183,10 @@ def rel_repo_path(repo_root: Path, path: Path) -> str:
 def lean_repo_path(repo_root: Path, rel_path: str) -> Path:
     if rel_path.startswith(REPO_PREFIX):
         return repo_root / rel_path[len(REPO_PREFIX) :]
-    if rel_path.startswith(MODULE_PREFIX):
-        return repo_root / rel_path
-    raise ValueError(f"unsupported non-repo path in registry: {rel_path}")
+    raise ValueError(
+        f"non-canonical path in registry: {rel_path!r} "
+        f"(must start with {REPO_PREFIX!r})"
+    )
 
 
 def try_lean_repo_path(repo_root: Path, rel_path: str) -> Optional[Path]:
@@ -197,10 +197,13 @@ def try_lean_repo_path(repo_root: Path, rel_path: str) -> Optional[Path]:
 
 
 def olean_path(repo_root: Path, rel_path: str) -> Path:
-    normalized = rel_path
-    if normalized.startswith(REPO_PREFIX):
-        normalized = normalized[len(REPO_PREFIX) :]
-    if not normalized.startswith(MODULE_PREFIX) or not normalized.endswith(".lean"):
+    if not rel_path.startswith(REPO_PREFIX):
+        raise ValueError(
+            f"non-canonical path in registry: {rel_path!r} "
+            f"(must start with {REPO_PREFIX!r})"
+        )
+    normalized = rel_path[len(REPO_PREFIX) :]
+    if not normalized.startswith("RubinFormal/") or not normalized.endswith(".lean"):
         raise ValueError(f"registered file is outside RubinFormal build graph surface: {rel_path}")
     suffix = normalized[: -len(".lean")]
     return repo_root / ".lake" / "build" / "lib" / f"{suffix}.olean"

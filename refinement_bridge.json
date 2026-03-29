@@ -241,7 +241,7 @@
       "op": "native_suite_rotation",
       "gate": "FI-ROT-01 + FI-ROT-02",
       "model_theorem": "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique",
-      "lean_file": "RubinFormal/NativeSuiteRotation.lean",
+      "lean_file": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
       "supporting_theorems": [
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive",
