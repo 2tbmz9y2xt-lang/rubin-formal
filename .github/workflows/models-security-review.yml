@@ -91,7 +91,7 @@ jobs:
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
-            const REGISTRY_FILES = ['proof_coverage.json', 'refinement_bridge.json'];
+            const REGISTRY_FILES = ['proof_coverage.json', 'refinement_bridge.json', 'tools/check_formal_registry_truth.py'];
             const changedRegistryFiles = execSync(
               `git diff --diff-filter=ACMR --name-only ${baseSha} ${headSha} -- ${REGISTRY_FILES.map(f => `'${f}'`).join(' ')}`,
               { maxBuffer: 1024 * 1024 }
@@ -444,12 +444,16 @@ jobs:
                 .slice(0, 180);
               throw new Error(`Security review produced invalid JSON from ${modelId}: ${parsedResult.error?.message || 'unknown parse error'}; preview=${preview}`);
             }
-            const changedSet = new Set(changedLeanFiles);
+            const allChangedFiles = [...changedLeanFiles, ...changedRegistryFiles];
+            const changedSet = new Set(allChangedFiles);
             const fileContents = new Map(
-              changedLeanFiles.map((file) => [file, readChangedLeanFile(file)])
+              allChangedFiles.map((file) => {
+                try { return [file, readChangedLeanFile(file)]; }
+                catch { return [file, '']; }
+              })
             );
             const lineCounts = new Map(
-              changedLeanFiles.map((file) => [file, fileContents.get(file).split('\n').length])
+              allChangedFiles.map((file) => [file, (fileContents.get(file) || '').split('\n').length])
             );
             const theoremRefsInText = (text) => {
               const out = new Set();
