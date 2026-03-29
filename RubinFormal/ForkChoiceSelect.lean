@@ -219,3 +219,4 @@ forkSelect exactly models this: chainwork first, bytesLT tie-break.
 -/
 
 end RubinFormal
+-- DeepSeek workflow verification probe
