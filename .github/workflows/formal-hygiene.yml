@@ -99,12 +99,30 @@ jobs:
               body += '---\n*This check does not block merge. Fix if the smell indicates a real invariant gap.*';
 
               try {
-                await github.rest.issues.createComment({
+                const marker = '### ⚠️ Formal Proof Hygiene';
+                const { data: comments } = await github.rest.issues.listComments({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.issue.number,
-                  body
                 });
+                const existing = comments.find(c =>
+                  c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker)
+                );
+                if (existing) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: existing.id,
+                    body,
+                  });
+                } else {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body,
+                  });
+                }
               } catch (err) {
                 core.warning(`Failed to post PR comment: ${err.message}`);
               }

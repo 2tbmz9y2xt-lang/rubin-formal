@@ -92,12 +92,31 @@ jobs:
             if (!review) return;
             let verdict = 'UNKNOWN';
             try { verdict = JSON.parse(review).verdict || 'UNKNOWN'; } catch(e) {}
-            await github.rest.issues.createComment({
+            const marker = '### \uD83D\uDD12 Hostile Formal Review: DeepSeek-R1-0528';
+            const body = `${marker}\n_Model: deepseek/DeepSeek-R1-0528_\n_Verdict: ${verdict}_\n\n\`\`\`json\n${review}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `### \uD83D\uDD12 Hostile Formal Review: DeepSeek-R1-0528\n_Model: deepseek/DeepSeek-R1-0528_\n_Verdict: ${verdict}_\n\n\`\`\`json\n${review}\n\`\`\``
             });
+            const existing = comments.find(c =>
+              c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
       - name: Hard block on sorry/admit in Lean files
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
