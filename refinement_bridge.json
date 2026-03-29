@@ -240,8 +240,12 @@
     {
       "op": "native_suite_rotation",
       "gate": "FI-ROT-01 + FI-ROT-02",
-      "model_theorem": "fi_rot_01_descriptor_unique, fi_rot_02_phase_partition, fi_rot_02_phases_exclusive",
+      "model_theorem": "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique",
       "lean_file": "RubinFormal/NativeSuiteRotation.lean",
+      "supporting_theorems": [
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive"
+      ],
       "evidence_level": "machine_checked_behavioral",
       "contract_scope": "State-machine model of §23.2.1 descriptor activation lifecycle proving at-most-one uniqueness (inductive), five-phase exhaustive height partition with mutual exclusion. Conformance: 11 vectors (6 cutoff + 5 sunset) structurally replayed.",
       "limitations": "Model-level only. No Go/Rust implementation bridge — rotation is not yet implemented in clients. Phase functions (NativeCreateSuites, NativeSpendSuites) are Lean definitions, not extracted from production code."
