@@ -100,7 +100,11 @@ jobs:
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
-            const isRegistryOnly = changedRegistryFiles.length > 0 && changedLeanFiles.length === 0;
+            const JSON_REGISTRY_FILES = ['proof_coverage.json', 'refinement_bridge.json'];
+            const changedJsonRegistryFiles = changedRegistryFiles.filter(f => JSON_REGISTRY_FILES.includes(f));
+            const changedValidatorFiles = changedRegistryFiles.filter(f => !JSON_REGISTRY_FILES.includes(f));
+            const isRegistryOnly = changedJsonRegistryFiles.length > 0 && changedLeanFiles.length === 0 && changedValidatorFiles.length === 0;
+            const isValidatorOnly = changedValidatorFiles.length > 0 && changedLeanFiles.length === 0 && changedJsonRegistryFiles.length === 0;
             const readChangedLeanFile = (file) => {
               const fullPath = path.resolve(repoRoot, file);
               const rel = path.relative(repoRoot, fullPath);
@@ -371,7 +375,8 @@ jobs:
                 content: [
                   `PR title:\n${prTitle}`,
                   `PR body:\n${prBody}`,
-                  isRegistryOnly ? `PR type: REGISTRY-ONLY (no .lean changes — review JSON claim honesty)` : '',
+                  isRegistryOnly ? `PR type: REGISTRY-ONLY (no .lean changes — review JSON claim honesty)` :
+                  isValidatorOnly ? `PR type: VALIDATOR-ONLY (no .lean or JSON changes — review validator for weakening)` : '',
                   changedLeanFiles.length > 0 ? `Changed Lean files:\n${changedLeanFiles.join('\n')}` : '',
                   changedRegistryFiles.length > 0 ? `Changed registry files:\n${changedRegistryFiles.join('\n')}` : '',
                   `Current changed file contents:\n\n${changedFilePayload}`,
