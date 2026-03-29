@@ -5,6 +5,9 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - '**/*.lean'
+      - 'proof_coverage.json'
+      - 'refinement_bridge.json'
+      - 'tools/check_formal_registry_truth.py'
 
 permissions:
   contents: read
@@ -50,10 +53,29 @@ jobs:
 
             ## HARD INPUT BOUNDARY
 
-            - Review the current PR diff and the current changed `.lean` files.
+            - Review the current PR diff and the current changed `.lean` and registry JSON files.
             - Use only repository-visible context available in this checkout.
             - Do NOT invent private spec text, stale theorem names, or behavior from old PR revisions.
             - Unchanged code is out of scope UNLESS the diff changes a claim, import graph, replay boundary, or theorem consumer.
+
+            ## REGISTRY-ONLY PR REVIEW
+
+            If the PR changes `proof_coverage.json` and/or `refinement_bridge.json`:
+            1. Verify every registered theorem name exists in the declared Lean file (`theorem_files` mapping)
+            2. Check evidence_level honesty: `machine_checked_behavioral` requires real proofs on model defs; `machine_checked_universal` requires inductive proofs with composition; `machine_checked_contract` requires CV replay bridge
+            3. Check for phantom theorem names — names that do not match any `theorem` declaration in the codebase
+            4. Check for wrapper inflation — wrappers/aliases registered as substantive LIVE theorems
+            5. Check limitations field — must honestly describe what is NOT covered (model-only, no implementation bridge, etc.)
+            6. Check `theorem_files` format — must be a dict mapping qualified theorem name to file path, not an array
+            7. Check `model_theorem` in refinement_bridge — must be a single qualified name, not comma-separated
+
+            ## VALIDATOR REVIEW
+
+            If the PR changes `tools/check_formal_registry_truth.py`:
+            1. Verify the validator is not weakened (e.g., removing checks, loosening matching, widening allow-lists)
+            2. Check that new validation logic is correct and does not introduce false negatives
+            3. Ensure error messages remain actionable and reference specific theorem/file mismatches
+            4. Verify that shared-op parity checks are preserved
 
             ## REVIEW METHOD (mandatory)
 
