@@ -1334,19 +1334,21 @@
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; this is not a universal proof of CANONICAL semantics",
       "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
       "The pinned-section registry covers all 17 hash-pinned section keys. Each entry carries an explicit evidence_level distinguishing universal proofs from subset contracts, assumption-backed proofs, and CV-replay-only entries.",
-      "formal claims are bounded by explicit forbidden claims below"
+      "formal claims are bounded by explicit forbidden claims below",
+      "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
     "forbidden": [
       "formal verification of full RUBIN consensus / CANONICAL semantics",
       "cryptographic security proofs of ML-DSA / non-native candidate suites / SHA3-256",
       "bit-exact wire/serialization proof beyond what is exercised by conformance fixtures",
       "treating formal-only extra theorems as additional pinned-section coverage when they are not in the registry",
-      "universal mechanized refinement between spec text and Go/Rust implementations"
+      "universal mechanized refinement between spec text and Go/Rust implementations",
+      "claiming machine-checked Lean-to-Go/Rust equivalence for bridge theorems — Lean cannot import Go/Rust; parity is human-verified by code review"
     ]
   },
   "status_taxonomy": {
     "machine_checked_universal": "Universal inductive proof over all inputs. No axioms, no fixture dependence. A counterexample would require a Lean kernel bug.",
-    "machine_checked_behavioral": "Behavioral decomposition of a live formula into pure functions with full constant pins, monotonicity, and CV replay. Not monadic end-to-end but provides equivalent assurance via decomposition + conformance vectors.",
+    "machine_checked_behavioral": "Behavioral decomposition of a Lean transcription of a live Go/Rust formula into pure functions with full constant pins, monotonicity, and CV replay. Not monadic end-to-end. Lean-to-Go/Rust parity is human-verified by code review, not machine-checked.",
     "machine_checked_contract": "Fixture-backed contract: conformance vectors or Go-trace vectors replayed via native_decide. Sound for covered inputs only; not a universal proof.",
     "machine_checked_model": "Property of a Lean model or helper definition with no live bridge to Go/Rust implementation. Honest about coverage gap; should be upgraded to behavioral or universal when a bridge is added.",
     "machine_checked_assumption_backed": "Universal proof that depends on one or more named axioms (e.g., block_hash_collision_resistance). Sound only if axioms hold.",
