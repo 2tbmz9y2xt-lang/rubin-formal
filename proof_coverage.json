@@ -1203,6 +1203,29 @@
       "notes": "§14 pre-activation gate closure on the live Lean helper/computed TxContext surface. 10 closure theorems: ext_id ordering is wired into buildTxContext/buildTxContextLive via sortExtIds, Uint128 comparison is closed by live compareUint128, K-overflow is closed by the live validateContinuingOutputCount reject path, the carried continuing outputs list itself is bounded both at the TxContextContinuing type and at the built-bundle surface, vault conservation is bridged to live validateValueConservation, and sighash policy is closed exhaustively in SighashV1 over 256×256. The computed block helper derives continuing counts from the actual carried outputs inside the same continuingData bundle and extracts the sighash byte from a witness item instead of detached metadata. The legacy aggregate connectBlockFull wrapper remains compatibility surface and is not itself counted as the live gate path. TxContextFormal remains the model/support surface; the proved row no longer relies on wrapper-only bridge claims. Parallel error index work remains auxiliary in Refinement.ParallelEquivalence and is not counted toward §14 closure. Separate additive fixture-lane evidence now lives in txctx_coreext_fixture_replay and is not counted as an extra live closure theorem.",
       "limitations": [],
       "evidence_level": "machine_checked_behavioral"
+    },
+    {
+      "section_key": "native_rotation",
+      "section_heading": "Native Crypto Suite Rotation (§4.1.2, §4.1.3, §23.2.1)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive"
+      ],
+      "file": "RubinFormal/NativeSuiteRotation.lean",
+      "theorem_files": {
+        "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique": "RubinFormal/NativeSuiteRotation.lean",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition": "RubinFormal/NativeSuiteRotation.lean",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phases_exclusive": "RubinFormal/NativeSuiteRotation.lean"
+      },
+      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). Conformance replay: 6 cutoff + 5 sunset vectors structurally verified. Model-level proofs on Lean definitions; no Go/Rust implementation exists yet for rotation, so no implementation bridge.",
+      "limitations": [
+        "Proofs are on a Lean state-machine model of §23.2.1, not on live Go/Rust code (rotation is not yet implemented in clients)",
+        "Evidence level reflects model-only coverage",
+        "cv_replay_only vectors verify structural properties of conformance fixtures, not semantic execution"
+      ],
+      "evidence_level": "machine_checked_behavioral"
     }
   ],
   "proof_level": "refinement",
