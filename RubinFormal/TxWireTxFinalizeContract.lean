@@ -2,7 +2,7 @@ import RubinFormal.TxWireTxAfterLockStep
 import RubinFormal.TxWirePrefixLemmas
 import RubinFormal.TxWireTxAfterDaCoreContract
 
-set_option maxHeartbeats 50000000
+set_option maxHeartbeats 8000000
 set_option maxRecDepth 8192
 
 namespace RubinFormal
@@ -10,6 +10,24 @@ namespace RubinFormal
 open Wire
 
 namespace UtxoBasicV1
+
+theorem parseTxAfterLock_of_afterDaCore_ok
+    (txBytes : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (lock : Nat)
+    (daCoreBytes : Bytes)
+    (c8 c9 : Cursor)
+    (txVal : Tx)
+    (hStep :
+      parseTxAfterLock txBytes ver tk nonce ins outs lock c8 =
+        parseTxAfterDaCore txBytes ver tk nonce ins outs lock daCoreBytes c9)
+    (hOk :
+      parseTxAfterDaCore txBytes ver tk nonce ins outs lock daCoreBytes c9 =
+        Except.ok txVal) :
+    parseTxAfterLock txBytes ver tk nonce ins outs lock c8 = Except.ok txVal := by
+  rw [hStep, hOk]
 
 theorem parseTxAfterLock_after_pre
     (pre : Bytes)
@@ -43,11 +61,7 @@ theorem parseTxAfterLock_after_pre
       txBytes =
         pre' ++ serializeWitness tx.witness ++
           (RubinFormal.WireEnc.compactSize tx.daPayloadLen ++ tx.daPayload) := by
-    simpa [post, txBytes] using
-      (cursor_bytes_left_assoc
-        (a := pre')
-        (b := serializeWitness tx.witness)
-        (c := RubinFormal.WireEnc.compactSize tx.daPayloadLen ++ tx.daPayload)).symm
+    simp only [txBytes, post, cursor_bytes_left_assoc]
   have hAfterDaCore :
       parseTxAfterDaCore
           txBytes
@@ -57,7 +71,21 @@ theorem parseTxAfterLock_after_pre
         Except.ok tx := by
     rw [hBytes]
     exact parseTxAfterDaCore_after_pre (pre := pre') (tx := tx) h
-  rw [hStep, hAfterDaCore]
+  exact
+    parseTxAfterLock_of_afterDaCore_ok
+      (txBytes := txBytes)
+      (ver := tx.version)
+      (tk := tx.txKind)
+      (nonce := tx.txNonce)
+      (ins := tx.inputs)
+      (outs := tx.outputs)
+      (lock := tx.locktime)
+      (daCoreBytes := tx.daCoreBytes)
+      (c8 := { bs := txBytes, off := pre.size })
+      (c9 := { bs := txBytes, off := pre'.size })
+      (txVal := tx)
+      hStep
+      hAfterDaCore
 
 end UtxoBasicV1
 
