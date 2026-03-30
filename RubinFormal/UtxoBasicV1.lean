@@ -85,6 +85,7 @@ structure Tx where
   inputs : List TxIn
   outputs : List TxOut
   locktime : Nat
+  daCoreBytes : Bytes
   witness : List WitnessItem
   daPayloadLen : Nat
   daPayload : Bytes
@@ -108,6 +109,7 @@ instance : Inhabited Tx where
       inputs := [],
       outputs := [],
       locktime := 0,
+      daCoreBytes := ByteArray.empty,
       witness := [],
       daPayloadLen := 0,
       daPayload := ByteArray.empty
@@ -130,13 +132,12 @@ def parseInput (c : Cursor) : Option (TxIn × Cursor) := do
   pure ({ prevTxid := prevTxid, prevVout := vout, scriptSig := ss, sequence := seq }, c5)
 
 def parseInputs (c : Cursor) (n : Nat) : Option (List TxIn × Cursor) := do
-  let mut cur := c
-  let mut acc : List TxIn := []
-  for _ in [0:n] do
-    let (i, cur') ← parseInput cur
-    acc := acc.concat i
-    cur := cur'
-  pure (acc, cur)
+  match n with
+  | 0 => pure ([], c)
+  | k + 1 =>
+      let (i, c1) ← parseInput c
+      let (is, c2) ← parseInputs c1 k
+      pure (i :: is, c2)
 
 def parseOutput (c : Cursor) : Option (TxOut × Cursor) := do
   let (v64, c1) ← c.getU64le?
@@ -149,13 +150,12 @@ def parseOutput (c : Cursor) : Option (TxOut × Cursor) := do
   pure ({ value := value, covenantType := covenantType, covenantData := cd }, c4)
 
 def parseOutputs (c : Cursor) (n : Nat) : Option (List TxOut × Cursor) := do
-  let mut cur := c
-  let mut acc : List TxOut := []
-  for _ in [0:n] do
-    let (o, cur') ← parseOutput cur
-    acc := acc.concat o
-    cur := cur'
-  pure (acc, cur)
+  match n with
+  | 0 => pure ([], c)
+  | k + 1 =>
+      let (o, c1) ← parseOutput c
+      let (os, c2) ← parseOutputs c1 k
+      pure (o :: os, c2)
 
 -- Parse witness items structurally (canonicalization is handled earlier by ParseTx in clients,
 -- but for Lean replay we only need suite_id/pubkey/signature bytes and minimal CompactSize).
@@ -170,62 +170,28 @@ def parseWitnessItem (c : Cursor) : Option (WitnessItem × Cursor) := do
   let (sig, c5) ← c4.getBytes? sigLen
   pure ({ suiteId := suiteId, pubkey := pub, signature := sig }, c5)
 
+def parseWitnessItems (c : Cursor) (n : Nat) : Option (List WitnessItem × Cursor) := do
+  match n with
+  | 0 => pure ([], c)
+  | k + 1 =>
+      let (w, c1) ← parseWitnessItem c
+      let (ws, c2) ← parseWitnessItems c1 k
+      pure (w :: ws, c2)
+
 def parseWitness (c : Cursor) : Option (List WitnessItem × Cursor) := do
   let (wCount, c1, minimal) ← c.getCompactSize?
   let _ ← requireMinimal minimal
-  let mut cur := c1
-  let mut acc : List WitnessItem := []
-  for _ in [0:wCount] do
-    let (w, cur') ← parseWitnessItem cur
-    acc := acc.concat w
-    cur := cur'
-  pure (acc, cur)
+  parseWitnessItems c1 wCount
 
-def parseTx (tx : Bytes) : Except String Tx := do
-  let c0 : Cursor := { bs := tx, off := 0 }
-  let (ver, c1) ←
-    match c0.getU32le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (tkB, c2) ←
-    match c1.getU8? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let tk := tkB.toNat
-  if !(tk == 0x00 || tk == 0x01 || tk == 0x02) then throw "TX_ERR_PARSE"
-  let (nonce64, c3) ←
-    match c2.getU64le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let nonce := nonce64.toNat
-  let (inCount, c4, minIn) ←
-    match c3.getCompactSize? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if !minIn then throw "TX_ERR_PARSE"
-  let (ins, c5) ←
-    match parseInputs c4 inCount with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (outCount, c6, minOut) ←
-    match c5.getCompactSize? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if !minOut then throw "TX_ERR_PARSE"
-  let (outs, c7) ←
-    match parseOutputs c6 outCount with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (lock, c8) ←
-    match c7.getU32le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  -- DaCoreFieldsBytes: skip bytes based on tx_kind (for CV-UTXO-BASIC vectors only tx_kind=0x00)
-  let c9 := c8
-  let (wit, cW) ←
-    match parseWitness c9 with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
+def parseTxFinalize
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (lock : Nat)
+    (daCoreBytes : Bytes)
+    (wit : List WitnessItem)
+    (cW : Cursor) : Except String Tx := do
   let (daLen, c10, minDa) ←
     match cW.getCompactSize? with
     | none => throw "TX_ERR_PARSE"
@@ -245,10 +211,197 @@ def parseTx (tx : Bytes) : Except String Tx := do
       inputs := ins
       outputs := outs
       locktime := lock
+      daCoreBytes := daCoreBytes
       witness := wit
       daPayloadLen := daLen
       daPayload := payload
     }
+
+def parseTxAfterDaCoreWithWitness
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (lock : Nat)
+    (daCoreBytes : Bytes)
+    (wit : List WitnessItem)
+    (cW : Cursor) : Except String Tx :=
+  parseTxFinalize tx ver tk nonce ins outs lock daCoreBytes wit cW
+
+def parseTxAfterDaCoreWithWitnessPair
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (lock : Nat)
+    (daCoreBytes : Bytes)
+    : List WitnessItem × Cursor → Except String Tx
+  | (wit, cW) =>
+      parseTxAfterDaCoreWithWitness
+        tx ver tk nonce ins outs lock daCoreBytes wit cW
+
+def parseTxAfterDaCore
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (lock : Nat)
+    (daCoreBytes : Bytes)
+    (c9 : Cursor) : Except String Tx :=
+  match parseWitness c9 with
+  | none => throw "TX_ERR_PARSE"
+  | some witAndCursor =>
+      parseTxAfterDaCoreWithWitnessPair tx ver tk nonce ins outs lock daCoreBytes witAndCursor
+
+def parseTxAfterLock
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (lock : Nat)
+    (c8 : Cursor) : Except String Tx := do
+  let (c9, daCoreLen) ←
+    match RubinFormal.DaCoreV1.parseDaCoreFieldsWithBytes tk c8 with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  let daCoreBytes := tx.extract c8.off (c8.off + daCoreLen)
+  parseTxAfterDaCore tx ver tk nonce ins outs lock daCoreBytes c9
+
+def parseTxAfterOutputs
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (outs : List TxOut)
+    (c7 : Cursor) : Except String Tx := do
+  let (lock, c8) ←
+    match c7.getU32le? with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  parseTxAfterLock tx ver tk nonce ins outs lock c8
+
+def parseTxAfterInputs
+    (tx : Bytes)
+    (ver tk nonce : Nat)
+    (ins : List TxIn)
+    (c5 : Cursor) : Except String Tx := do
+  let (outCount, c6, minOut) ←
+    match c5.getCompactSize? with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  if !minOut then throw "TX_ERR_PARSE"
+  let (outs, c7) ←
+    match parseOutputs c6 outCount with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  parseTxAfterOutputs tx ver tk nonce ins outs c7
+
+def parseTxAfterNonce (tx : Bytes) (ver tk nonce : Nat) (c3 : Cursor) : Except String Tx := do
+  let (inCount, c4, minIn) ←
+    match c3.getCompactSize? with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  if !minIn then throw "TX_ERR_PARSE"
+  let (ins, c5) ←
+    match parseInputs c4 inCount with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  parseTxAfterInputs tx ver tk nonce ins c5
+
+def parseTx (tx : Bytes) : Except String Tx := do
+  let c0 : Cursor := { bs := tx, off := 0 }
+  let (ver, c1) ←
+    match c0.getU32le? with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  let (tkB, c2) ←
+    match c1.getU8? with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  let tk := tkB.toNat
+  if !(tk == 0x00 || tk == 0x01 || tk == 0x02) then throw "TX_ERR_PARSE"
+  let (nonce64, c3) ←
+    match c2.getU64le? with
+    | none => throw "TX_ERR_PARSE"
+    | some x => pure x
+  let nonce := nonce64.toNat
+  let body := tx.extract c3.off tx.size
+  parseTxAfterNonce body ver tk nonce { bs := body, off := 0 }
+
+def concatBytes : List Bytes → Bytes
+  | [] => ByteArray.empty
+  | b :: bs => b ++ concatBytes bs
+
+def serializeInput (i : TxIn) : Bytes :=
+  i.prevTxid ++
+  RubinFormal.WireEnc.u32le i.prevVout ++
+  RubinFormal.WireEnc.compactSize i.scriptSig.size ++
+  i.scriptSig ++
+  RubinFormal.WireEnc.u32le i.sequence
+
+def serializeInputs (ins : List TxIn) : Bytes :=
+  concatBytes (ins.map serializeInput)
+
+def serializeOutput (o : TxOut) : Bytes :=
+  RubinFormal.WireEnc.u64le o.value ++
+  RubinFormal.WireEnc.u16le o.covenantType ++
+  RubinFormal.WireEnc.compactSize o.covenantData.size ++
+  o.covenantData
+
+def serializeOutputs (outs : List TxOut) : Bytes :=
+  concatBytes (outs.map serializeOutput)
+
+def serializeWitnessItem (w : WitnessItem) : Bytes :=
+  RubinFormal.bytes #[UInt8.ofNat w.suiteId] ++
+  RubinFormal.WireEnc.compactSize w.pubkey.size ++
+  w.pubkey ++
+  RubinFormal.WireEnc.compactSize w.signature.size ++
+  w.signature
+
+def serializeWitnessItems (wit : List WitnessItem) : Bytes :=
+  concatBytes (wit.map serializeWitnessItem)
+
+def serializeWitness (wit : List WitnessItem) : Bytes :=
+  RubinFormal.WireEnc.compactSize wit.length ++ serializeWitnessItems wit
+
+def txAfterDaCoreBytes (pre : Bytes) (tx : Tx) : Bytes :=
+  pre ++ serializeWitness tx.witness ++ WireEnc.compactSize tx.daPayloadLen ++ tx.daPayload
+
+def txAfterDaCoreStartCursor (pre : Bytes) (tx : Tx) : Cursor :=
+  { bs := txAfterDaCoreBytes pre tx, off := pre.size }
+
+def txAfterDaCoreWitnessCursor (pre : Bytes) (tx : Tx) : Cursor :=
+  { bs := txAfterDaCoreBytes pre tx, off := pre.size + (serializeWitness tx.witness).size }
+
+def txAfterDaCoreWitnessPair (pre : Bytes) (tx : Tx) : List WitnessItem × Cursor :=
+  (tx.witness, txAfterDaCoreWitnessCursor pre tx)
+
+def serializeTxAfterNonce (tx : Tx) : Bytes :=
+  RubinFormal.WireEnc.compactSize tx.inputs.length ++
+  serializeInputs tx.inputs ++
+  RubinFormal.WireEnc.compactSize tx.outputs.length ++
+  serializeOutputs tx.outputs ++
+  RubinFormal.WireEnc.u32le tx.locktime ++
+  tx.daCoreBytes ++
+  serializeWitness tx.witness ++
+  RubinFormal.WireEnc.compactSize tx.daPayloadLen ++
+  tx.daPayload
+
+def serializeTxCore (tx : Tx) : Bytes :=
+  RubinFormal.WireEnc.u32le tx.version ++
+  RubinFormal.bytes #[UInt8.ofNat tx.txKind] ++
+  RubinFormal.WireEnc.u64le tx.txNonce ++
+  RubinFormal.WireEnc.compactSize tx.inputs.length ++
+  serializeInputs tx.inputs ++
+  RubinFormal.WireEnc.compactSize tx.outputs.length ++
+  serializeOutputs tx.outputs ++
+  RubinFormal.WireEnc.u32le tx.locktime ++
+  tx.daCoreBytes
+
+def serializeTx (tx : Tx) : Bytes :=
+  RubinFormal.WireEnc.u32le tx.version ++
+  RubinFormal.bytes #[UInt8.ofNat tx.txKind] ++
+  RubinFormal.WireEnc.u64le tx.txNonce ++
+  serializeTxAfterNonce tx
 
 def isCoinbasePrevout (i : TxIn) : Bool :=
   let zero32 : Bytes := RubinFormal.bytes ((List.replicate 32 (UInt8.ofNat 0)).toArray)
