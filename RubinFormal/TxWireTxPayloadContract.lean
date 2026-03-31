@@ -12,7 +12,7 @@ namespace UtxoBasicV1
 private theorem bytes_append_empty (bs : Bytes) : bs = bs ++ ByteArray.empty := by
   cases bs
   rename_i data
-  ext <;> simp [ByteArray.append, ByteArray.empty, Array.append_assoc]
+  ext; all_goals simp [ByteArray.append, ByteArray.empty, Array.append_assoc]
 
 theorem parseTxFinalize_after_pre
     (pre : Bytes)
