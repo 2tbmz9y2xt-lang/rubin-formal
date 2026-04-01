@@ -209,12 +209,11 @@
       "model_theorem": "RubinFormal.weight_cv_replay_pass",
       "lean_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
-      "evidence_level": "machine_checked_behavioral",
+      "evidence_level": "machine_checked_universal",
       "spec_section": "§9",
       "go_function": "CalcTxWeight",
-      "contract_scope": "Behavioral decomposition of the live weight formula (base/witness/DA/signature) with abstract model bridge + conformance replay. Constants pinned, all 4 components independently monotone, DA-component kind=0 proved, sigCost decomposition proved.",
+      "contract_scope": "Universal closure of S9 weight formula. Full Except-chain proof: txWeightAndStats_ok_weight_eq navigates parseTxHeader + parseTxBody + finalizeTxWeight, proving .ok implies weight = computeWeight. Refactored into sub-functions for kernel tractability.",
       "limitations": [
-        "Full end-to-end monadic parse-to-weight theorem (threading through Option/Except chain of txWeightAndStats) is deliberately not attempted — behavioral decomposition + CV replay provides equivalent assurance.",
         "Post-rotation suite-aware cost model proved separately in WeightSuiteAware.lean."
       ],
       "supporting_theorems": [

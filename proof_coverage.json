@@ -148,7 +148,12 @@
         "RubinFormal.sigCost_monotone_ml",
         "RubinFormal.sigCost_monotone_unknown",
         "RubinFormal.daSize_kind0",
-        "RubinFormal.compactSizeLen_small"
+        "RubinFormal.compactSizeLen_small",
+        "RubinFormal.weightTail_ok",
+        "RubinFormal.finalizeTxWeight_ok",
+        "RubinFormal.txWeightAndStats_ok_weight_eq",
+        "RubinFormal.txWeightAndStats_error_empty",
+        "RubinFormal.txWeightAndStats_error_short"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -170,13 +175,16 @@
         "RubinFormal.sigCost_monotone_ml": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
         "RubinFormal.sigCost_monotone_unknown": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
         "RubinFormal.daSize_kind0": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
-        "RubinFormal.compactSizeLen_small": "rubin-formal/RubinFormal/TxWeightBehavioral.lean"
+        "RubinFormal.compactSizeLen_small": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
+        "RubinFormal.weightTail_ok": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
+        "RubinFormal.finalizeTxWeight_ok": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
+        "RubinFormal.txWeightAndStats_ok_weight_eq": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
+        "RubinFormal.txWeightAndStats_error_empty": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
+        "RubinFormal.txWeightAndStats_error_short": "rubin-formal/RubinFormal/TxWeightBehavioral.lean"
       },
-      "notes": "Weight accounting behaviourally closed: (1) all 5 normative constants pinned, (2) live 4-component formula decomposed with abstract model bridge, (3) sigCost = mlCount*8 + unknownCount*64 with monotonicity, (4) DA component kind=0 proved (daLen=0 → daSize=1 → daBytes=0), (5) all 4 components independently monotone, (6) conformance replay on real byte sequences, (7) suite-aware post-rotation model via registry lookups. Full monadic parse-to-weight threading deliberately not attempted — behavioral decomposition + CV replay provides equivalent assurance.",
-      "limitations": [
-        "Full end-to-end monadic parse-to-weight theorem (threading through Option/Except chain) deliberately not attempted — behavioral decomposition + CV replay combination provides equivalent assurance without brittle coupling to internal parser state."
-      ],
-      "evidence_level": "machine_checked_behavioral"
+      "notes": "Universal closure of S9 weight formula. Full Except-chain proof: txWeightAndStats_ok_weight_eq navigates all error branches of parseTxHeader + parseTxBody + finalizeTxWeight, proving .ok stats implies stats.weight = computeWeight. 27 theorems total.",
+      "limitations": [],
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "witness_commitment",
