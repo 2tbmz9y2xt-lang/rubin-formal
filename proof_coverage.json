@@ -688,7 +688,10 @@
         "RubinFormal.mldsa87_valid_accepted_universal",
         "RubinFormal.threshold_wrong_count_rejected_universal",
         "RubinFormal.threshold_unknown_suite_head_rejected",
-        "RubinFormal.threshold_unknown_suite_anywhere_rejected_universal"
+        "RubinFormal.threshold_unknown_suite_anywhere_rejected_universal",
+        "RubinFormal.threshold_hash_mismatch_anywhere_rejected",
+        "RubinFormal.threshold_below_required_count_rejected",
+        "RubinFormal.threshold_required_count_accepts"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -706,9 +709,12 @@
         "RubinFormal.mldsa87_valid_accepted_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.threshold_wrong_count_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.threshold_unknown_suite_head_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
-        "RubinFormal.threshold_unknown_suite_anywhere_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
+        "RubinFormal.threshold_unknown_suite_anywhere_rejected_universal": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.threshold_hash_mismatch_anywhere_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.threshold_below_required_count_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.threshold_required_count_accepts": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
       },
-      "notes": "Universal behavioral theorems on live validateWitnessItemLengths (R1-R6) and validateThresholdSigSpendNoCrypto (R7-R8). Complete partition of validateWitnessItemLengths plus live threshold wrong-count rejection and unknown-suite-anywhere rejection on the zipped witness/key loop. Concrete regression tests retained.",
+      "notes": "Universal behavioral theorems on live validateWitnessItemLengths (R1-R6) and validateThresholdSigSpendNoCrypto threshold semantics. Complete partition of validateWitnessItemLengths plus live threshold wrong-count rejection, unknown-suite-anywhere rejection, hash-mismatch-anywhere rejection, below-threshold rejection, and threshold-satisfied acceptance on the zipped witness/key loop. Concrete regression tests retained.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
