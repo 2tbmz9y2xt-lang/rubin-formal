@@ -720,21 +720,25 @@
         "RubinFormal.Conformance.cv_replay_vectors_pass",
         "RubinFormal.replay_domain_checks_proved",
         "RubinFormal.parsed_nonce_duplicate_not_replay_free",
-        "RubinFormal.replay_domain_nonce_contract"
+        "RubinFormal.replay_domain_nonce_contract",
+        "RubinFormal.anyDuplicate_eq_true_iff_not_nonceReplayFree",
+        "RubinFormal.anyDuplicate_eq_false_iff_nonceReplayFree",
+        "RubinFormal.nonceReplayCheck_rejects_duplicate_nonce_list",
+        "RubinFormal.nonceReplayCheck_accepts_replay_free_nonce_list"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.replay_domain_checks_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.parsed_nonce_duplicate_not_replay_free": "rubin-formal/RubinFormal/ReplayDomainBehavioral.lean",
-        "RubinFormal.replay_domain_nonce_contract": "rubin-formal/RubinFormal/ReplayDomainBehavioral.lean"
+        "RubinFormal.replay_domain_nonce_contract": "rubin-formal/RubinFormal/ReplayDomainBehavioral.lean",
+        "RubinFormal.anyDuplicate_eq_true_iff_not_nonceReplayFree": "rubin-formal/RubinFormal/ReplayDomainUniversal.lean",
+        "RubinFormal.anyDuplicate_eq_false_iff_nonceReplayFree": "rubin-formal/RubinFormal/ReplayDomainUniversal.lean",
+        "RubinFormal.nonceReplayCheck_rejects_duplicate_nonce_list": "rubin-formal/RubinFormal/ReplayDomainUniversal.lean",
+        "RubinFormal.nonceReplayCheck_accepts_replay_free_nonce_list": "rubin-formal/RubinFormal/ReplayDomainUniversal.lean"
       },
-      "evidence_level": "machine_checked_contract",
-      "limitations": [
-        "This remains a contract-level row: the non-fixture theorem surface covers duplicate-nonce rejection and parseTx nonce determinism, while CV-REPLAY replay covers the shipped duplicate-set fixtures and block-basic replay vectors.",
-        "No universal theorem is claimed here for arbitrary multi-transaction blocks, chain-wide nonce indexing, or the exact executable duplicate-finder implementation over all possible nonce lists.",
-        "The section does not claim a full end-to-end proof that every block-level replay rejection in the live node is derived solely from `nonceReplayFree`; broader state-threading remains owned by the surrounding validation rows."
-      ],
-      "notes": "Section §1 is no longer replay-only: `replay_domain_checks_proved` restores the structural duplicate-nonce invariant from `PinnedSections/CriticalInvariants`, and `ReplayDomainBehavioral.lean` now adds live parseTx nonce-determinism + duplicate replay-domain contract theorems. CV-REPLAY remains the executable evidence for the current fixture set."
+      "evidence_level": "machine_checked_universal",
+      "limitations": [],
+      "notes": "Section §1 now reaches universal level on the exact live duplicate-replay path: `ReplayDomainBehavioral.lean` keeps the parseTx nonce-determinism / duplicate-nonce bridge, while `ReplayDomainUniversal.lean` proves the executable `anyDuplicate` helper is extensionally equivalent to the abstract `nonceReplayFree` invariant and that the live `nonceReplayCheck` accepts exactly replay-free nonce lists and rejects duplicate-bearing nonce lists. CV-REPLAY remains the executable vector lane for shipped fixtures and block-basic replay examples; broader chain-wide/state-threaded replay semantics stay outside this section's own statement rather than as a residual limitation of the row."
     },
     {
       "section_key": "utxo_state_model",
