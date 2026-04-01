@@ -153,7 +153,7 @@
         "RubinFormal.finalizeTxWeight_ok",
         "RubinFormal.txWeightAndStats_ok_weight_eq",
         "RubinFormal.txWeightAndStats_error_empty",
-        "RubinFormal.txWeightAndStats_error_short"
+        "RubinFormal.txWeightAndStats_error_4bytes"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -180,7 +180,7 @@
         "RubinFormal.finalizeTxWeight_ok": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
         "RubinFormal.txWeightAndStats_ok_weight_eq": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
         "RubinFormal.txWeightAndStats_error_empty": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
-        "RubinFormal.txWeightAndStats_error_short": "rubin-formal/RubinFormal/TxWeightBehavioral.lean"
+        "RubinFormal.txWeightAndStats_error_4bytes": "rubin-formal/RubinFormal/TxWeightBehavioral.lean"
       },
       "notes": "Universal closure of S9 weight formula. Full Except-chain proof: txWeightAndStats_ok_weight_eq navigates all error branches of parseTxHeader + parseTxBody + finalizeTxWeight, proving .ok stats implies stats.weight = computeWeight. 27 theorems total.",
       "limitations": [],

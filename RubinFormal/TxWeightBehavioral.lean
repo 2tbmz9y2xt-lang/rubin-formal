@@ -312,8 +312,8 @@ theorem txWeightAndStats_error_empty :
     txWeightAndStats (RubinFormal.bytes #[]) = .error "TX_ERR_PARSE" := by
   unfold txWeightAndStats parseTxHeader; simp [Wire.Cursor.getU32le?]; rfl
 
-/-- LIVE: txWeightAndStats rejects input shorter than 5 bytes. -/
-theorem txWeightAndStats_error_short (b0 b1 b2 b3 : UInt8) :
+/-- LIVE: txWeightAndStats rejects 4-byte input (nonce parsed but no kind byte). -/
+theorem txWeightAndStats_error_4bytes (b0 b1 b2 b3 : UInt8) :
     txWeightAndStats (RubinFormal.bytes #[b0, b1, b2, b3]) = .error "TX_ERR_PARSE" := by
   unfold txWeightAndStats parseTxHeader; simp [Wire.Cursor.getU32le?, Wire.Cursor.getU8?]; rfl
 
