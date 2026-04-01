@@ -110,6 +110,15 @@ theorem medianTimePast_nonempty_ok (x : Nat) (xs : List Nat) :
   simp [List.isEmpty]
   exact ⟨_, rfl⟩
 
+/-- LIVE: medianTimePast returns the element at the median index of the sorted input.
+    Connects the existential in `medianTimePast_nonempty_ok` to a concrete value,
+    closing the composition gap between sort correctness and MTP output. -/
+theorem medianTimePast_value (x : Nat) (xs : List Nat) :
+    medianTimePast (x :: xs) =
+      .ok ((sortNat (x :: xs)).get! ((sortNat (x :: xs)).length / 2)) := by
+  unfold medianTimePast
+  simp [List.isEmpty, pure, Except.pure, bind, Except.bind]
+
 theorem medianTimePast_index_valid (x : Nat) (xs : List Nat) :
     (sortNat (x :: xs)).length / 2 < (sortNat (x :: xs)).length := by
   rw [sortNat_length, List.length_cons]; omega
