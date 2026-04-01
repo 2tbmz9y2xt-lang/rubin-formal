@@ -15,6 +15,7 @@ and `validateThresholdSigSpendNoCrypto` validators.
 - R5b: ML-DSA-87 sig too large universal rejection
 - R6: ML-DSA-87 valid lengths universal acceptance
 - R7: threshold sig spend wrong witness count universal rejection
+- R8: threshold sig spend unknown suite anywhere universal rejection
 - Concrete examples retained as regression tests.
 -/
 
@@ -231,5 +232,174 @@ theorem forIn_loop_safe_then_error
     have ⟨acc', hYield⟩ := hSafe p init (List.mem_cons_self _ _)
     rw [forIn_loop_yield hYield]
     exact ih acc' (fun q acc hq => hSafe q acc (List.mem_cons_of_mem _ hq))
+
+private theorem uint8_beq_eq_decide (x y : UInt8) :
+    BEq.beq x y = decide (x = y) := by
+  cases x with
+  | mk xv =>
+    cases y with
+    | mk yv =>
+      simp [BEq.beq]
+
+private theorem bytes_beq_refl (a : Bytes) : (a == a) = true := by
+  cases a with
+  | mk ad =>
+      show Array.isEqv ad ad BEq.beq = true
+      have h :
+          (fun (x y : UInt8) => @BEq.beq UInt8 _ x y) =
+          (fun x y => decide (x = y)) := by
+        funext x y
+        exact uint8_beq_eq_decide x y
+      have hrw :
+          Array.isEqv ad ad BEq.beq =
+          Array.isEqv ad ad (fun x y => decide (x = y)) := by
+        congr 1
+      rw [hrw]
+      exact Array.isEqv_self ad
+
+private theorem bytes_bne_self_false (a : Bytes) : (a != a) = false := by
+  show (!(a == a)) = false
+  rw [bytes_beq_refl]
+  rfl
+
+private def thresholdPairSafe (x : WitnessItem × Bytes) : Prop :=
+  x.fst.suiteId = RubinFormal.SUITE_ID_SENTINEL ∨
+    (x.fst.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
+      SHA3.sha3_256 x.fst.pubkey = x.snd)
+
+private def thresholdPairUnknownSuite (x : WitnessItem × Bytes) : Prop :=
+  x.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL ∧
+    x.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87
+
+private def thresholdBody
+    (x : WitnessItem × Bytes) (r : Nat) : Except String (ForInStep Nat) :=
+  if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+    pure (.yield r)
+  else if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then
+    if SHA3.sha3_256 x.fst.pubkey != x.snd then do
+      throw "TX_ERR_SIG_INVALID"
+      pure (.yield (r + 1))
+    else
+      pure (.yield (r + 1))
+  else do
+    throw "TX_ERR_SIG_ALG_INVALID"
+    pure (.yield r)
+
+private theorem thresholdForIn_eq_live (keys : List Bytes) (ws : List WitnessItem) :
+    List.forIn (List.zip ws keys) 0
+      (fun x r =>
+        if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+          pure (.yield r)
+        else if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then
+          if SHA3.sha3_256 x.fst.pubkey != x.snd then do
+            throw "TX_ERR_SIG_INVALID"
+            pure (.yield (r + 1))
+          else
+            pure (.yield (r + 1))
+        else do
+          throw "TX_ERR_SIG_ALG_INVALID"
+          pure (.yield r))
+      = List.forIn (List.zip ws keys) 0 thresholdBody := by
+  apply congrArg (fun f => List.forIn (List.zip ws keys) 0 f)
+  funext x r
+  rfl
+
+set_option maxHeartbeats 1000000 in
+private theorem thresholdBody_safe_yield (x : WitnessItem × Bytes) (r : Nat)
+    (hSafe : thresholdPairSafe x) :
+    ∃ r', thresholdBody x r = .ok (.yield r') := by
+  rcases hSafe with hS | ⟨hM, hHash⟩
+  · refine ⟨r, ?_⟩
+    have hSTrue : (x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = true := by
+      simp [hS]
+    rw [thresholdBody]
+    simp [hSTrue]
+    change (Except.ok (ForInStep.yield r) : Except String (ForInStep Nat)) =
+      Except.ok (ForInStep.yield r)
+    rfl
+  · refine ⟨r + 1, ?_⟩
+    have hSentNe : x.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := by
+      rw [hM]
+      native_decide
+    have hSentFalse : (x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false := by
+      simp [hSentNe]
+    have hMTrue : (x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true := by
+      simp [hM]
+    have hHashFalse : (SHA3.sha3_256 x.fst.pubkey != x.snd) = false := by
+      rw [hHash]
+      exact bytes_bne_self_false x.snd
+    rw [thresholdBody]
+    simp [hSentFalse, hMTrue, hHashFalse, Except.bind]
+    change (Except.ok (ForInStep.yield (r + 1)) : Except String (ForInStep Nat)) =
+      Except.ok (ForInStep.yield (r + 1))
+    rfl
+
+private theorem thresholdBody_unknown_suite_error
+    (bad : WitnessItem × Bytes) (acc : Nat)
+    (hBad : thresholdPairUnknownSuite bad) :
+    thresholdBody bad acc = .error "TX_ERR_SIG_ALG_INVALID" := by
+  have hNotS : bad.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := hBad.1
+  have hNotM : bad.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := hBad.2
+  have hSentFalse : (bad.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false := by
+    simp [hNotS]
+  have hMFalse : (bad.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false := by
+    simp [hNotM]
+  rw [thresholdBody]
+  simp [hSentFalse, hMFalse, Except.bind]
+  change (Except.error "TX_ERR_SIG_ALG_INVALID" : Except String (ForInStep Nat)) =
+    Except.error "TX_ERR_SIG_ALG_INVALID"
+  rfl
+
+/-- **R8 (universal):** Any unknown suite appearing anywhere in the threshold
+    witness/key zip causes live threshold dispatch to reject with
+    TX_ERR_SIG_ALG_INVALID. Earlier safe prefix items may yield, but they
+    cannot suppress the first unknown-suite error. LIVE on
+    `validateThresholdSigSpendNoCrypto`. -/
+theorem threshold_unknown_suite_anywhere_rejected_universal
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hLen : ws.length = keys.length)
+    (hZip : List.zip ws keys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairUnknownSuite bad) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto keys threshold ws h ctx =
+    .error "TX_ERR_SIG_ALG_INVALID" := by
+  have hLenFalse : (ws.length != keys.length) = false := by
+    simp [hLen]
+  have hLoop : List.forIn.loop thresholdBody (safe ++ bad :: rest) 0 =
+      (Except.error "TX_ERR_SIG_ALG_INVALID" : Except String Nat) := by
+    apply forIn_loop_safe_then_error (safe := safe) (bad := bad) (rest := rest) (init := 0)
+    · intro p acc hp
+      exact thresholdBody_safe_yield p acc (hSafe p hp)
+    · intro acc
+      exact thresholdBody_unknown_suite_error bad acc hBad
+  simp [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto, hLenFalse, Except.bind]
+  have hFinal :
+      (do
+        let r ← List.forIn (List.zip ws keys) 0
+          (fun x r =>
+            if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+              pure (.yield r)
+            else if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then
+              if SHA3.sha3_256 x.fst.pubkey != x.snd then do
+                throw "TX_ERR_SIG_INVALID"
+                pure (.yield (r + 1))
+              else
+                pure (.yield (r + 1))
+            else do
+              throw "TX_ERR_SIG_ALG_INVALID"
+              pure (.yield r))
+        if r < threshold then
+          throw "TX_ERR_SIG_INVALID"
+        else
+          pure ()) = Except.error "TX_ERR_SIG_ALG_INVALID" := by
+    rw [thresholdForIn_eq_live]
+    rw [hZip]
+    simp [List.forIn, hLoop, Except.bind]
+    rfl
+  simpa using hFinal
 
 end RubinFormal
