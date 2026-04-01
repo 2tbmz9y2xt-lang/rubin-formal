@@ -671,4 +671,71 @@ theorem threshold_required_count_accepts
     simp [Except.bind, hNotBelow]
   simpa using hFinal
 
+/-- Follow-up outer live layer: when vault sponsor checks pass, any threshold
+    hash mismatch anywhere propagates through `validateVaultSpend` as
+    `TX_ERR_SIG_INVALID`. -/
+theorem vault_threshold_hash_mismatch_anywhere_rejected
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hZip : List.zip vWit vKeys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairMismatch bad) :
+    UtxoApplyGenesisV1.validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .error "TX_ERR_SIG_INVALID" := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
+        .error "TX_ERR_SIG_INVALID" := by
+    exact threshold_hash_mismatch_anywhere_rejected
+      vKeys vThr vWit h "CORE_VAULT" safe bad rest hLen hZip hSafe hBad
+  simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
+
+/-- Follow-up outer live layer: when vault sponsor checks pass and the zipped
+    threshold witness/key loop stays structurally safe but below threshold,
+    `validateVaultSpend` rejects with `TX_ERR_SIG_INVALID`. -/
+theorem vault_threshold_below_required_count_rejected
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hSafe : ∀ p ∈ List.zip vWit vKeys, thresholdPairSafe p)
+    (hBelow : thresholdSafeCount (List.zip vWit vKeys) < vThr) :
+    UtxoApplyGenesisV1.validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .error "TX_ERR_SIG_INVALID" := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
+        .error "TX_ERR_SIG_INVALID" := by
+    exact threshold_below_required_count_rejected vKeys vThr vWit h "CORE_VAULT" hLen hSafe hBelow
+  simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
+
+/-- Follow-up outer live layer: when vault sponsor checks pass, the threshold
+    witness/key loop is structurally safe, enough ML-DSA-87 items match, and
+    the whitelist passes, `validateVaultSpend` accepts. -/
+theorem vault_threshold_required_count_accepts
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hSafe : ∀ p ∈ List.zip vWit vKeys, thresholdPairSafe p)
+    (hEnough : vThr ≤ thresholdSafeCount (List.zip vWit vKeys))
+    (hWL : UtxoApplyGenesisV1.vaultSpendOutputsAllowed wl outs = true) :
+    UtxoApplyGenesisV1.validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .ok () := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
+        .ok () := by
+    exact threshold_required_count_accepts vKeys vThr vWit h "CORE_VAULT" hLen hSafe hEnough
+  exact UtxoApplyGenesisV1.vault_all_pass lids covs vOwnLid vKeys vThr vWit h outs wl
+    hSponsorOk hSig hWL
+
 end RubinFormal
