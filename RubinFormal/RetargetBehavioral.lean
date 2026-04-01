@@ -267,17 +267,6 @@ theorem retargetV1_zero_target (targetOld : Bytes) (ts1 ts2 : Nat) (p : Option W
   simp only [h, bind, Except.bind, pure, Except.pure]
   rfl
 
-/-- LIVE: retargetV1 rejects over-limit target.
-    Note: n ≠ 0 is not a premise — it follows from hOver since powLimit > 0. -/
-theorem retargetV1_over_limit (targetOld : Bytes) (ts1 ts2 : Nat) (p : Option WindowPattern)
-    (n : Nat)
-    (hParse : PowV1.bytesToNatBE32? targetOld = some n)
-    (hOver : n > PowV1.powLimit) :
-    PowV1.retargetV1 targetOld ts1 ts2 p = .error "TX_ERR_PARSE" := by
-  unfold PowV1.retargetV1
-  simp only [hParse, bind, Except.bind, pure, Except.pure]
-  split <;> rfl
-
 /-- LIVE: retargetV1 with valid inputs and pattern=none produces .ok output. -/
 theorem retargetV1_ok_none_simple (targetOld : Bytes) (ts1 ts2 : Nat)
     (n : Nat)

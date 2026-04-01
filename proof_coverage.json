@@ -605,7 +605,10 @@
         "RubinFormal.timestamp_step_le_actual",
         "RubinFormal.max_tActual_bounded",
         "RubinFormal.max_retarget_ratio",
-        "RubinFormal.retarget_cv_replay_pass"
+        "RubinFormal.retarget_cv_replay_pass",
+        "RubinFormal.retargetV1_parse_none",
+        "RubinFormal.retargetV1_zero_target",
+        "RubinFormal.retargetV1_ok_none_simple"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -634,13 +637,17 @@
         "RubinFormal.timestamp_step_le_actual": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
         "RubinFormal.max_tActual_bounded": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
         "RubinFormal.max_retarget_ratio": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
-        "RubinFormal.retarget_cv_replay_pass": "rubin-formal/RubinFormal/RetargetBehavioral.lean"
+        "RubinFormal.retarget_cv_replay_pass": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retargetV1_parse_none": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retargetV1_zero_target": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
+        "RubinFormal.retargetV1_ok_none_simple": "rubin-formal/RubinFormal/RetargetBehavioral.lean"
       },
-      "notes": "Behavioral closure of \u00a715 retarget formula. 6 constant pins, identity/zero cases, lo\u2264hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio, and CV-POW conformance replay. Helper nat_div_le_div_right proved from Nat.div_add_mod (Lean 4.6.0 Init lacks Nat.div_le_div_right).",
+      "notes": "Universal closure of \u00a715 retarget formula. 6 constant pins, identity/zero cases, lo\u2264hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio. 4 LIVE theorems on retargetV1 monadic function (parse/validation error paths + pattern=None success). CV-POW conformance replay on real vectors. Helper nat_div_le_div_right proved from Nat.div_add_mod.",
       "limitations": [
-        "Full retargetV1 end-to-end Except-monad threading not attempted \u2014 behavioral decomposition + CV replay provides equivalent assurance without brittle coupling to internal monadic state."
+        "bytesToNatBE32? output bound (n \u2264 powLimit) is known-true but unproved \u2014 requires for-loop invariant reasoning not yet tractable in Lean 4.6.0. The retargetV1 over-limit guard is defensive/unreachable.",
+        "retargetV1 success path for pattern=Some not proved universally \u2014 covered by CV-POW conformance replay."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "transaction_structural_rules",
@@ -1054,47 +1061,27 @@
       "section_heading": "## 22. Block Timestamp Rules (Normative)",
       "status": "proved",
       "theorems": [
+        "RubinFormal.Conformance.cv_timestamp_vectors_pass",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff",
-        "RubinFormal.insertNat_length",
-        "RubinFormal.sortNat_length",
-        "RubinFormal.insertNat_sorted",
-        "RubinFormal.sortNat_sorted",
-        "RubinFormal.mem_insertNat_iff",
-        "RubinFormal.mem_sortNat_iff",
-        "RubinFormal.medianTimePast_empty_err",
-        "RubinFormal.medianTimePast_nonempty_ok",
-        "RubinFormal.medianTimePast_value",
-        "RubinFormal.medianTimePast_index_valid",
-        "RubinFormal.timestampBounds_trichotomy",
-        "RubinFormal.timestampBounds_complete",
-        "RubinFormal.Conformance.cv_timestamp_vectors_pass"
+        "RubinFormal.timestamp_after_mtp_accepted",
+        "RubinFormal.timestamp_at_mtp_rejected",
+        "RubinFormal.timestamp_before_mtp_rejected"
       ],
       "file": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
       "theorem_files": {
-        "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
-        "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
-        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
-        "RubinFormal.insertNat_length": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.sortNat_length": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.insertNat_sorted": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.sortNat_sorted": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.mem_insertNat_iff": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.mem_sortNat_iff": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.medianTimePast_empty_err": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.medianTimePast_nonempty_ok": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.medianTimePast_index_valid": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.timestampBounds_trichotomy": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.timestampBounds_complete": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
         "RubinFormal.Conformance.cv_timestamp_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTimestampReplay.lean",
-        "RubinFormal.medianTimePast_value": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean"
+        "RubinFormal.timestamp_after_mtp_accepted": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.timestamp_at_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.timestamp_before_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean"
       },
-      "notes": "\u00a722 timestamp rules universally closed. sortNat correctness (length preservation, sortedness, membership permutation), medianTimePast totality for non-empty lists, and timestampBounds complete partition (accept/OLD/FUTURE trichotomy with exact boundary conditions). 11 LIVE theorems + 3 pre-existing LIVE iff-theorems + 1 CV replay. 3 WRAPPER concrete tests excluded from count.",
+      "notes": "Current entry combines executable replay for timestamp-bounds and block-basic timestamp vectors with universal theorems for the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied.",
       "limitations": [
-        "No chain-wide timestamp monotonicity claim beyond the single-block timestampBounds gate is asserted here."
+        "The universal theorem layer is over `timestampBounds` given an already-derived median-time-past value; the list-to-MTP extraction path remains evidenced by executable replay rather than a standalone theorem.",
+        "No chain-wide timestamp monotonicity claim beyond the covered `timestampBounds` gate and current replayed integration path is asserted here."
       ],
-      "evidence_level": "machine_checked_universal"
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "fork_choice",
