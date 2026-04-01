@@ -19,27 +19,42 @@ private theorem contains_true_of_mem {x : Nat} {xs : List Nat} (h : x ∈ xs) :
       | inr hMem =>
           exact Or.inr (ih hMem)
 
-private theorem contains_false_of_not_mem {x : Nat} {xs : List Nat} (h : x ∉ xs) :
-    xs.contains x = false := by
-  induction xs with
-  | nil =>
-      simp
-  | cons y ys ih =>
-      have hxy : x ≠ y := List.ne_of_not_mem_cons h
-      have htail : x ∉ ys := fun hmem => h (List.mem_cons_of_mem _ hmem)
-      simp [hxy, ih htail]
+private theorem contains_eq_false_iff_not_mem {x : Nat} {xs : List Nat} :
+    xs.contains x = false ↔ x ∉ xs := by
+  constructor
+  · intro hFalse
+    intro hMem
+    have hTrue : xs.contains x = true := contains_true_of_mem hMem
+    rw [hFalse] at hTrue
+    cases hTrue
+  · intro hNotMem
+    induction xs with
+    | nil =>
+        simp
+    | cons y ys ih =>
+        have hxy : x ≠ y := List.ne_of_not_mem_cons hNotMem
+        have htail : x ∉ ys := fun hmem => hNotMem (List.mem_cons_of_mem _ hmem)
+        simp [hxy, ih htail]
 
-private theorem nodup_append_singleton (seen : List Nat) (x : Nat)
-    (hSeen : List.Nodup seen) (hx : x ∉ seen) :
-    List.Nodup (seen ++ [x]) := by
-  unfold List.Nodup at *
-  rw [List.pairwise_append]
-  refine ⟨hSeen, by simp, ?_⟩
-  intro a ha b hb
-  have hb' : b = x := by simpa using hb
-  subst hb'
-  intro hEq
-  exact hx (hEq ▸ ha)
+private theorem nodup_append_singleton_iff (seen : List Nat) (x : Nat) :
+    List.Nodup (seen ++ [x]) ↔ List.Nodup seen ∧ x ∉ seen := by
+  constructor
+  · intro h
+    have hPair : (seen ++ [x]).Pairwise (fun a b => a ≠ b) := by
+      simpa [List.Nodup] using h
+    rw [List.pairwise_append] at hPair
+    refine ⟨hPair.1, ?_⟩
+    intro hx
+    exact (hPair.2.2 x hx x (by simp)) rfl
+  · rintro ⟨hSeen, hx⟩
+    unfold List.Nodup at *
+    rw [List.pairwise_append]
+    refine ⟨hSeen, by simp, ?_⟩
+    intro a ha b hb
+    have hb' : b = x := by simpa using hb
+    subst hb'
+    intro hEq
+    exact hx (hEq ▸ ha)
 
 private theorem anyDuplicateAcc_true_of_not_nodup_append
     (rest seen : List Nat)
@@ -54,11 +69,12 @@ private theorem anyDuplicateAcc_true_of_not_nodup_append
       · have hcontains : seen.contains x = true := contains_true_of_mem hx
         simp [anyDuplicateAcc, hcontains]
       · have hSeen' : List.Nodup (seen ++ [x]) :=
-          nodup_append_singleton seen x hSeen hx
+          (nodup_append_singleton_iff seen x).2 ⟨hSeen, hx⟩
         have hDup' : ¬ List.Nodup ((seen ++ [x]) ++ xs) := by
           intro h
           exact hDup (by simpa [List.append_assoc] using h)
-        have hcontains : seen.contains x = false := contains_false_of_not_mem hx
+        have hcontains : seen.contains x = false :=
+          (contains_eq_false_iff_not_mem).2 hx
         simp [anyDuplicateAcc, hcontains, ih (seen ++ [x]) hSeen' hDup']
 
 private theorem anyDuplicateAcc_false_of_nodup_append
@@ -77,7 +93,7 @@ private theorem anyDuplicateAcc_false_of_nodup_append
         intro hxMem
         exact (hNoDupPair.2.2 x hxMem x (by simp)) rfl
       have hSeen' : List.Nodup (seen ++ [x]) :=
-        nodup_append_singleton seen x hSeen hx
+        (nodup_append_singleton_iff seen x).2 ⟨hSeen, hx⟩
       have hTailPair : (x :: xs).Pairwise (fun a b => a ≠ b) := hNoDupPair.2.1
       have hXsPair : xs.Pairwise (fun a b => a ≠ b) := (List.pairwise_cons.mp hTailPair).2
       have hNoDup' : List.Nodup ((seen ++ [x]) ++ xs) := by
@@ -92,7 +108,8 @@ private theorem anyDuplicateAcc_false_of_nodup_append
           · have haEq : a = x := by simpa using haLast
             subst haEq
             exact (List.pairwise_cons.mp hTailPair).1 b hb
-      have hcontains : seen.contains x = false := contains_false_of_not_mem hx
+      have hcontains : seen.contains x = false :=
+        (contains_eq_false_iff_not_mem).2 hx
       simp [anyDuplicateAcc, hcontains, ih (seen ++ [x]) hSeen' hNoDup']
 
 /-- Exact bridge from the live duplicate-finder to the abstract replay-domain invariant. -/
