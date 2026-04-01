@@ -267,6 +267,10 @@ private def thresholdPairSafe (x : WitnessItem × Bytes) : Prop :=
     (x.fst.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
       SHA3.sha3_256 x.fst.pubkey = x.snd)
 
+private def thresholdPairUnknownSuite (x : WitnessItem × Bytes) : Prop :=
+  x.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL ∧
+    x.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87
+
 private def thresholdBody
     (x : WitnessItem × Bytes) (r : Nat) : Except String (ForInStep Nat) :=
   if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
@@ -332,9 +336,10 @@ private theorem thresholdBody_safe_yield (x : WitnessItem × Bytes) (r : Nat)
 
 private theorem thresholdBody_unknown_suite_error
     (bad : WitnessItem × Bytes) (acc : Nat)
-    (hNotS : bad.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL)
-    (hNotM : bad.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
+    (hBad : thresholdPairUnknownSuite bad) :
     thresholdBody bad acc = .error "TX_ERR_SIG_ALG_INVALID" := by
+  have hNotS : bad.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := hBad.1
+  have hNotM : bad.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := hBad.2
   have hSentFalse : (bad.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false := by
     simp [hNotS]
   have hMFalse : (bad.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false := by
@@ -359,8 +364,7 @@ theorem threshold_unknown_suite_anywhere_rejected_universal
     (hLen : ws.length = keys.length)
     (hZip : List.zip ws keys = safe ++ bad :: rest)
     (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
-    (hNotS : bad.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL)
-    (hNotM : bad.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
+    (hBad : thresholdPairUnknownSuite bad) :
     UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto keys threshold ws h ctx =
     .error "TX_ERR_SIG_ALG_INVALID" := by
   have hLenFalse : (ws.length != keys.length) = false := by
@@ -371,7 +375,7 @@ theorem threshold_unknown_suite_anywhere_rejected_universal
     · intro p acc hp
       exact thresholdBody_safe_yield p acc (hSafe p hp)
     · intro acc
-      exact thresholdBody_unknown_suite_error bad acc hNotS hNotM
+      exact thresholdBody_unknown_suite_error bad acc hBad
   simp [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto, hLenFalse, Except.bind]
   have hFinal :
       (do
