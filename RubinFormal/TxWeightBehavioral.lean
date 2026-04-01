@@ -253,59 +253,60 @@ The live function `txWeightAndStats` is composed from `parseTxHeader → parseTx
 finalizeTxWeight`. Each sub-function has ≤8 match/if points, making the full
 case-analysis proof tractable without kernel overflow. -/
 
-/-- LIVE: weightTail success → weight = computeWeight. -/
+/-- LIVE: weightTail success → weight = computeWeight with CONCRETE witnesses.
+    All components are determined by function arguments — zero unconstrained existentials. -/
 theorem weightTail_ok (tx : Bytes) (txKind baseSize anchorBytes daLen : Nat)
     (ws : WitnessSectionResult) (c10 : Wire.Cursor) (stats : WeightStats)
     (h : weightTail tx txKind baseSize anchorBytes daLen ws c10 = .ok stats) :
-    ∃ (witnessSize daSize sigCost : Nat),
-      stats.weight = computeWeight baseSize witnessSize daSize sigCost := by
+    stats.weight = computeWeight baseSize (ws.endOff - ws.startOff)
+      (compactSizeLen daLen + daLen)
+      (ws.mlCount * VERIFY_COST_ML_DSA_87 + ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE) := by
   unfold weightTail at h
-  split at h
-  · exact Except.noConfusion h
-  · split at h
-    · exact (nomatch h)
-    · injection h with h; subst h; exact ⟨_, _, _, rfl⟩
+  split at h; · exact Except.noConfusion h
+  · split at h; · exact (nomatch h)
+    · injection h with h; subst h; rfl
 
-/-- LIVE: finalizeTxWeight success → weight = computeWeight. -/
+/-- LIVE: finalizeTxWeight success → weight = computeWeight with parse-derived witnesses.
+    Only daLen is existential (parsed from cursor). witnessSize and sigCost are concrete
+    from the WitnessSectionResult argument. -/
 theorem finalizeTxWeight_ok (tx : Bytes) (txKind baseSize anchorBytes : Nat)
     (ws : WitnessSectionResult) (c : Wire.Cursor) (stats : WeightStats)
     (h : finalizeTxWeight tx txKind baseSize anchorBytes ws c = .ok stats) :
-    ∃ (witnessSize daSize sigCost : Nat),
-      stats.weight = computeWeight baseSize witnessSize daSize sigCost := by
+    ∃ daLen : Nat,
+      stats.weight = computeWeight baseSize (ws.endOff - ws.startOff)
+        (compactSizeLen daLen + daLen)
+        (ws.mlCount * VERIFY_COST_ML_DSA_87 + ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE) := by
   unfold finalizeTxWeight at h
-  split at h
-  · exact Except.noConfusion h
-  · split at h
-    · exact (nomatch h)
+  split at h; · exact Except.noConfusion h
+  · split at h; · exact (nomatch h)
     · split at h
+      · split at h; · exact (nomatch h)
+        · exact ⟨_, weightTail_ok _ _ _ _ _ _ _ _ h⟩
       · split at h
-        · exact (nomatch h)
-        · exact weightTail_ok tx txKind baseSize anchorBytes _ ws _ stats h
-      · split at h
-        · split at h
-          · exact (nomatch h)
-          · exact weightTail_ok tx txKind baseSize anchorBytes _ ws _ stats h
-        · split at h
-          · exact (nomatch h)
-          · exact weightTail_ok tx txKind baseSize anchorBytes _ ws _ stats h
+        · split at h; · exact (nomatch h)
+          · exact ⟨_, weightTail_ok _ _ _ _ _ _ _ _ h⟩
+        · split at h; · exact (nomatch h)
+          · exact ⟨_, weightTail_ok _ _ _ _ _ _ _ _ h⟩
 
-/-- LIVE: Full Except-chain proof. If txWeightAndStats succeeds,
-    weight = computeWeight(baseSize, witnessSize, daSize, sigCost)
-    for specific values determined by the parse chain.
-    This is the key universal theorem connecting the live function
-    to the behavioral formula decomposition. -/
+/-- LIVE: Full Except-chain proof with constrained witnesses.
+    If txWeightAndStats succeeds, weight = computeWeight where:
+    - baseSize = cursor offset after parsing header+inputs+outputs+DA core (existential)
+    - witnessSize = ws.endOff - ws.startOff (concrete from WitnessSectionResult)
+    - daSize = compactSizeLen daLen + daLen (existential daLen from DA manifest parse)
+    - sigCost = mlCount * 8 + unknownCount * 64 (concrete from WitnessSectionResult)
+    Only baseSize and daLen are existential — both parse-derived, not arbitrary. -/
 theorem txWeightAndStats_ok_weight_eq (tx : Bytes) (stats : WeightStats)
     (h : txWeightAndStats tx = .ok stats) :
-    ∃ (baseSize witnessSize daSize sigCost : Nat),
-      stats.weight = computeWeight baseSize witnessSize daSize sigCost := by
+    ∃ (baseSize daLen : Nat) (ws : WitnessSectionResult),
+      stats.weight = computeWeight baseSize (ws.endOff - ws.startOff)
+        (compactSizeLen daLen + daLen)
+        (ws.mlCount * VERIFY_COST_ML_DSA_87 + ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE) := by
   unfold txWeightAndStats at h
   simp only [bind, Except.bind] at h
-  split at h
-  · exact Except.noConfusion h
-  · split at h
-    · exact Except.noConfusion h
-    · obtain ⟨ws, ds, sc, hw⟩ := finalizeTxWeight_ok tx _ _ _ _ _ stats h
-      exact ⟨_, ws, ds, sc, hw⟩
+  split at h; · exact Except.noConfusion h
+  · split at h; · exact Except.noConfusion h
+    · obtain ⟨daLen, hw⟩ := finalizeTxWeight_ok _ _ _ _ _ _ _ h
+      exact ⟨_, daLen, _, hw⟩
 
 /-- LIVE: weightTail success implies weight > 0 (non-vacuous, uses h). -/
 theorem weightTail_weight_pos (tx : Bytes) (txKind baseSize anchorBytes daLen : Nat)
