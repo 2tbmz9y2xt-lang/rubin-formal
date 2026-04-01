@@ -329,6 +329,21 @@ theorem vault_bad_sponsor (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes
     .error "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN" := by
   simp [validateVaultSpend, hBad]
 
+/-- Generic live propagation bridge: once owner-auth and sponsor checks pass,
+    any error returned by `validateThresholdSigSpendNoCrypto` is forwarded
+    unchanged through `validateVaultSpend`. -/
+theorem vault_threshold_error_propagates
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (e : String)
+    (hOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hSig : validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" = .error e) :
+    validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+    .error e := by
+  simp [validateVaultSpend, hOk, hSig]
+
 /-- Bad whitelist → TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED. -/
 theorem vault_bad_whitelist (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
