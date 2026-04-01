@@ -1093,7 +1093,10 @@
         "RubinFormal.Conformance.cv_timestamp_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTimestampReplay.lean",
         "RubinFormal.timestamp_after_mtp_accepted": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
         "RubinFormal.timestamp_at_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.timestamp_before_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean"
+        "RubinFormal.timestamp_before_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean"
       },
       "notes": "Current entry combines executable replay for timestamp-bounds and block-basic timestamp vectors with universal theorems for the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied.",
       "limitations": [
