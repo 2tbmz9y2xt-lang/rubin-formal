@@ -12,7 +12,7 @@ namespace UtxoBasicV1
 private theorem bytes_append_empty (bs : Bytes) : bs = bs ++ ByteArray.empty := by
   cases bs
   rename_i data
-  ext <;> simp [ByteArray.append, ByteArray.empty, Array.append_assoc]
+  ext; all_goals simp [ByteArray.append, ByteArray.empty, Array.append_assoc]
 
 theorem parseTxFinalize_after_pre
     (pre : Bytes)
@@ -34,12 +34,13 @@ theorem parseTxFinalize_after_pre
           (tx.daPayloadLen,
             { bs := pre ++ payloadCountBytes ++ tx.daPayload, off := pre.size + payloadCountBytes.size },
             true) := by
-    simpa [payloadCountBytes, Nat.add_assoc] using
-      (cursor_getCompactSize_after_pre
+    have h_raw := cursor_getCompactSize_after_pre
         (pre := pre)
         (rest := tx.daPayload)
         (n := tx.daPayloadLen)
-        hDaLenBound)
+        hDaLenBound
+    simp only [payloadCountBytes, Nat.add_assoc] at h_raw ⊢
+    exact h_raw
   have hPayloadRead :
       Cursor.getBytes?
           { bs := pre ++ payloadCountBytes ++ tx.daPayload, off := pre.size + payloadCountBytes.size }
@@ -49,22 +50,20 @@ theorem parseTxFinalize_after_pre
             { bs := pre ++ payloadCountBytes ++ tx.daPayload,
               off := pre.size + payloadCountBytes.size + tx.daPayload.size }) := by
     rw [bytes_append_empty (pre ++ payloadCountBytes ++ tx.daPayload)]
-    simpa [payloadCountBytes, hDaLenEq, ByteArray.size_append, Nat.add_assoc] using
-      (cursor_getBytes_after_pre_exact
+    have h_raw := cursor_getBytes_after_pre_exact
         (pre := pre ++ payloadCountBytes)
         (mid := tx.daPayload)
         (post := ByteArray.empty)
         (n := tx.daPayload.size)
-        (by rfl))
-  have hBodySize :
-      (pre ++ payloadCountBytes ++ tx.daPayload).size = pre.size + payloadCountBytes.size + tx.daPayload.size := by
-    simp [payloadCountBytes, ByteArray.size_append, Nat.add_assoc]
+        (by rfl)
+    simp only [payloadCountBytes, hDaLenEq, ByteArray.size_append, Nat.add_assoc] at h_raw ⊢
+    exact h_raw
   have hKind0PayloadProp : ¬ (tx.txKind = 0x00 ∧ tx.daPayload.size ≠ 0) := by
     rcases hKind0Payload with hNot0 | hZero
     · intro hk
       exact hNot0 hk.1
     · intro hk
-      exact hk.2 (by simpa [hDaLenEq] using hZero)
+      exact hk.2 (by simp only [hDaLenEq] at hZero ⊢; exact hZero)
   have hKind0PayloadPropLen : ¬ (tx.txKind = 0x00 ∧ tx.daPayloadLen ≠ 0) := by
     rcases hKind0Payload with hNot0 | hZero
     · intro hk
@@ -74,7 +73,7 @@ theorem parseTxFinalize_after_pre
   have hBodySize' :
       pre.size + payloadCountBytes.size + tx.daPayload.size =
         (pre ++ payloadCountBytes ++ tx.daPayload).size := by
-    simpa using hBodySize.symm
+    simp only [ByteArray.size_append, Nat.add_assoc]
   have hPayloadLenRead' := hPayloadLenRead
   have hPayloadRead' := hPayloadRead
   unfold parseTxFinalize
@@ -87,16 +86,19 @@ theorem parseTxFinalize_after_pre
       ByteArray.size pre +
           (ByteArray.size (RubinFormal.WireEnc.compactSize (ByteArray.size tx.daPayload)) + ByteArray.size tx.daPayload) =
         ByteArray.size (pre ++ RubinFormal.WireEnc.compactSize (ByteArray.size tx.daPayload) ++ tx.daPayload) := by
-    simpa [payloadCountBytes, hDaLenEq, Nat.add_assoc] using hBodySize'
+    simp only [payloadCountBytes, hDaLenEq, Nat.add_assoc] at hBodySize' ⊢
+    exact hBodySize'
   have hOffEq' :
       ByteArray.size pre + ByteArray.size (RubinFormal.WireEnc.compactSize (ByteArray.size tx.daPayload)) +
           ByteArray.size tx.daPayload =
         ByteArray.size (pre ++ RubinFormal.WireEnc.compactSize (ByteArray.size tx.daPayload) ++ tx.daPayload) := by
-    simpa [Nat.add_assoc] using hOffEq
+    simp only [Nat.add_assoc] at hOffEq ⊢
+    exact hOffEq
   have hOffEqLen :
       ByteArray.size pre + ByteArray.size (RubinFormal.WireEnc.compactSize tx.daPayloadLen) + ByteArray.size tx.daPayload =
         ByteArray.size (pre ++ RubinFormal.WireEnc.compactSize tx.daPayloadLen ++ tx.daPayload) := by
-    simpa [hDaLenEq] using hOffEq'
+    simp only [hDaLenEq] at hOffEq' ⊢
+    exact hOffEq'
   rw [if_pos hOffEqLen]
   simp [hDaLenEq, hKind0PayloadProp, hKind0PayloadPropLen]
   have hDaLenEq' : ByteArray.size tx.daPayload = tx.daPayloadLen := hDaLenEq.symm
