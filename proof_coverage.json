@@ -67,7 +67,9 @@
         "RubinFormal.u16le_roundtrip_258",
         "RubinFormal.u32le_roundtrip_16909060",
         "RubinFormal.Refinement.parse_tx_go_trace_contract_proved",
-        "RubinFormal.parseTx_result_integrity"
+        "RubinFormal.parseTx_result_integrity",
+        "RubinFormal.UtxoBasicV1.parseTx_serializeTx_roundtrip",
+        "RubinFormal.UtxoBasicV1.parseTxAfterNonce_serializeTx_roundtrip"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -88,15 +90,16 @@
         "RubinFormal.u16le_roundtrip_258": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.u32le_roundtrip_16909060": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.Refinement.parse_tx_go_trace_contract_proved": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
-        "RubinFormal.parseTx_result_integrity": "rubin-formal/RubinFormal/TxWireRoundtrip.lean"
+        "RubinFormal.parseTx_result_integrity": "rubin-formal/RubinFormal/TxWireRoundtrip.lean",
+        "RubinFormal.UtxoBasicV1.parseTx_serializeTx_roundtrip": "rubin-formal/RubinFormal/TxWireTxContract.lean",
+        "RubinFormal.UtxoBasicV1.parseTxAfterNonce_serializeTx_roundtrip": "rubin-formal/RubinFormal/TxWireTxBodyContract.lean"
       },
       "limitations": [
-        "Full transaction parse-serialize roundtrip not claimed — coverage limited to CompactSize + primitive LE encoding roundtrips.",
         "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via triple-segment content hash (~192-bit collision resistance).",
-        "Serialize direction (Lean→bytes→Go roundtrip) not covered by parse_tx contract."
+        "Cross-language Lean→Go/Rust byte-level equivalence relies on human-reviewed parity, not machine-checked bridge. The universal roundtrip is proved within Lean only."
       ],
-      "notes": "Includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16). parseTx_result_integrity proves ok/err/txid/wtxid consistency (#337).",
-      "evidence_level": "machine_checked_contract"
+      "notes": "Full transaction parse-serialize roundtrip universally proved: ∀ tx, txStructurallyWellFormed tx → parseTx (serializeTx tx) = Except.ok tx (PR #351/#353). Covers all 14 structural well-formedness fields, all 3 txKind variants (0x00, 0x01, 0x02), and the complete serialize→parse chain including header (version + txKind + nonce) and body (inputs, outputs, locktime, daCore, witness, daPayload). Also includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16). parseTx_result_integrity proves ok/err/txid/wtxid consistency (#337).",
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "transaction_identifiers",

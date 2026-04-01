@@ -70,4 +70,5 @@ import RubinFormal.RegistryResolutionLiveBridge
 import RubinFormal.CovenantParserGaps
 import RubinFormal.VaultThresholdBound
 import RubinFormal.TxWireRoundtrip
+import RubinFormal.TxWireTxContract
 import RubinFormal.GovernanceReplayToken
