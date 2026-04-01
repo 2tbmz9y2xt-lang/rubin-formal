@@ -240,9 +240,9 @@ theorem retarget_cv_replay_pass :
   - **CV replay**: cv_pow_vectors_pass on real byte sequences
   - **Clamp bounded + positive**: from PowV1.lean (retargetV1_clamp_bounded/positive)
 
-  Remaining non-claim: full retargetV1 end-to-end Except-monad threading
-  is deliberately not attempted — behavioral decomposition + CV replay provides
-  equivalent assurance without brittle coupling to internal monadic state.
+  Remaining non-claim: clampWindowTimestamps + tActualFromWindow for-loop chain
+  for pattern=Some path requires Type C monad threading with u64Max overflow reasoning.
+  Covered by CV-POW conformance replay (`retarget_cv_replay_pass`).
 -/
 
 /-! ## LIVE theorems on retargetV1 (monadic function)
@@ -289,5 +289,119 @@ theorem retargetV1_ok_none_simple (targetOld : Bytes) (ts1 ts2 : Nat)
       · split
         · rename_i _ h; exfalso; omega
         · exact ⟨_, rfl⟩
+
+/-! ## bytesToNatBE32? output bound (LIVE, closes Gap 3)
+
+The for-loop `for i in [0:32] do acc := acc * 256 + b` is opaque to Lean tactics
+due to `@[extern]` forIn. Strategy: define a recursive mirror, prove bound by
+induction, then bridge to the original via `Std.Range.forIn.loop` unfolding.
+-/
+
+/-- Recursive byte accumulator: proof-friendly mirror of the for-loop in bytesToNatBE32?. -/
+def bytesAccRec (bs : Bytes) : Nat → Nat → Nat → Nat
+  | _, 0, acc => acc
+  | start, k + 1, acc =>
+      bytesAccRec bs (start + 1) k (acc * 256 + (bs.get! start).toNat)
+
+set_option maxRecDepth 1024 in
+set_option maxHeartbeats 800000 in
+/-- BRIDGE: bytesToNatBE32? equals the recursive accumulator when bs.size = 32. -/
+theorem bytesToNatBE32_eq_rec (bs : Bytes) (hSz : bs.size = 32) :
+    PowV1.bytesToNatBE32? bs = some (bytesAccRec bs 0 32 0) := by
+  unfold PowV1.bytesToNatBE32?
+  simp only [hSz, Id.run, forIn, Std.Range.forIn, Std.Range.forIn.loop]
+  rfl
+
+/-- Every UInt8 has toNat ≤ 255. -/
+private theorem byte_le (b : UInt8) : b.toNat ≤ 255 := by
+  have h : b.toNat < 256 := b.val.isLt; omega
+
+/-- LIVE: Loop invariant — bytesAccRec with acc < 256^start produces result < 256^(start+k). -/
+theorem bytesAccRec_bound (bs : Bytes) (start k : Nat) (acc : Nat)
+    (hAcc : acc < 256 ^ start) :
+    bytesAccRec bs start k acc < 256 ^ (start + k) := by
+  induction k generalizing start acc with
+  | zero => simp only [bytesAccRec, Nat.add_zero]; exact hAcc
+  | succ n ih =>
+    unfold bytesAccRec
+    have hStep : acc * 256 + (bs.get! start).toNat < 256 ^ (start + 1) := by
+      have h1 := Nat.mul_le_mul_right 256 (Nat.le_sub_one_of_lt hAcc)
+      have h2 : (256 ^ start - 1) * 256 + 255 = 256 ^ (start + 1) - 1 := by
+        rw [Nat.pow_succ]; omega
+      have := byte_le (bs.get! start); omega
+    rw [← show start + 1 + n = start + (n + 1) from by omega]
+    exact ih (start + 1) _ hStep
+
+/-- bytesToNatBE32? returns none when bs.size ≠ 32. -/
+theorem bytesToNatBE32_none_of_size_ne (bs : Bytes) (h : bs.size ≠ 32) :
+    PowV1.bytesToNatBE32? bs = none := by
+  unfold PowV1.bytesToNatBE32?; simp [h]
+
+/-- If bytesToNatBE32? returns some, then bs.size = 32. -/
+theorem bytesToNatBE32_size (bs : Bytes) (n : Nat)
+    (h : PowV1.bytesToNatBE32? bs = some n) : bs.size = 32 := by
+  by_contra hne; rw [bytesToNatBE32_none_of_size_ne bs hne] at h; simp at h
+
+/-- LIVE: bytesToNatBE32? output is strictly less than 256^32. -/
+theorem bytesToNatBE32_lt (bs : Bytes) (n : Nat)
+    (h : PowV1.bytesToNatBE32? bs = some n) : n < 256 ^ 32 := by
+  have hSz := bytesToNatBE32_size bs n h
+  rw [bytesToNatBE32_eq_rec bs hSz] at h
+  injection h with h; rw [← h]
+  exact bytesAccRec_bound bs 0 32 0 (by decide)
+
+/-- LIVE: bytesToNatBE32? output is bounded by powLimit = 2^256 - 1.
+    This is the key theorem closing Gap 3 — it proves that the `n > powLimit`
+    guard in retargetV1 is dead code, removing a reviewer-flagged limitation. -/
+theorem bytesToNatBE32_le_powLimit (bs : Bytes) (n : Nat)
+    (h : PowV1.bytesToNatBE32? bs = some n) : n ≤ PowV1.powLimit := by
+  have hLt := bytesToNatBE32_lt bs n h
+  have : (256 : Nat) ^ 32 = 2 ^ 256 := by native_decide
+  rw [this] at hLt; unfold PowV1.powLimit; omega
+
+/-! ## retargetV1 over_limit is dead code (LIVE, closes Gap 2)
+
+With `bytesToNatBE32_le_powLimit`, the `n > powLimit` guard in retargetV1
+is provably unreachable: bytesToNatBE32? produces at most 2^256 - 1 = powLimit. -/
+
+/-- LIVE: retargetV1's `n > powLimit` error path is unreachable —
+    bytesToNatBE32? by construction produces n ≤ powLimit. -/
+theorem retargetV1_overlimit_dead (targetOld : Bytes) (n : Nat)
+    (hParse : PowV1.bytesToNatBE32? targetOld = some n) :
+    ¬ (n > PowV1.powLimit) :=
+  Nat.not_lt_of_le (bytesToNatBE32_le_powLimit targetOld n hParse)
+
+/-! ## genWindowTimestamps succeeds under valid preconditions (LIVE, partial Gap 1)
+
+The only failure paths in genWindowTimestamps are two early guards:
+windowSize < 2 and windowSize ≠ canonical. After guards pass, the Id.run
+for-loop block is pure computation. -/
+
+/-- LIVE: genWindowTimestamps succeeds when p.windowSize = windowSize. -/
+theorem genWindowTimestamps_ok (p : PowV1.WindowPattern)
+    (hWS : p.windowSize = PowV1.windowSize) :
+    ∃ ts, PowV1.genWindowTimestamps p = .ok ts := by
+  show ∃ ts, PowV1.genWindowTimestamps p = Except.ok ts
+  rw [show PowV1.genWindowTimestamps p =
+      (do if p.windowSize < 2 then throw "TX_ERR_PARSE"
+          if p.windowSize != PowV1.windowSize then throw "TX_ERR_PARSE"
+          let out : Array Nat := Id.run do
+            let mut ts : Array Nat := Array.mkEmpty p.windowSize
+            let mut prev : Nat := p.start
+            ts := ts.push prev
+            for _ in [0:(p.windowSize - 1)] do
+              let next := prev + p.step
+              ts := ts.push next
+              prev := next
+            if p.lastJump != 0 then
+              let secLast := ts.get! (p.windowSize - 2)
+              ts := ts.set! (p.windowSize - 1) (secLast + p.lastJump)
+            return ts
+          pure out.toList : Except String (List Nat))
+    from by unfold PowV1.genWindowTimestamps; rfl]
+  have hNotLt : ¬ (p.windowSize < 2) := by rw [hWS]; unfold PowV1.windowSize; omega
+  have hEq : ¬ (p.windowSize != PowV1.windowSize) := by simp [bne, BEq.beq, hWS]
+  simp only [hNotLt, ↓reduceIte, hEq, bind, Except.bind, pure, Except.pure]
+  exact ⟨_, rfl⟩
 
 end RubinFormal
