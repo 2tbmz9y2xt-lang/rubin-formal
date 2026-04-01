@@ -307,6 +307,49 @@ theorem txWeightAndStats_ok_weight_eq (tx : Bytes) (stats : WeightStats)
     · obtain ⟨ws, ds, sc, hw⟩ := finalizeTxWeight_ok tx _ _ _ _ _ stats h
       exact ⟨_, ws, ds, sc, hw⟩
 
+/-- LIVE: weightTail success implies weight > 0 (non-vacuous, uses h). -/
+theorem weightTail_weight_pos (tx : Bytes) (txKind baseSize anchorBytes daLen : Nat)
+    (ws : WitnessSectionResult) (c10 : Wire.Cursor) (stats : WeightStats)
+    (h : weightTail tx txKind baseSize anchorBytes daLen ws c10 = .ok stats) :
+    stats.weight > 0 := by
+  unfold weightTail at h
+  split at h; · exact Except.noConfusion h
+  · split at h; · exact (nomatch h)
+    · injection h with h; subst h
+      show WITNESS_DISCOUNT_DIVISOR * baseSize + _ + (compactSizeLen daLen + daLen) + _ > 0
+      simp only [WITNESS_DISCOUNT_DIVISOR, VERIFY_COST_ML_DSA_87, VERIFY_COST_UNKNOWN_SUITE]
+      unfold compactSizeLen; split <;> omega
+
+/-- LIVE: finalizeTxWeight success implies weight > 0 (non-vacuous). -/
+theorem finalizeTxWeight_weight_pos (tx : Bytes) (txKind baseSize anchorBytes : Nat)
+    (ws : WitnessSectionResult) (c : Wire.Cursor) (stats : WeightStats)
+    (h : finalizeTxWeight tx txKind baseSize anchorBytes ws c = .ok stats) :
+    stats.weight > 0 := by
+  unfold finalizeTxWeight at h
+  split at h; · exact Except.noConfusion h
+  · split at h; · exact (nomatch h)
+    · split at h
+      · split at h; · exact (nomatch h)
+        · exact weightTail_weight_pos tx txKind baseSize anchorBytes _ ws _ stats h
+      · split at h
+        · split at h; · exact (nomatch h)
+          · exact weightTail_weight_pos tx txKind baseSize anchorBytes _ ws _ stats h
+        · split at h; · exact (nomatch h)
+          · exact weightTail_weight_pos tx txKind baseSize anchorBytes _ ws _ stats h
+
+/-- LIVE: txWeightAndStats success implies weight > 0.
+    Non-vacuous: 0 is explicitly excluded from .ok results because
+    compactSizeLen ≥ 1 guarantees weight ≥ 1 in every .ok path.
+    Empty/short inputs produce .error, not .ok. -/
+theorem txWeightAndStats_weight_pos (tx : Bytes) (stats : WeightStats)
+    (h : txWeightAndStats tx = .ok stats) :
+    stats.weight > 0 := by
+  unfold txWeightAndStats at h
+  simp only [bind, Except.bind] at h
+  split at h; · exact Except.noConfusion h
+  · split at h; · exact Except.noConfusion h
+    · exact finalizeTxWeight_weight_pos tx _ _ _ _ _ stats h
+
 /-- LIVE: txWeightAndStats rejects empty input. -/
 theorem txWeightAndStats_error_empty :
     txWeightAndStats (RubinFormal.bytes #[]) = .error "TX_ERR_PARSE" := by
