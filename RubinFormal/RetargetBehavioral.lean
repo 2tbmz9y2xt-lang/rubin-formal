@@ -245,4 +245,60 @@ theorem retarget_cv_replay_pass :
   equivalent assurance without brittle coupling to internal monadic state.
 -/
 
+/-! ## LIVE theorems on retargetV1 (monadic function)
+
+These theorems reference `retargetV1` directly, establishing LIVE class coverage
+for the difficulty_update section. They prove error validation paths and
+output structure of the actual monadic live function.
+-/
+
+/-- LIVE: retargetV1 rejects unparseable targetOld (wrong byte length). -/
+theorem retargetV1_parse_none (targetOld : Bytes) (ts1 ts2 : Nat) (p : Option WindowPattern)
+    (h : PowV1.bytesToNatBE32? targetOld = none) :
+    PowV1.retargetV1 targetOld ts1 ts2 p = .error "TX_ERR_PARSE" := by
+  unfold PowV1.retargetV1
+  simp only [h, bind, Except.bind]
+
+/-- LIVE: retargetV1 rejects zero-value target. -/
+theorem retargetV1_zero_target (targetOld : Bytes) (ts1 ts2 : Nat) (p : Option WindowPattern)
+    (h : PowV1.bytesToNatBE32? targetOld = some 0) :
+    PowV1.retargetV1 targetOld ts1 ts2 p = .error "TX_ERR_PARSE" := by
+  unfold PowV1.retargetV1
+  simp only [h, bind, Except.bind, pure, Except.pure]
+  rfl
+
+/-- LIVE: retargetV1 rejects over-limit target. -/
+theorem retargetV1_over_limit (targetOld : Bytes) (ts1 ts2 : Nat) (p : Option WindowPattern)
+    (n : Nat)
+    (hParse : PowV1.bytesToNatBE32? targetOld = some n)
+    (hNZ : n ≠ 0)
+    (hOver : n > PowV1.powLimit) :
+    PowV1.retargetV1 targetOld ts1 ts2 p = .error "TX_ERR_PARSE" := by
+  unfold PowV1.retargetV1
+  simp only [hParse, bind, Except.bind, pure, Except.pure]
+  split <;> rfl
+
+/-- LIVE: retargetV1 with valid inputs and pattern=none produces .ok output. -/
+theorem retargetV1_ok_none_simple (targetOld : Bytes) (ts1 ts2 : Nat)
+    (n : Nat)
+    (hParse : PowV1.bytesToNatBE32? targetOld = some n)
+    (hNZ : n ≠ 0) (hBound : n ≤ PowV1.powLimit)
+    (hTs1 : ts1 ≤ PowV1.u64Max) (hTs2 : ts2 ≤ PowV1.u64Max) (hOrd : ts1 < ts2) :
+    ∃ result, PowV1.retargetV1 targetOld ts1 ts2 none = .ok result := by
+  unfold PowV1.retargetV1
+  simp only [hParse, bind, Except.bind, pure, Except.pure]
+  split
+  · rename_i h; simp [BEq.beq] at h; exact absurd h hNZ
+  · split
+    · rename_i _ h; exact absurd (Nat.le_of_lt_succ (Nat.lt_succ_of_le hBound)) (Nat.not_le_of_gt h)
+    · simp only [PowV1.u64Max] at hTs1 hTs2
+      split
+      · rename_i h
+        exfalso
+        simp only [Bool.or_eq_true, decide_eq_true_eq] at h
+        omega
+      · split
+        · rename_i _ h; exfalso; omega
+        · exact ⟨_, rfl⟩
+
 end RubinFormal
