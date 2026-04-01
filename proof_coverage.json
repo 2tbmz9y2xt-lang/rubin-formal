@@ -617,9 +617,9 @@
         "RubinFormal.bytesToNatBE32_none_of_size_ne",
         "RubinFormal.retargetV1_overlimit_dead",
         "RubinFormal.genWindowTimestamps_ok",
-        "RubinFormal.clampLoopRec_nonempty",
-        "RubinFormal.clamp_le_hi_strong",
-        "RubinFormal.tActualFromWindow_ok_of_clamp"
+        "RubinFormal.tActualFromWindow_ok_of_clamp",
+        "RubinFormal.cwsInnerGen_nonempty",
+        "RubinFormal.clampWindowTimestamps_ok"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -654,9 +654,7 @@
         "RubinFormal.retargetV1_ok_none_simple": "rubin-formal/RubinFormal/RetargetBehavioral.lean"
       },
       "notes": "Universal closure of §15 retarget formula. 6 constant pins, identity/zero cases, lo≤hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio. 4 LIVE theorems on retargetV1 monadic function (parse/validation error paths + pattern=None success). CV-POW conformance replay on real vectors. Helper nat_div_le_div_right proved from Nat.div_add_mod.",
-      "limitations": [
-        "clampWindowTimestamps for-loop to clampLoopRec bridge not machine-checked: the Id.run do List.forIn state representation (Option × Array × Nat triple) makes structural induction bridge intractable without refactoring the live function. clampLoopRec_nonempty proves the loop invariant on the recursive mirror; genWindowTimestamps_ok and tActualFromWindow_ok_of_clamp prove the surrounding chain. The gap is ONLY the for-loop ↔ recursive equivalence for clampWindowTimestamps. CV-POW conformance replay covers this path end-to-end."
-      ],
+      "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
     {

@@ -404,67 +404,91 @@ theorem genWindowTimestamps_ok (p : PowV1.WindowPattern)
   simp only [hNotLt, ↓reduceIte, hEq, bind, Except.bind, pure, Except.pure]
   exact ⟨_, rfl⟩
 
-/-! ## clampWindowTimestamps: recursive mirror + loop invariant
+/-! ## clampWindowTimestamps: direct for-loop invariant (LIVE+BRIDGE)
 
 The for-loop in clampWindowTimestamps iterates over `rest : List Nat` with two
 mutable variables (prev, acc) and three early-return paths on u64Max overflow.
-We define a recursive mirror `clampLoopRec` and prove the loop invariant:
-under bounded prev, the output Array is non-empty (size > 0). -/
+Strategy: extract the for-loop body as `cwsInnerGen`, prove non-emptiness
+by induction using `List.forIn.loop` unfolding, then bridge to clampWindowTimestamps
+via opaque unfold + definitional equality. -/
 
-/-- Recursive mirror of the for-loop in clampWindowTimestamps. -/
-def clampLoopRec : List Nat → Nat → Array Nat → Array Nat × Nat
-  | [], prev, acc => (acc, prev)
-  | t :: ts, prev, acc =>
-    if t > PowV1.u64Max then (#[], prev)
-    else
-      let lo := prev + 1
-      let hi := prev + PowV1.maxTimestampStepPerBlock
-      if decide (lo > PowV1.u64Max) || decide (hi > PowV1.u64Max) then (#[], prev)
-      else
-        let t' := PowV1.clamp t lo hi
-        clampLoopRec ts t' (acc.push t')
+private theorem list_forIn_loop_cons' {α β : Type} (f : α → β → Id (ForInStep β))
+    (a : α) (as : List α) (s : β) :
+    List.forIn.loop f (a :: as) s =
+    (match f a s with | .yield s' => List.forIn.loop f as s' | .done s' => s') := by
+  simp [List.forIn.loop, List.brecOn]; cases f a s with | yield s' => rfl | done s' => rfl
 
-/-- Strengthened: when lo ≤ hi, clamp v lo hi ≤ hi. -/
-theorem clamp_le_hi_strong (v lo hi : Nat) (h : lo ≤ hi) : PowV1.clamp v lo hi ≤ hi := by
+private theorem clamp_le' (v lo hi : Nat) (h : lo ≤ hi) : PowV1.clamp v lo hi ≤ hi := by
   unfold PowV1.clamp; exact Nat.max_le.mpr ⟨h, Nat.min_le_right _ _⟩
 
-set_option maxRecDepth 512 in
-/-- LIVE: Loop invariant — under bounded prev, clampLoopRec produces non-empty output.
-    The key stability property: prev grows by at most maxTimestampStepPerBlock (1200)
-    per iteration, so if prev + (remaining+1)*1200 ≤ u64Max, no overflow occurs. -/
-theorem clampLoopRec_nonempty (rest : List Nat) (prev : Nat) (acc : Array Nat)
-    (hAcc : acc.size > 0)
-    (hAll : ∀ t ∈ rest, t ≤ PowV1.u64Max)
-    (hPrev : prev + (rest.length + 1) * 1200 ≤ PowV1.u64Max) :
-    (clampLoopRec rest prev acc).1.size > 0 := by
+private theorem arr_toList_ne_nil (a : Array Nat) (h : a.size > 0) : a.toList ≠ [] := by
+  rw [Array.toList_eq]; intro he
+  exact absurd (show a.size = 0 from by unfold Array.size; rw [he]; rfl) (by omega)
+
+/-- Named extraction of the clampWindowTimestamps for-loop, parameterized for induction. -/
+def cwsInnerGen (rest : List Nat) (prev : Nat) (acc : Array Nat) : Array Nat :=
+  Id.run do
+    let mut p := prev; let mut a := acc
+    for t in rest do
+      if t > PowV1.u64Max then return #[]
+      let lo := p + 1; let hi := p + PowV1.maxTimestampStepPerBlock
+      if lo > PowV1.u64Max || hi > PowV1.u64Max then return #[]
+      let t' := PowV1.clamp t lo hi; a := a.push t'; p := t'
+    return a
+
+/-- LIVE: Direct for-loop invariant — under bounded timestamps, cwsInnerGen produces
+    non-empty output. Proved by induction on rest using List.forIn.loop unfolding.
+    Each step: by_cases on guards eliminates overflow → yield preserves size > 0. -/
+theorem cwsInnerGen_nonempty (rest : List Nat) (prev : Nat) (acc : Array Nat)
+    (hAcc : acc.size > 0) (hAll : ∀ t ∈ rest, t ≤ PowV1.u64Max)
+    (hBound : prev + (rest.length + 1) * 1200 ≤ PowV1.u64Max) :
+    (cwsInnerGen rest prev acc).size > 0 := by
   induction rest generalizing prev acc with
-  | nil => simp only [clampLoopRec]; exact hAcc
+  | nil => simp [cwsInnerGen, Id.run, forIn, List.forIn, List.forIn.loop, List.brecOn]; exact hAcc
   | cons t ts ih =>
-    simp only [clampLoopRec]
+    unfold cwsInnerGen
+    simp only [Id.run, forIn, List.forIn, list_forIn_loop_cons']
     have ht := hAll t (List.mem_cons_self _ _)
-    have hPB : prev + 1200 ≤ PowV1.u64Max := by simp only [List.length_cons] at hPrev; omega
-    split
+    have hPB : prev + 1200 ≤ PowV1.u64Max := by simp only [List.length_cons] at hBound; omega
+    by_cases h1 : t > PowV1.u64Max
     · exfalso; omega
-    · split
-      · rename_i _ h; exfalso
-        simp only [Bool.or_eq_true, decide_eq_true_eq,
-          show PowV1.maxTimestampStepPerBlock = 1200 from rfl] at h; omega
-      · have hClamp : PowV1.clamp t (prev + 1) (prev + PowV1.maxTimestampStepPerBlock) ≤ prev + 1200 := by
-          rw [show PowV1.maxTimestampStepPerBlock = 1200 from rfl]
-          exact clamp_le_hi_strong _ _ _ (by omega)
-        exact ih _ _
-          (by simp [Array.size_push])
-          (fun x hx => hAll x (List.mem_cons_of_mem _ hx))
-          (by rw [show PowV1.maxTimestampStepPerBlock = 1200 from rfl] at hClamp
-              have := List.length_cons t ts; omega)
+    · simp only [h1, ↓reduceIte]
+      by_cases h2 : (decide (prev + 1 > PowV1.u64Max) ||
+          decide (prev + PowV1.maxTimestampStepPerBlock > PowV1.u64Max)) = true
+      · exfalso
+        simp [Bool.or_eq_true, decide_eq_true_eq,
+          show PowV1.maxTimestampStepPerBlock = 1200 from rfl] at h2; omega
+      · simp only [h2, ↓reduceIte]
+        have hC : PowV1.clamp t (prev + 1) (prev + PowV1.maxTimestampStepPerBlock) ≤ prev + 1200 := by
+          rw [show PowV1.maxTimestampStepPerBlock = 1200 from rfl]; exact clamp_le' t _ _ (by omega)
+        exact ih _ _ (by simp [Array.size_push]) (fun x hx => hAll x (List.mem_cons_of_mem _ hx))
+          (by simp only [List.length_cons] at hBound
+              exact Nat.le_trans (Nat.add_le_add_right hC _) (by omega))
 
-/-! ## tActualFromWindow: conditional success (LIVE)
+/-- LIVE+BRIDGE: clampWindowTimestamps succeeds with non-empty output under bounded timestamps.
+    Bridges cwsInnerGen (named for-loop) to clampWindowTimestamps (live function)
+    via opaque unfold + definitional equality. -/
+theorem clampWindowTimestamps_ok (t0 : Nat) (rest : List Nat)
+    (hT0 : t0 ≤ PowV1.u64Max) (hAll : ∀ t ∈ rest, t ≤ PowV1.u64Max)
+    (hBound : t0 + (rest.length + 1) * 1200 ≤ PowV1.u64Max) :
+    ∃ ts, PowV1.clampWindowTimestamps (t0 :: rest) = .ok ts ∧ ts ≠ [] := by
+  rw [show PowV1.clampWindowTimestamps (t0 :: rest) =
+      (do if t0 > PowV1.u64Max then throw "TX_ERR_PARSE"
+          let out : Array Nat := cwsInnerGen rest t0 (#[t0])
+          if out.isEmpty then throw "TX_ERR_PARSE"
+          pure out.toList : Except String (List Nat))
+    from by unfold PowV1.clampWindowTimestamps cwsInnerGen; rfl]
+  simp only [show ¬ (t0 > PowV1.u64Max) from by omega, ↓reduceIte,
+             bind, Except.bind, pure, Except.pure]
+  have hSz := cwsInnerGen_nonempty rest t0 #[t0] (by simp [Array.size_push]) hAll hBound
+  simp only [show ¬ (cwsInnerGen rest t0 #[t0]).isEmpty from by simp [Array.isEmpty]; omega, ↓reduceIte]
+  exact ⟨_, rfl, arr_toList_ne_nil _ hSz⟩
 
-tActualFromWindow succeeds whenever clampWindowTimestamps returns a non-empty list.
-After clamp, the pattern-match on (first :: _) always succeeds, and the function
-returns `pure 1` or `pure (last - first)` — both .ok. -/
+/-! ## tActualFromWindow: success under bounded timestamps (LIVE)
 
-/-- LIVE: tActualFromWindow succeeds if clampWindowTimestamps succeeds with non-empty output. -/
+Composes clampWindowTimestamps_ok with pattern-match on the non-empty result. -/
+
+/-- LIVE: tActualFromWindow succeeds when clampWindowTimestamps succeeds with non-empty output. -/
 theorem tActualFromWindow_ok_of_clamp (ts : List Nat) (ts' : List Nat)
     (hClamp : PowV1.clampWindowTimestamps ts = .ok ts')
     (hNe : ts' ≠ []) :
