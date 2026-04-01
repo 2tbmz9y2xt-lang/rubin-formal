@@ -206,7 +206,7 @@
     {
       "op": "weight_accounting",
       "gate": "CV-WEIGHT",
-      "model_theorem": "RubinFormal.txWeightAndStats_weight_pos",
+      "model_theorem": "RubinFormal.txWeightAndStats_ok_weight_eq",
       "lean_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "evidence_level": "machine_checked_universal",
