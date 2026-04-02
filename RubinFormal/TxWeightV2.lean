@@ -196,35 +196,29 @@ def parseTxHeader (tx : Bytes) : Except String (Nat × Cursor) := do
   | some c5 => pure (txKind, c5)
 
 /-- Phase 2: Parse outputs, expiry, DA core, witness section.
-    Returns (baseSize, anchorBytes, witnessSection, cursor). -/
+    Returns (baseSize, anchorBytes, witnessSection, cursor).
+    Written without do-notation for proof tractability. -/
 def parseTxBody (txKind : Nat) (c : Cursor) :
-    Except String (Nat × Nat × WitnessSectionResult × Cursor) := do
-  let (outCount, c6, minOut) ←
-    match c.getCompactSize? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  if !minOut then throw "TX_ERR_PARSE"
-  let (c7, anchorBytes) ←
-    match parseOutputsForAnchor c6 outCount with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (_, c8) ←
-    match c7.getU32le? with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let (c9, _daCoreLen) ←
-    match DaCoreV1.parseDaCoreFieldsWithBytes txKind c8 with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let ws ←
-    match parseWitnessSectionForWeight c9 with
-    | none => throw "TX_ERR_PARSE"
-    | some x => pure x
-  let witnessSize := ws.endOff - ws.startOff
-  if witnessSize > MAX_WITNESS_BYTES_PER_TX then
-    throw "TX_ERR_WITNESS_OVERFLOW"
-  if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-  pure (c9.off, anchorBytes, ws, ws.cursor)
+    Except String (Nat × Nat × WitnessSectionResult × Cursor) :=
+  match c.getCompactSize? with
+  | none => .error "TX_ERR_PARSE"
+  | some (outCount, c6, minOut) =>
+    if !minOut then .error "TX_ERR_PARSE"
+    else match parseOutputsForAnchor c6 outCount with
+    | none => .error "TX_ERR_PARSE"
+    | some (c7, anchorBytes) =>
+      match c7.getU32le? with
+      | none => .error "TX_ERR_PARSE"
+      | some (_, c8) =>
+        match DaCoreV1.parseDaCoreFieldsWithBytes txKind c8 with
+        | none => .error "TX_ERR_PARSE"
+        | some (c9, _) =>
+          match parseWitnessSectionForWeight c9 with
+          | none => .error "TX_ERR_PARSE"
+          | some ws =>
+            if ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX then .error "TX_ERR_WITNESS_OVERFLOW"
+            else if ws.isOverflow then .error "TX_ERR_WITNESS_OVERFLOW"
+            else .ok (c9.off, anchorBytes, ws, ws.cursor)
 
 /-- Weight computation tail: getBytes, verify EOF, compute formula. -/
 def weightTail (tx : Bytes) (txKind : Nat) (baseSize anchorBytes daLen : Nat)
