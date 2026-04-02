@@ -220,11 +220,12 @@ theorem forIn_loop_safe_then_error
     (bad : WitnessItem × Bytes)
     (rest : List (WitnessItem × Bytes))
     (init : Nat)
+    (err : String)
     (hSafe : ∀ (p : WitnessItem × Bytes) (acc : Nat), p ∈ safe →
       ∃ acc', body p acc = .ok (.yield acc'))
-    (hBad : ∀ acc, body bad acc = .error "TX_ERR_SIG_ALG_INVALID") :
+    (hBad : ∀ acc, body bad acc = .error err) :
     List.forIn.loop body (safe ++ bad :: rest) init =
-    (Except.error "TX_ERR_SIG_ALG_INVALID" : Except String Nat) := by
+    (Except.error err : Except String Nat) := by
   induction safe generalizing init with
   | nil => simp; exact forIn_loop_error (hBad init)
   | cons p ps ih =>
@@ -262,6 +263,32 @@ private theorem bytes_bne_self_false (a : Bytes) : (a != a) = false := by
   rw [bytes_beq_refl]
   rfl
 
+private theorem bytes_beq_true_eq
+    (a b : Bytes)
+    (h : (a == b) = true) :
+    a = b := by
+  cases a with
+  | mk ad =>
+      cases b with
+      | mk bd =>
+          change Array.isEqv ad bd BEq.beq = true at h
+          have hData : ad = bd := by
+            apply Array.eq_of_isEqv
+            simpa using h
+          cases hData
+          rfl
+
+private theorem bytes_bne_false_eq
+    (a b : Bytes)
+    (h : (a != b) = false) :
+    a = b := by
+  change (!(a == b)) = false at h
+  cases hEq : (a == b) with
+  | false =>
+      simp [hEq] at h
+  | true =>
+      exact bytes_beq_true_eq a b hEq
+
 private def thresholdPairSafe (x : WitnessItem × Bytes) : Prop :=
   x.fst.suiteId = RubinFormal.SUITE_ID_SENTINEL ∨
     (x.fst.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
@@ -270,6 +297,10 @@ private def thresholdPairSafe (x : WitnessItem × Bytes) : Prop :=
 private def thresholdPairUnknownSuite (x : WitnessItem × Bytes) : Prop :=
   x.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL ∧
     x.fst.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87
+
+private def thresholdPairMismatch (x : WitnessItem × Bytes) : Prop :=
+  x.fst.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 ∧
+    SHA3.sha3_256 x.fst.pubkey ≠ x.snd
 
 private def thresholdBody
     (x : WitnessItem × Bytes) (r : Nat) : Except String (ForInStep Nat) :=
@@ -334,6 +365,65 @@ private theorem thresholdBody_safe_yield (x : WitnessItem × Bytes) (r : Nat)
       Except.ok (ForInStep.yield (r + 1))
     rfl
 
+private def thresholdPairIncrement (x : WitnessItem × Bytes) : Nat :=
+  if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then 1 else 0
+
+private def thresholdSafeCount : List (WitnessItem × Bytes) → Nat
+  | [] => 0
+  | x :: xs => thresholdPairIncrement x + thresholdSafeCount xs
+
+private theorem thresholdBody_safe_yield_exact (x : WitnessItem × Bytes) (r : Nat)
+    (hSafe : thresholdPairSafe x) :
+    thresholdBody x r = .ok (.yield (r + thresholdPairIncrement x)) := by
+  rcases hSafe with hS | ⟨hM, hHash⟩
+  · have hSTrue : (x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = true := by
+      simp [hS]
+    have hMFalse : (x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false := by
+      rw [hS]
+      native_decide
+    rw [thresholdBody]
+    simp [hSTrue, hMFalse, thresholdPairIncrement]
+    change (Except.ok (ForInStep.yield r) : Except String (ForInStep Nat)) =
+      Except.ok (ForInStep.yield r)
+    rfl
+  · have hSentNe : x.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := by
+      rw [hM]
+      native_decide
+    have hSentFalse : (x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false := by
+      simp [hSentNe]
+    have hMTrue : (x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true := by
+      simp [hM]
+    have hHashFalse : (SHA3.sha3_256 x.fst.pubkey != x.snd) = false := by
+      rw [hHash]
+      exact bytes_bne_self_false x.snd
+    rw [thresholdBody]
+    simp [hSentFalse, hMTrue, hHashFalse, thresholdPairIncrement, Except.bind]
+    change (Except.ok (ForInStep.yield (r + 1)) : Except String (ForInStep Nat)) =
+      Except.ok (ForInStep.yield (r + 1))
+    rfl
+
+private theorem forIn_loop_all_safe_counts
+    (safe : List (WitnessItem × Bytes))
+    (init : Nat)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p) :
+    List.forIn.loop thresholdBody safe init = Except.ok (init + thresholdSafeCount safe) := by
+  induction safe generalizing init with
+  | nil =>
+      change (Except.ok init : Except String Nat) =
+        Except.ok (init + thresholdSafeCount [])
+      simp [thresholdSafeCount]
+  | cons p ps ih =>
+      have hYield : thresholdBody p init = .ok (.yield (init + thresholdPairIncrement p)) := by
+        exact thresholdBody_safe_yield_exact p init (hSafe p (List.mem_cons_self _ _))
+      rw [forIn_loop_yield hYield]
+      have hRest :
+          List.forIn.loop thresholdBody ps (init + thresholdPairIncrement p) =
+            Except.ok ((init + thresholdPairIncrement p) + thresholdSafeCount ps) := by
+        exact ih (init + thresholdPairIncrement p)
+          (fun q hq => hSafe q (List.mem_cons_of_mem _ hq))
+      rw [hRest]
+      simp [thresholdSafeCount, Nat.add_assoc]
+
 private theorem thresholdBody_unknown_suite_error
     (bad : WitnessItem × Bytes) (acc : Nat)
     (hBad : thresholdPairUnknownSuite bad) :
@@ -348,6 +438,31 @@ private theorem thresholdBody_unknown_suite_error
   simp [hSentFalse, hMFalse, Except.bind]
   change (Except.error "TX_ERR_SIG_ALG_INVALID" : Except String (ForInStep Nat)) =
     Except.error "TX_ERR_SIG_ALG_INVALID"
+  rfl
+
+private theorem thresholdBody_mismatch_error
+    (bad : WitnessItem × Bytes) (acc : Nat)
+    (hBad : thresholdPairMismatch bad) :
+    thresholdBody bad acc = .error "TX_ERR_SIG_INVALID" := by
+  have hM : bad.fst.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := hBad.1
+  have hSentNe : bad.fst.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL := by
+    rw [hM]
+    native_decide
+  have hSentFalse : (bad.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL) = false := by
+    simp [hSentNe]
+  have hMTrue : (bad.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true := by
+    simp [hM]
+  have hHashTrue : (SHA3.sha3_256 bad.fst.pubkey != bad.snd) = true := by
+    cases hCmp : (SHA3.sha3_256 bad.fst.pubkey != bad.snd)
+    · exfalso
+      have : SHA3.sha3_256 bad.fst.pubkey = bad.snd := by
+        exact bytes_bne_false_eq _ _ hCmp
+      exact hBad.2 this
+    · rfl
+  rw [thresholdBody]
+  simp [hSentFalse, hMTrue, hHashTrue, Except.bind]
+  change (Except.error "TX_ERR_SIG_INVALID" : Except String (ForInStep Nat)) =
+    Except.error "TX_ERR_SIG_INVALID"
   rfl
 
 /-- **R8 (universal):** Any unknown suite appearing anywhere in the threshold
@@ -371,7 +486,8 @@ theorem threshold_unknown_suite_anywhere_rejected_universal
     simp [hLen]
   have hLoop : List.forIn.loop thresholdBody (safe ++ bad :: rest) 0 =
       (Except.error "TX_ERR_SIG_ALG_INVALID" : Except String Nat) := by
-    apply forIn_loop_safe_then_error (safe := safe) (bad := bad) (rest := rest) (init := 0)
+    apply forIn_loop_safe_then_error
+      (safe := safe) (bad := bad) (rest := rest) (init := 0) (err := "TX_ERR_SIG_ALG_INVALID")
     · intro p acc hp
       exact thresholdBody_safe_yield p acc (hSafe p hp)
     · intro acc
@@ -401,5 +517,225 @@ theorem threshold_unknown_suite_anywhere_rejected_universal
     simp [List.forIn, hLoop, Except.bind]
     rfl
   simpa using hFinal
+
+/-- Follow-up theorem surface: any ML-DSA-87/key mismatch appearing anywhere
+    in the threshold witness/key zip causes live threshold dispatch to reject
+    with TX_ERR_SIG_INVALID. Earlier safe prefix items may yield, but they
+    cannot suppress the first mismatch error. LIVE on
+    `validateThresholdSigSpendNoCrypto`. -/
+theorem threshold_hash_mismatch_anywhere_rejected
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hLen : ws.length = keys.length)
+    (hZip : List.zip ws keys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairMismatch bad) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto keys threshold ws h ctx =
+    .error "TX_ERR_SIG_INVALID" := by
+  have hLenFalse : (ws.length != keys.length) = false := by
+    simp [hLen]
+  have hLoop : List.forIn.loop thresholdBody (safe ++ bad :: rest) 0 =
+      (Except.error "TX_ERR_SIG_INVALID" : Except String Nat) := by
+    apply forIn_loop_safe_then_error
+      (safe := safe) (bad := bad) (rest := rest) (init := 0) (err := "TX_ERR_SIG_INVALID")
+    · intro p acc hp
+      exact thresholdBody_safe_yield p acc (hSafe p hp)
+    · intro acc
+      exact thresholdBody_mismatch_error bad acc hBad
+  simp [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto, hLenFalse, Except.bind]
+  have hFinal :
+      (do
+        let r ← List.forIn (List.zip ws keys) 0
+          (fun x r =>
+            if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+              pure (.yield r)
+            else if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then
+              if SHA3.sha3_256 x.fst.pubkey != x.snd then do
+                throw "TX_ERR_SIG_INVALID"
+                pure (.yield (r + 1))
+              else
+                pure (.yield (r + 1))
+            else do
+              throw "TX_ERR_SIG_ALG_INVALID"
+              pure (.yield r))
+        if r < threshold then
+          throw "TX_ERR_SIG_INVALID"
+        else
+          pure ()) = Except.error "TX_ERR_SIG_INVALID" := by
+    rw [thresholdForIn_eq_live]
+    rw [hZip]
+    simp [List.forIn, hLoop, Except.bind]
+    rfl
+  simpa using hFinal
+
+/-- Follow-up theorem surface: if every threshold witness/key pair is
+    structurally safe but the accumulated number of ML-DSA-87 matches stays
+    below `threshold`, the live validator rejects with `TX_ERR_SIG_INVALID`.
+    LIVE on `validateThresholdSigSpendNoCrypto`. -/
+theorem threshold_below_required_count_rejected
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (hLen : ws.length = keys.length)
+    (hSafe : ∀ p ∈ List.zip ws keys, thresholdPairSafe p)
+    (hBelow : thresholdSafeCount (List.zip ws keys) < threshold) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto keys threshold ws h ctx =
+    .error "TX_ERR_SIG_INVALID" := by
+  have hLenFalse : (ws.length != keys.length) = false := by
+    simp [hLen]
+  have hLoop :
+      List.forIn.loop thresholdBody (List.zip ws keys) 0 =
+        Except.ok (thresholdSafeCount (List.zip ws keys)) := by
+    simpa using forIn_loop_all_safe_counts (safe := List.zip ws keys) (init := 0) hSafe
+  simp [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto, hLenFalse, Except.bind]
+  have hFinal :
+      (do
+        let r ← List.forIn (List.zip ws keys) 0
+          (fun x r =>
+            if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+              pure (.yield r)
+            else if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then
+              if SHA3.sha3_256 x.fst.pubkey != x.snd then do
+                throw "TX_ERR_SIG_INVALID"
+                pure (.yield (r + 1))
+              else
+                pure (.yield (r + 1))
+            else do
+              throw "TX_ERR_SIG_ALG_INVALID"
+              pure (.yield r))
+        if r < threshold then
+          throw "TX_ERR_SIG_INVALID"
+        else
+          pure ()) = Except.error "TX_ERR_SIG_INVALID" := by
+    rw [thresholdForIn_eq_live]
+    simp [List.forIn]
+    rw [hLoop]
+    change
+      (if thresholdSafeCount (List.zip ws keys) < threshold then
+        Except.error "TX_ERR_SIG_INVALID"
+      else
+        Except.ok ()) = Except.error "TX_ERR_SIG_INVALID"
+    simp [Except.bind, hBelow]
+  simpa using hFinal
+
+/-- Follow-up theorem surface: if every threshold witness/key pair is
+    structurally safe and the accumulated number of ML-DSA-87 matches reaches
+    `threshold`, the live validator accepts. LIVE on
+    `validateThresholdSigSpendNoCrypto`. -/
+theorem threshold_required_count_accepts
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (hLen : ws.length = keys.length)
+    (hSafe : ∀ p ∈ List.zip ws keys, thresholdPairSafe p)
+    (hEnough : threshold ≤ thresholdSafeCount (List.zip ws keys)) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto keys threshold ws h ctx =
+    .ok () := by
+  have hLenFalse : (ws.length != keys.length) = false := by
+    simp [hLen]
+  have hLoop :
+      List.forIn.loop thresholdBody (List.zip ws keys) 0 =
+        Except.ok (thresholdSafeCount (List.zip ws keys)) := by
+    simpa using forIn_loop_all_safe_counts (safe := List.zip ws keys) (init := 0) hSafe
+  have hNotBelow : ¬ thresholdSafeCount (List.zip ws keys) < threshold := by
+    exact Nat.not_lt_of_ge hEnough
+  simp [UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto, hLenFalse, Except.bind]
+  have hFinal :
+      (do
+        let r ← List.forIn (List.zip ws keys) 0
+          (fun x r =>
+            if x.fst.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+              pure (.yield r)
+            else if x.fst.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 then
+              if SHA3.sha3_256 x.fst.pubkey != x.snd then do
+                throw "TX_ERR_SIG_INVALID"
+                pure (.yield (r + 1))
+              else
+                pure (.yield (r + 1))
+            else do
+              throw "TX_ERR_SIG_ALG_INVALID"
+              pure (.yield r))
+        if r < threshold then
+          throw "TX_ERR_SIG_INVALID"
+        else
+          pure ()) = Except.ok () := by
+    rw [thresholdForIn_eq_live]
+    simp [List.forIn]
+    rw [hLoop]
+    change
+      (if thresholdSafeCount (List.zip ws keys) < threshold then
+        Except.error "TX_ERR_SIG_INVALID"
+      else
+        Except.ok ()) = Except.ok ()
+    simp [Except.bind, hNotBelow]
+  simpa using hFinal
+
+/-- Follow-up outer live layer: when vault sponsor checks pass, any threshold
+    hash mismatch anywhere propagates through `validateVaultSpend` as
+    `TX_ERR_SIG_INVALID`. -/
+theorem vault_threshold_hash_mismatch_anywhere_rejected
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hZip : List.zip vWit vKeys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairMismatch bad) :
+    UtxoApplyGenesisV1.validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .error "TX_ERR_SIG_INVALID" := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
+        .error "TX_ERR_SIG_INVALID" := by
+    exact threshold_hash_mismatch_anywhere_rejected
+      vKeys vThr vWit h "CORE_VAULT" safe bad rest hLen hZip hSafe hBad
+  simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
+
+/-- Follow-up outer live layer: when vault sponsor checks pass and the zipped
+    threshold witness/key loop stays structurally safe but below threshold,
+    `validateVaultSpend` rejects with `TX_ERR_SIG_INVALID`. -/
+theorem vault_threshold_below_required_count_rejected
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hSafe : ∀ p ∈ List.zip vWit vKeys, thresholdPairSafe p)
+    (hBelow : thresholdSafeCount (List.zip vWit vKeys) < vThr) :
+    UtxoApplyGenesisV1.validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .error "TX_ERR_SIG_INVALID" := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
+        .error "TX_ERR_SIG_INVALID" := by
+    exact threshold_below_required_count_rejected vKeys vThr vWit h "CORE_VAULT" hLen hSafe hBelow
+  simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
+
+/-- Follow-up outer live layer: when vault sponsor checks pass, the threshold
+    witness/key loop is structurally safe, enough ML-DSA-87 items match, and
+    the whitelist passes, `validateVaultSpend` accepts. -/
+theorem vault_threshold_required_count_accepts
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hSafe : ∀ p ∈ List.zip vWit vKeys, thresholdPairSafe p)
+    (hEnough : vThr ≤ thresholdSafeCount (List.zip vWit vKeys))
+    (hWL : UtxoApplyGenesisV1.vaultSpendOutputsAllowed wl outs = true) :
+    UtxoApplyGenesisV1.validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .ok () := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
+        .ok () := by
+    exact threshold_required_count_accepts vKeys vThr vWit h "CORE_VAULT" hLen hSafe hEnough
+  exact UtxoApplyGenesisV1.vault_all_pass lids covs vOwnLid vKeys vThr vWit h outs wl
+    hSponsorOk hSig hWL
 
 end RubinFormal
