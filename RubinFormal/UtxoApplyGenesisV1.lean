@@ -31,6 +31,13 @@ def WITNESS_SLOTS (covType : Nat) (covData : Bytes) : Except String Nat := do
   else
     pure 1
 
+inductive CovenantDispatchReady where
+  | p2pk (nextWitnessCursor : Nat)
+  | multisig (m : CovenantGenesisV1.MultisigCovenant) (nextWitnessCursor : Nat)
+  | vault (v : CovenantGenesisV1.VaultCovenant) (nextWitnessCursor : Nat)
+  | htlc (c : CovenantGenesisV1.HtlcCovenant) (nextWitnessCursor : Nat)
+deriving Repr, DecidableEq
+
 def lockIdOfEntry (e : UtxoEntry) : Bytes :=
   RubinFormal.OutputDescriptor.hash e.covenantType e.covenantData
 
@@ -92,13 +99,11 @@ def validateThresholdSigSpendNoCrypto
   pure ()
 
 def validateHTLCSpendNoCrypto
-    (entry : UtxoEntry)
+    (c : CovenantGenesisV1.HtlcCovenant)
     (pathItem : WitnessItem)
     (sigItem : WitnessItem)
     (blockHeight : Nat)
     (blockMtp : Nat) : Except String Unit := do
-  let c ← CovenantGenesisV1.parseHtlcCovenantData entry.covenantData
-
   if pathItem.suiteId != RubinFormal.SUITE_ID_SENTINEL then
     throw "TX_ERR_PARSE"
   if pathItem.pubkey.size != 32 then
@@ -236,42 +241,42 @@ def dispatchCovenantValidation
     (e : UtxoBasicV1.UtxoEntry)
     (tx : UtxoBasicV1.Tx)
     (witnessCursor : Nat)
-    (height blockMtp : Nat) : Except String Nat :=
+    (_height _blockMtp : Nat) : Except String CovenantDispatchReady :=
   if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then
     match WITNESS_SLOTS e.covenantType e.covenantData with
     | .error err => Except.error err
     | .ok slots =>
       if slots != 1 then Except.error "TX_ERR_PARSE"
       else if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
-      else Except.ok (witnessCursor + 1)
+      else Except.ok (.p2pk (witnessCursor + 1))
   else if e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG then
     match CovenantGenesisV1.parseMultisigCovenantData e.covenantData with
     | .error err => Except.error err
-    | .ok _ =>
+    | .ok m =>
       match WITNESS_SLOTS e.covenantType e.covenantData with
       | .error err => Except.error err
       | .ok slots =>
         if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
-        else Except.ok (witnessCursor + slots)
+        else Except.ok (.multisig m (witnessCursor + slots))
   else if e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
     match CovenantGenesisV1.parseVaultCovenantData e.covenantData with
     | .error err => Except.error err
-    | .ok _ =>
+    | .ok v =>
       match WITNESS_SLOTS e.covenantType e.covenantData with
       | .error err => Except.error err
       | .ok slots =>
         if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
-        else Except.ok (witnessCursor + slots)
+        else Except.ok (.vault v (witnessCursor + slots))
   else if e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC then
     match CovenantGenesisV1.parseHtlcCovenantData e.covenantData with
     | .error err => Except.error err
-    | .ok _ =>
+    | .ok c =>
       match WITNESS_SLOTS e.covenantType e.covenantData with
       | .error err => Except.error err
       | .ok slots =>
         if slots != 2 then Except.error "TX_ERR_PARSE"
         else if witnessCursor + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
-        else Except.ok (witnessCursor + 2)
+        else Except.ok (.htlc c (witnessCursor + 2))
   else
     Except.error "TX_ERR_COVENANT_TYPE_INVALID"
 
@@ -405,20 +410,19 @@ def applyNonCoinbaseTxBasicNoCrypto
     let e ← validateInputUtxoLookup isDup (next.find? op) height
 
     -- spend covenant structural validity (parsers)
-    let nextWitnessCursor ←
+    let dispatchReady ←
       dispatchCovenantValidation e tx witnessCursor height blockMtp
-    if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then
+    match dispatchReady with
+    | .p2pk nextWitnessCursor =>
       let w := tx.witness.get! witnessCursor
       -- pre-signature checks only
       validateP2PKSpendPreSig e w height
       witnessCursor := nextWitnessCursor
-    else if e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG then
-      let m ← CovenantGenesisV1.parseMultisigCovenantData e.covenantData
+    | .multisig m nextWitnessCursor =>
       let assigned := (tx.witness.drop witnessCursor).take (nextWitnessCursor - witnessCursor)
       witnessCursor := nextWitnessCursor
       validateThresholdSigSpendNoCrypto m.keys m.threshold assigned height "CORE_MULTISIG"
-    else if e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
-      let v ← CovenantGenesisV1.parseVaultCovenantData e.covenantData
+    | .vault v nextWitnessCursor =>
       let assigned := (tx.witness.drop witnessCursor).take (nextWitnessCursor - witnessCursor)
       witnessCursor := nextWitnessCursor
       vaultInputCount := vaultInputCount + 1
@@ -430,15 +434,11 @@ def applyNonCoinbaseTxBasicNoCrypto
       vaultKeys := v.keys
       vaultThreshold := v.threshold
       vaultWitness := assigned
-    else if e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC then
+    | .htlc c nextWitnessCursor =>
       let pathItem := tx.witness.get! witnessCursor
       let sigItem := tx.witness.get! (witnessCursor + 1)
-      let _ ← CovenantGenesisV1.parseHtlcCovenantData e.covenantData
       witnessCursor := nextWitnessCursor
-      validateHTLCSpendNoCrypto e pathItem sigItem height blockMtp
-    else
-      -- unreachable on `.ok`: helper rejected unsupported covenant types above
-      throw "TX_ERR_COVENANT_TYPE_INVALID"
+      validateHTLCSpendNoCrypto c pathItem sigItem height blockMtp
 
     let lid := lockIdOfEntry e
     inputLockIds := inputLockIds.concat lid
@@ -551,12 +551,12 @@ theorem dispatch_routes_to_vault
     dispatchCovenantValidation e tx wc height bm =
     (match CovenantGenesisV1.parseVaultCovenantData e.covenantData with
      | .error err => Except.error err
-     | .ok _ =>
+     | .ok v =>
        match WITNESS_SLOTS e.covenantType e.covenantData with
        | .error err => Except.error err
        | .ok slots =>
          if wc + slots > tx.witness.length then Except.error "TX_ERR_PARSE"
-         else Except.ok (wc + slots)) := by
+         else Except.ok (.vault v (wc + slots))) := by
   unfold dispatchCovenantValidation; rw [hVault]
   split
   · rename_i h; exact absurd h (by simp [show (CovenantGenesisV1.COV_TYPE_VAULT == CovenantGenesisV1.COV_TYPE_P2PK) = false from by native_decide])
