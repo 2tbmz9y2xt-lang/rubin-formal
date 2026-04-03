@@ -213,9 +213,7 @@
       "spec_section": "§9",
       "go_function": "CalcTxWeight",
       "contract_scope": "Universal closure of S9 weight formula. Full Except-chain proof: txWeightAndStats_ok_weight_eq_constrained records the successful parseTxHeader + parseTxBody + finalizeTxWeight chain and proves .ok implies the returned weight matches computeWeight on parse-derived witnesses.",
-      "limitations": [
-        "Post-rotation suite-aware cost model proved separately in WeightSuiteAware.lean."
-      ],
+      "limitations": [],
       "supporting_theorems": [
         "RubinFormal.Conformance.cv_weight_vectors_pass",
         "RubinFormal.txWeightAndStats_ok_weight_eq",
@@ -236,7 +234,7 @@
         "RubinFormal.WeightSuiteAware.weight_suite_aware_correct_create",
         "RubinFormal.weight_accounting_proved"
       ],
-      "notes": "Universal closure of §9 weight formula. The live txWeightAndStats path now has a parse-constrained full-chain theorem plus a non-vacuous positivity guard; CV-WEIGHT remains the executable evidence lane, and WeightSuiteAware.lean covers the separate post-rotation suite-cost model."
+      "notes": "Universal closure of §9 weight formula. The live txWeightAndStats path now has a parse-constrained full-chain theorem plus a non-vacuous positivity guard; CV-WEIGHT remains the executable evidence lane, and WeightSuiteAware.lean supporting theorems close the suite-aware post-rotation cost model within the same section-level universal row."
     },
     {
       "op": "native_suite_rotation",
