@@ -308,6 +308,36 @@ theorem txWeightAndStats_ok_weight_eq (tx : Bytes) (stats : WeightStats)
     · obtain ⟨daLen, hw⟩ := finalizeTxWeight_ok _ _ _ _ _ _ _ h
       exact ⟨_, daLen, _, hw⟩
 
+/-- LIVE: Full Except-chain proof with parse-constrained witnesses.
+    This strengthens `txWeightAndStats_ok_weight_eq` by recording the exact
+    successful parse chain that produced the weight inputs. -/
+theorem txWeightAndStats_ok_weight_eq_constrained (tx : Bytes) (stats : WeightStats)
+    (h : txWeightAndStats tx = .ok stats) :
+    ∃ (txKind : Nat) (c1 : Wire.Cursor) (baseSize anchorBytes : Nat)
+      (ws : WitnessSectionResult) (c2 : Wire.Cursor) (daLen : Nat),
+      parseTxHeader tx = .ok (txKind, c1) ∧
+      parseTxBody txKind c1 = .ok (baseSize, anchorBytes, ws, c2) ∧
+      finalizeTxWeight tx txKind baseSize anchorBytes ws c2 = .ok stats ∧
+      stats.weight = computeWeight baseSize (ws.endOff - ws.startOff)
+        (compactSizeLen daLen + daLen)
+        (ws.mlCount * VERIFY_COST_ML_DSA_87 + ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE) := by
+  unfold txWeightAndStats at h
+  cases hHeader : parseTxHeader tx with
+  | error e =>
+      simp only [bind, Except.bind, hHeader] at h
+  | ok header =>
+      rcases header with ⟨txKind, c1⟩
+      cases hBody : parseTxBody txKind c1 with
+      | error e =>
+          simp only [bind, Except.bind, hHeader, hBody] at h
+      | ok body =>
+          rcases body with ⟨baseSize, anchorBytes, ws, c2⟩
+          simp only [bind, Except.bind, hHeader, hBody] at h
+          have hFinal : finalizeTxWeight tx txKind baseSize anchorBytes ws c2 = .ok stats := by
+            exact h
+          obtain ⟨daLen, hw⟩ := finalizeTxWeight_ok tx txKind baseSize anchorBytes ws c2 stats hFinal
+          exact ⟨txKind, c1, baseSize, anchorBytes, ws, c2, daLen, rfl, hBody, hFinal, hw⟩
+
 /-- LIVE: weightTail success implies weight > 0 (non-vacuous, uses h). -/
 theorem weightTail_weight_pos (tx : Bytes) (txKind baseSize anchorBytes daLen : Nat)
     (ws : WitnessSectionResult) (c10 : Wire.Cursor) (stats : WeightStats)
@@ -341,7 +371,7 @@ theorem finalizeTxWeight_weight_pos (tx : Bytes) (txKind baseSize anchorBytes : 
 /-- LIVE: txWeightAndStats success implies weight > 0.
     Non-vacuous: 0 is explicitly excluded from .ok results because
     compactSizeLen ≥ 1 guarantees weight ≥ 1 in every .ok path.
-    Empty/short inputs produce .error, not .ok. -/
+    Empty input and 4-byte input are proved to reject, so `.ok` is non-trivial. -/
 theorem txWeightAndStats_weight_pos (tx : Bytes) (stats : WeightStats)
     (h : txWeightAndStats tx = .ok stats) :
     stats.weight > 0 := by
