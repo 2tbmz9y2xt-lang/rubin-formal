@@ -97,18 +97,23 @@ def txNonceFromTxBytes (tx : Bytes) : Except String Nat := do
     | some x => pure x
   pure nonce64.toNat
 
+def anyDuplicateAcc (rest : List Nat) (seen : List Nat) : Bool :=
+  match rest with
+  | [] => false
+  | x :: rs => if seen.contains x then true else anyDuplicateAcc rs (seen ++ [x])
+
 def anyDuplicate (xs : List Nat) : Bool :=
-  let rec go (rest : List Nat) (seen : List Nat) : Bool :=
-    match rest with
-    | [] => false
-    | x :: rs => if seen.contains x then true else go rs (seen ++ [x])
-  go xs []
+  anyDuplicateAcc xs []
+
+def collectNonces : List Bytes → Except String (List Nat)
+  | [] => pure []
+  | tx :: rest => do
+      let nonce ← txNonceFromTxBytes tx
+      let nonces ← collectNonces rest
+      pure (nonce :: nonces)
 
 def nonceReplayCheck (txs : List Bytes) : Except String Unit := do
-  let mut nonces : List Nat := []
-  for tx in txs do
-    let n ← txNonceFromTxBytes tx
-    nonces := nonces ++ [n]
+  let nonces ← collectNonces txs
   if anyDuplicate nonces then
     throw "TX_ERR_NONCE_REPLAY"
   pure ()
