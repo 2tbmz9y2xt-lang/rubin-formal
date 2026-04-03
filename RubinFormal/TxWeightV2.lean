@@ -167,10 +167,9 @@ def parseWitnessSectionForWeight (c : Cursor) : Option WitnessSectionResult := d
            mlCount := mlCount, unknownSuiteCount := unknownSuiteCount,
            anySigAlgInvalid := anySigAlgInvalid, anySigNoncanonical := anySigNoncanonical }
 
-/-- **Pre-rotation scope**: sigCost = mlCount * VERIFY_COST_ML_DSA_87 + unknownCount * 64.
-    Post-rotation (Q-FORMAL-ROTATION-03, `weight_suite_aware_correct`):
-    sigCost = Σ_suite (count(suite) * registry[suite].verifyCost). -/
-def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
+/-- Phase 1: Parse tx header (version, kind, locktime) + skip inputs.
+    Returns (txKind, cursor after inputs). -/
+def parseTxHeader (tx : Bytes) : Except String (Nat × Cursor) := do
   let c0 : Cursor := { bs := tx, off := 0 }
   let (_, c1) ←
     match c0.getU32le? with
@@ -187,7 +186,6 @@ def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
     match c2.getU64le? with
     | none => throw "TX_ERR_PARSE"
     | some x => pure x
-
   let (inCount, c4, minIn) ←
     match c3.getCompactSize? with
     | none => throw "TX_ERR_PARSE"
@@ -195,63 +193,75 @@ def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
   if !minIn then throw "TX_ERR_PARSE"
   match parseInputsSkip c4 inCount with
   | none => throw "TX_ERR_PARSE"
-  | some c5 =>
-    let (outCount, c6, minOut) ←
-      match c5.getCompactSize? with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    if !minOut then throw "TX_ERR_PARSE"
-    let (c7, anchorBytes) ←
-      match parseOutputsForAnchor c6 outCount with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    let (_, c8) ←
+  | some c5 => pure (txKind, c5)
+
+/-- Phase 2: Parse outputs, expiry, DA core, witness section.
+    Returns (baseSize, anchorBytes, witnessSection, cursor).
+    Written without do-notation for proof tractability. -/
+def parseTxBody (txKind : Nat) (c : Cursor) :
+    Except String (Nat × Nat × WitnessSectionResult × Cursor) :=
+  match c.getCompactSize? with
+  | none => .error "TX_ERR_PARSE"
+  | some (outCount, c6, minOut) =>
+    if !minOut then .error "TX_ERR_PARSE"
+    else match parseOutputsForAnchor c6 outCount with
+    | none => .error "TX_ERR_PARSE"
+    | some (c7, anchorBytes) =>
       match c7.getU32le? with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    let (c9, _daCoreLen) ←
-      match DaCoreV1.parseDaCoreFieldsWithBytes txKind c8 with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    let baseSize := c9.off
+      | none => .error "TX_ERR_PARSE"
+      | some (_, c8) =>
+        match DaCoreV1.parseDaCoreFieldsWithBytes txKind c8 with
+        | none => .error "TX_ERR_PARSE"
+        | some (c9, _) =>
+          match parseWitnessSectionForWeight c9 with
+          | none => .error "TX_ERR_PARSE"
+          | some ws =>
+            if ws.endOff - ws.startOff > MAX_WITNESS_BYTES_PER_TX then .error "TX_ERR_WITNESS_OVERFLOW"
+            else if ws.isOverflow then .error "TX_ERR_WITNESS_OVERFLOW"
+            else .ok (c9.off, anchorBytes, ws, ws.cursor)
 
-    let ws ←
-      match parseWitnessSectionForWeight c9 with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    let witnessSize := ws.endOff - ws.startOff
-    if witnessSize > MAX_WITNESS_BYTES_PER_TX then
-      throw "TX_ERR_WITNESS_OVERFLOW"
-    if ws.isOverflow then throw "TX_ERR_WITNESS_OVERFLOW"
-    -- Weight function does NOT throw sig errors (Go parity: CalcTxWeight §9).
-    -- Sig errors are caught by ParseTx/validation, not weight calculation.
-
-    let (daLen, c10, minDa) ←
-      match ws.cursor.getCompactSize? with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    if !minDa then throw "TX_ERR_PARSE"
-    if txKind == 0x00 then
-      if daLen != 0 then throw "TX_ERR_PARSE"
-    else if txKind == 0x01 then
-      if daLen > DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX then throw "TX_ERR_PARSE"
+/-- Weight computation tail: getBytes, verify EOF, compute formula. -/
+def weightTail (tx : Bytes) (txKind : Nat) (baseSize anchorBytes daLen : Nat)
+    (ws : WitnessSectionResult) (c10 : Cursor) : Except String WeightStats :=
+  match c10.getBytes? daLen with
+  | none => .error "TX_ERR_PARSE"
+  | some (_, c11) =>
+    if c11.off != tx.size then .error "TX_ERR_PARSE"
     else
-      if daLen < 1 || daLen > DaCoreV1.CHUNK_BYTES then throw "TX_ERR_PARSE"
-    let (_, c11) ←
-      match c10.getBytes? daLen with
-      | none => throw "TX_ERR_PARSE"
-      | some x => pure x
-    if c11.off != tx.size then
-      throw "TX_ERR_PARSE"
+      let witnessSize := ws.endOff - ws.startOff
+      let daSize := compactSizeLen daLen + daLen
+      let daBytes := if txKind == 0x00 then 0 else daLen
+      let sigCost := ws.mlCount * VERIFY_COST_ML_DSA_87 +
+                     ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE
+      let weight := (WITNESS_DISCOUNT_DIVISOR * baseSize) + witnessSize + daSize + sigCost
+      .ok { weight := weight, daBytes := daBytes, anchorBytes := anchorBytes }
 
-    let daSize := compactSizeLen daLen + daLen
-    let daBytes := if txKind == 0x00 then 0 else daLen
-    let mlCost := ws.mlCount * VERIFY_COST_ML_DSA_87
-    let unknownCost := ws.unknownSuiteCount * VERIFY_COST_UNKNOWN_SUITE
-    let sigCost := mlCost + unknownCost
+/-- Phase 3: Parse DA manifest, validate, compute weight formula.
+    Written without do-notation for proof tractability (avoids __do_jp join points). -/
+def finalizeTxWeight (tx : Bytes) (txKind : Nat) (baseSize : Nat) (anchorBytes : Nat)
+    (ws : WitnessSectionResult) (c : Cursor) : Except String WeightStats :=
+  match c.getCompactSize? with
+  | none => .error "TX_ERR_PARSE"
+  | some (daLen, c10, minDa) =>
+    if !minDa then .error "TX_ERR_PARSE"
+    else if txKind == 0x00 then
+      if daLen != 0 then .error "TX_ERR_PARSE"
+      else weightTail tx txKind baseSize anchorBytes daLen ws c10
+    else if txKind == 0x01 then
+      if daLen > DaCoreV1.MAX_DA_MANIFEST_BYTES_PER_TX then .error "TX_ERR_PARSE"
+      else weightTail tx txKind baseSize anchorBytes daLen ws c10
+    else
+      if daLen < 1 || daLen > DaCoreV1.CHUNK_BYTES then .error "TX_ERR_PARSE"
+      else weightTail tx txKind baseSize anchorBytes daLen ws c10
 
-    let weight := (WITNESS_DISCOUNT_DIVISOR * baseSize) + witnessSize + daSize + sigCost
-    pure { weight := weight, daBytes := daBytes, anchorBytes := anchorBytes }
+/-- **Pre-rotation scope**: sigCost = mlCount * VERIFY_COST_ML_DSA_87 + unknownCount * 64.
+    Post-rotation (Q-FORMAL-ROTATION-03, `weight_suite_aware_correct`):
+    sigCost = Σ_suite (count(suite) * registry[suite].verifyCost).
+    Composed from parseTxHeader → parseTxBody → finalizeTxWeight for proof tractability. -/
+def txWeightAndStats (tx : Bytes) : Except String WeightStats := do
+  let (txKind, c1) ← parseTxHeader tx
+  let (baseSize, anchorBytes, ws, c2) ← parseTxBody txKind c1
+  finalizeTxWeight tx txKind baseSize anchorBytes ws c2
 
 end TxWeightV2
 

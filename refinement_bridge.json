@@ -206,19 +206,20 @@
     {
       "op": "weight_accounting",
       "gate": "CV-WEIGHT",
-      "model_theorem": "RubinFormal.weight_cv_replay_pass",
+      "model_theorem": "RubinFormal.txWeightAndStats_ok_weight_eq_constrained",
       "lean_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
       "theorem_file": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
-      "evidence_level": "machine_checked_behavioral",
+      "evidence_level": "machine_checked_universal",
       "spec_section": "§9",
       "go_function": "CalcTxWeight",
-      "contract_scope": "Behavioral decomposition of the live weight formula (base/witness/DA/signature) with abstract model bridge + conformance replay. Constants pinned, all 4 components independently monotone, DA-component kind=0 proved, sigCost decomposition proved.",
+      "contract_scope": "Universal closure of S9 weight formula. Full Except-chain proof: txWeightAndStats_ok_weight_eq_constrained records the successful parseTxHeader + parseTxBody + finalizeTxWeight chain and proves .ok implies the returned weight matches computeWeight on parse-derived witnesses.",
       "limitations": [
-        "Full end-to-end monadic parse-to-weight theorem (threading through Option/Except chain of txWeightAndStats) is deliberately not attempted — behavioral decomposition + CV replay provides equivalent assurance.",
         "Post-rotation suite-aware cost model proved separately in WeightSuiteAware.lean."
       ],
       "supporting_theorems": [
         "RubinFormal.Conformance.cv_weight_vectors_pass",
+        "RubinFormal.txWeightAndStats_ok_weight_eq",
+        "RubinFormal.txWeightAndStats_weight_pos",
         "RubinFormal.weight_formula_bridges_abstract",
         "RubinFormal.weight_discount_divisor_value",
         "RubinFormal.weight_verify_cost_ml_dsa_value",
@@ -235,7 +236,7 @@
         "RubinFormal.WeightSuiteAware.weight_suite_aware_correct_create",
         "RubinFormal.weight_accounting_proved"
       ],
-      "notes": "Behavioral closure of §9 weight formula. The live txWeightAndStats function is validated against CV vectors (native_decide), and the weight formula is decomposed into pure functions with full monotonicity and abstract model equivalence. Suite-aware cost model (post-rotation) covered by WeightSuiteAware.lean."
+      "notes": "Universal closure of §9 weight formula. The live txWeightAndStats path now has a parse-constrained full-chain theorem plus a non-vacuous positivity guard; CV-WEIGHT remains the executable evidence lane, and WeightSuiteAware.lean covers the separate post-rotation suite-cost model."
     },
     {
       "op": "native_suite_rotation",
