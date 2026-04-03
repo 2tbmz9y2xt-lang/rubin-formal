@@ -544,11 +544,10 @@ theorem witness_cursor_incomplete (cursor witnessLen : Nat)
 
 /-! ## Full covenant dispatch ordering (dispatchCovenantValidation — LIVE)
 
-`dispatchCovenantValidation` is a parallel model of the inline covenant
-dispatch in `applyNonCoinbaseTxBasicNoCrypto` for-loop body (lines 308-349).
-NOT directly called from the for-loop (inline code has mutable state that
-this function doesn't model). Covenant-type checks are structurally identical.
-Written without do-notation (explicit if/match) to enable formal proofs.
+`dispatchCovenantValidation` is now the live structural covenant-dispatch
+sub-function called from the `applyNonCoinbaseTxBasicNoCrypto` per-input loop
+before branch-specific checks/state updates. Written without do-notation
+(explicit if/match) to enable formal proofs on the direct live call path.
 
 FULL DISPATCH PROOF: unknown covenant type → TX_ERR_COVENANT_TYPE_INVALID.
 -/

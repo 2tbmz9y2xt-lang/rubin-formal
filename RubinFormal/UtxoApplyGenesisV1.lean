@@ -227,12 +227,10 @@ def validateValueConservation
     Except.error "TX_ERR_VALUE_CONSERVATION"
   else Except.ok ()
 
-/-- Per-input covenant dispatch — parallel model of the inline if/else chain
-    in `applyNonCoinbaseTxBasicNoCrypto` for-loop body (lines 308-349).
-    NOT directly called from the for-loop (inline code has mutable state updates
-    that this function doesn't model). Written without do-notation to enable
-    formal dispatch ordering proofs. The inline code's covenant-type checks
-    are structurally identical to this function's if/else chain.
+/-- Per-input covenant dispatch — LIVE structural dispatch sub-function used by
+    `applyNonCoinbaseTxBasicNoCrypto` before branch-specific checks/state
+    updates. Written without do-notation to enable formal dispatch ordering
+    proofs while staying on the live call path.
     Ordering: P2PK → Multisig → Vault → HTLC → TX_ERR_COVENANT_TYPE_INVALID. -/
 def dispatchCovenantValidation
     (e : UtxoBasicV1.UtxoEntry)
@@ -407,27 +405,22 @@ def applyNonCoinbaseTxBasicNoCrypto
     let e ← validateInputUtxoLookup isDup (next.find? op) height
 
     -- spend covenant structural validity (parsers)
+    let nextWitnessCursor ←
+      dispatchCovenantValidation e tx witnessCursor height blockMtp
     if e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK then
-      let slots ← WITNESS_SLOTS e.covenantType e.covenantData
-      if slots != 1 then throw "TX_ERR_PARSE"
-      if witnessCursor + slots > tx.witness.length then throw "TX_ERR_PARSE"
       let w := tx.witness.get! witnessCursor
       -- pre-signature checks only
       validateP2PKSpendPreSig e w height
-      witnessCursor := witnessCursor + 1
+      witnessCursor := nextWitnessCursor
     else if e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG then
       let m ← CovenantGenesisV1.parseMultisigCovenantData e.covenantData
-      let slots ← WITNESS_SLOTS e.covenantType e.covenantData
-      if witnessCursor + slots > tx.witness.length then throw "TX_ERR_PARSE"
-      let assigned := (tx.witness.drop witnessCursor).take slots
-      witnessCursor := witnessCursor + slots
+      let assigned := (tx.witness.drop witnessCursor).take (nextWitnessCursor - witnessCursor)
+      witnessCursor := nextWitnessCursor
       validateThresholdSigSpendNoCrypto m.keys m.threshold assigned height "CORE_MULTISIG"
     else if e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT then
       let v ← CovenantGenesisV1.parseVaultCovenantData e.covenantData
-      let slots ← WITNESS_SLOTS e.covenantType e.covenantData
-      if witnessCursor + slots > tx.witness.length then throw "TX_ERR_PARSE"
-      let assigned := (tx.witness.drop witnessCursor).take slots
-      witnessCursor := witnessCursor + slots
+      let assigned := (tx.witness.drop witnessCursor).take (nextWitnessCursor - witnessCursor)
+      witnessCursor := nextWitnessCursor
       vaultInputCount := vaultInputCount + 1
       if vaultInputCount > 1 then
         throw "TX_ERR_VAULT_MULTI_INPUT_FORBIDDEN"
@@ -438,16 +431,13 @@ def applyNonCoinbaseTxBasicNoCrypto
       vaultThreshold := v.threshold
       vaultWitness := assigned
     else if e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC then
-      let _ ← CovenantGenesisV1.parseHtlcCovenantData e.covenantData
-      let slots ← WITNESS_SLOTS e.covenantType e.covenantData
-      if slots != 2 then throw "TX_ERR_PARSE"
-      if witnessCursor + slots > tx.witness.length then throw "TX_ERR_PARSE"
       let pathItem := tx.witness.get! witnessCursor
       let sigItem := tx.witness.get! (witnessCursor + 1)
-      witnessCursor := witnessCursor + 2
+      let _ ← CovenantGenesisV1.parseHtlcCovenantData e.covenantData
+      witnessCursor := nextWitnessCursor
       validateHTLCSpendNoCrypto e pathItem sigItem height blockMtp
     else
-      -- unsupported covenant in basic apply path
+      -- unreachable on `.ok`: helper rejected unsupported covenant types above
       throw "TX_ERR_COVENANT_TYPE_INVALID"
 
     let lid := lockIdOfEntry e
