@@ -249,6 +249,25 @@
       "evidence_level": "machine_checked_behavioral",
       "contract_scope": "State-machine model of §23.2.1 descriptor activation lifecycle proving at-most-one uniqueness (inductive), five-phase exhaustive height partition with mutual exclusion. Conformance: 11 vectors (6 cutoff + 5 sunset) structurally replayed.",
       "limitations": "Model-level only. No Go/Rust implementation bridge — rotation is not yet implemented in clients. Phase functions (NativeCreateSuites, NativeSpendSuites) are Lean definitions, not extracted from production code."
+    },
+    {
+      "op": "covenant_registry",
+      "gate": "CV-COVENANT-GENESIS",
+      "model_theorem": "RubinFormal.validateOutGenesis_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+      "theorem_file": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§14",
+      "go_function": "validateOutGenesis",
+      "contract_scope": "Universal closure of §14 covenant type registry. Constrained theorem decomposes .ok into 6 per-type disjuncts with value/payload/parser witnesses.",
+      "notes": "Universal closure of the live genesis covenant registry. validateOutGenesis_ok_constrained proves that acceptance implies exactly one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No SHA3/crypto dependency.",
+      "limitations": [],
+      "theorems": [
+        "RubinFormal.validateOutGenesis_ok_constrained",
+        "RubinFormal.validate_out_genesis_rejects_unknown",
+        "RubinFormal.covenant_types_pairwise_distinct",
+        "RubinFormal.dispatch_unknown_covenant_error"
+      ]
     }
   ]
 }
