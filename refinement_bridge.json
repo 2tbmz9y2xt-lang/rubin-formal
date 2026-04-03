@@ -199,7 +199,7 @@
         "RubinFormal.witness_all_ok",
         "RubinFormal.validateDASetIntegrity_ok_constrained"
       ],
-      "notes": "Behavioral closure of the live DA validator surface. validateWitnessErrors is extracted as a LIVE sub-function; the full DA pipeline is decomposed into recursive helpers (accumulateDATxs, verifyCommitIntegrity, collectChunkPayloads, checkOrphanChunks) plus gate-level error propagation, with CV-DA replay backing the same surface.",
+      "notes": "Universal closure of the live DA validator surface. validateDASetIntegrity_ok_constrained decomposes .ok into accumulateDATxs + batch count bound + orphan check + verifyCommitIntegrity with parse-derived witnesses. validateWitnessErrors is extracted as a LIVE sub-function; the full DA pipeline is decomposed into recursive helpers plus gate-level error propagation, with CV-DA replay backing the same surface.",
       "contract_scope": "Universal closure of S21 DA set integrity. Constrained theorem decomposes .ok into all 4 stages with parse-derived witnesses."
     },
     {
