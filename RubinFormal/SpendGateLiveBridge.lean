@@ -1,10 +1,11 @@
 /-
   RubinFormal/SpendGateLiveBridge.lean — Spend/Create Gate Bridge
 
-  Evidence level: machine_checked_universal for model-level gate surface.
-  `spend_create_gate_ok_constrained` proves: ∀ well-formed descriptor,
-  ∀ height, spend and create gates accept ↔ suite membership,
-  and accepted suites are never sentinel.
+  Evidence level for this file remains behavioral on the counted LIVE+BRIDGE
+  row. `spend_create_gate_ok_constrained` is a helper theorem for the
+  spend/create gate model surface: ∀ well-formed descriptor, ∀ height,
+  spend and create gates accept ↔ suite membership, and accepted suites
+  are never sentinel.
 
   Pre-rotation live bridge (validateP2PKSpendPreSig) covers the
   pre-rotation hardcoded `suite != ML_DSA_87` check.
@@ -12,7 +13,7 @@
 
   Spec: CANONICAL §5.4 (witness suite gating), §4.1.2 (rotation phases).
   Depends: NativeSpendCreateGate.lean (FI-ROT-04/05).
-  Closes #285, #369.
+  Closes #285.
 -/
 
 import RubinFormal.NativeSpendCreateGate
@@ -223,11 +224,12 @@ theorem gate_iff_live_suite_check
 -- §  Constrained universal theorem (spend + create gate)
 -- ═══════════════════════════════════════════════════════════════════
 
-/-- **Spend/create gate constrained universal** (§5.4/§4.1.2 model surface):
+/-- **Spend/create gate constrained helper theorem** (§5.4/§4.1.2 model surface):
     for any well-formed descriptor, at every height, both spend and create
     gates accept iff the suite is in the active set, and accepted suites
     are never sentinel. Covers all 5 rotation phases.
-    No claim about post-rotation live function bridge (G7 residual). -/
+    This theorem does not by itself close the post-rotation live bridge gap
+    (G7 residual). -/
 theorem spend_create_gate_ok_constrained
     (d : RotationDeploymentDescriptor) (reg : SuiteRegistry)
     (hwf : wellFormedDescriptor reg d)
