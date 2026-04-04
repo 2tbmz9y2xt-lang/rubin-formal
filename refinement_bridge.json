@@ -270,6 +270,28 @@
         "RubinFormal.covenant_types_pairwise_distinct",
         "RubinFormal.dispatch_unknown_covenant_error"
       ]
+    },
+    {
+      "op": "native_rotation",
+      "gate": "FI-ROT",
+      "model_theorem": "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+      "theorem_file": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§4.1.2/§4.1.3/§23.2.1",
+      "go_function": "DescriptorRotationProvider",
+      "contract_scope": "Universal for native crypto suite rotation. Constrained theorem: ∀ well-formed descriptor+registry, ∀ height → phase partition holds ∧ all active create/spend suites resolve uniquely.",
+      "notes": "Universal for the native suite rotation model surface. Composes fi_rot_02_phase_partition + fi_rot_03_active_{create,suite}_resolves. No claim about byte-level wire encoding trace (G7 residual).",
+      "limitations": [
+        "Structural model ↔ Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained",
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_active_create_suite_resolves",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff"
+      ]
     }
   ]
 }

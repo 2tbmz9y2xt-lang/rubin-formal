@@ -1329,7 +1329,8 @@
         "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites",
         "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only",
         "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only",
-        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered"
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered",
+        "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained"
       ],
       "file": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
       "theorem_files": {
@@ -1346,14 +1347,14 @@
         "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
         "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
         "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
-        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean"
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained": "rubin-formal/RubinFormal/NativeRegistryResolution.lean"
       },
-      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). FI-ROT-03: registry resolution deterministic. BRIDGE: RegistryResolutionLiveBridge proves universal IsRegistered characterization (iff sid=0x01), constant parity (pubkey/sig/cost), phase-dependent suite set bridges for all 5 rotation phases, and DefaultRotationProvider safety — matching Go suite_registry.go / Rust suite_registry.rs.",
+      "notes": "Universal for §4.1.2/§4.1.3/§23.2.1 native crypto suite rotation. native_rotation_ok_constrained proves that for any well-formed descriptor in any well-formed registry, at every height: the phase partition holds and all active create/spend suites resolve to unique entries. Covers all 5 rotation phases including post-rotation dispatch. No claim about byte-level wire encoding trace (G7 residual).",
       "limitations": [
-        "Post-rotation dispatch path not yet covered; pre-rotation ML-DSA-87 resolution proved and bridged",
-        "Bridge proves Lean model matches Go/Rust structure; byte-level trace bridge not yet formalized"
+        "Structural model ↔ Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "spend_gate_bridge",
