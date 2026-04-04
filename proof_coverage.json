@@ -562,7 +562,8 @@
         "RubinFormal.validate_out_genesis_da_commit_canonical_ok",
         "RubinFormal.validate_out_genesis_rejects_unknown",
         "RubinFormal.validate_out_genesis_reserved_future_rejects",
-        "RubinFormal.dispatch_unknown_covenant_error"
+        "RubinFormal.dispatch_unknown_covenant_error",
+        "RubinFormal.validateOutGenesis_ok_constrained"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -579,15 +580,14 @@
         "RubinFormal.validate_out_genesis_da_commit_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
         "RubinFormal.validate_out_genesis_rejects_unknown": "rubin-formal/RubinFormal/CovenantParserGaps.lean",
         "RubinFormal.validate_out_genesis_reserved_future_rejects": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
-        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.validateOutGenesis_ok_constrained": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean"
       },
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "machine_checked_universal",
       "limitations": [
-        "This remains a contract-level row: canonical accept coverage is proved on explicit live sample outputs for the supported covenant tags, while unknown-tag rejection is proved on the live registry/dispatch helpers.",
-        "No universal theorem is claimed here for every malformed covenant payload on every known tag; deep parser semantics for vault/multisig/htlc remain owned by their dedicated rows and replay bundles.",
-        "Spend-side dispatch is still covered through the documented live helper `dispatchCovenantValidation`, not a direct theorem over the full inline loop in `applyNonCoinbaseTxBasicNoCrypto`."
+        "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here; they belong to dedicated per-covenant and sighash rows."
       ],
-      "notes": "Section §14 is no longer replay-only. `CovenantRegistryExhaustive.lean` now covers canonical registry values, pairwise tag distinctness, canonical accept cases for each supported output covenant type, and universal unknown-tag rejection on `validateOutGenesis`; `dispatch_unknown_covenant_error` supplies the live spend-side unknown-covenant reject path. CV-COVENANT-GENESIS replay remains the executable evidence for the shipped fixture set."
+      "notes": "Universal for §14 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
     },
     {
       "section_key": "difficulty_update",

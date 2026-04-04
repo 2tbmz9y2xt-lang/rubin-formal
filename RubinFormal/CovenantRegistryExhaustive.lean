@@ -2,10 +2,16 @@ import RubinFormal.CovenantGenesisV1
 import RubinFormal.CovenantParserGaps
 
 /-!
-# Covenant Registry Exhaustive Proofs (§14)
+# Covenant Registry Exhaustive + Universal Proofs (§14)
 
-Proves covenant type tags are pairwise distinct and that
-the canonical registry maps each known tag to a unique branch.
+Evidence level: machine_checked_universal for §14 validateOutGenesis /
+covenant registry genesis surface.
+`validateOutGenesis_ok_constrained` decomposes `.ok` into at least one of
+6 per-type disjuncts (P2PK/ANCHOR/VAULT/MULTISIG/HTLC/DA_COMMIT) with
+value, payload, and parser-success constraints. Sub-parsers
+(vault/multisig/htlc) are existentially witness-bound.
+No claim about HTLC spend-side preimage / crypto semantics.
+Also proves pairwise tag distinctness and canonical accept samples.
 -/
 
 namespace RubinFormal
@@ -163,5 +169,149 @@ theorem validate_out_genesis_reserved_future_rejects
   all_goals
     simp [COV_TYPE_RESERVED_FUTURE, COV_TYPE_P2PK, COV_TYPE_ANCHOR, COV_TYPE_VAULT,
       COV_TYPE_MULTISIG, COV_TYPE_HTLC, COV_TYPE_DA_COMMIT]
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §  Constrained universal theorem (§14 covenant registry)
+-- ═══════════════════════════════════════════════════════════════════
+
+private theorem not_not_iff_self {P : Prop} [Decidable P] : ¬¬P ↔ P :=
+  ⟨Decidable.byContradiction, fun h hn => hn h⟩
+
+/-- Non-do form of validateOutGenesis for proof tractability. -/
+private def validateOutGenesisExplicit (out : TxOut) (txKind : Nat) (_blockHeight : Nat) : Except String Unit :=
+  if out.covenantType == COV_TYPE_P2PK then
+    if out.value == 0 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else if out.covenantData.size != MAX_P2PK_COVENANT_DATA then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else if (out.covenantData.get! 0).toNat != SUITE_ID_ML_DSA_87 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else Except.ok ()
+  else if out.covenantType == COV_TYPE_ANCHOR then
+    if out.value != 0 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else if out.covenantData.size == 0 || out.covenantData.size > MAX_ANCHOR_PAYLOAD_SIZE then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else Except.ok ()
+  else if out.covenantType == COV_TYPE_VAULT then
+    if out.value == 0 then Except.error "TX_ERR_VAULT_PARAMS_INVALID"
+    else match parseVaultCovenantData out.covenantData with
+      | .error e => Except.error e
+      | .ok _ => Except.ok ()
+  else if out.covenantType == COV_TYPE_MULTISIG then
+    if out.value == 0 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else match parseMultisigCovenantData out.covenantData with
+      | .error e => Except.error e
+      | .ok _ => Except.ok ()
+  else if out.covenantType == COV_TYPE_HTLC then
+    if out.value == 0 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else match parseHtlcCovenantData out.covenantData with
+      | .error e => Except.error e
+      | .ok _ => Except.ok ()
+  else if out.covenantType == COV_TYPE_DA_COMMIT then
+    if txKind != 0x01 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else if out.value != 0 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else if out.covenantData.size != 32 then Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+    else Except.ok ()
+  else Except.error "TX_ERR_COVENANT_TYPE_INVALID"
+
+-- 8M heartbeats needed: unfold + 6-branch do-notation normalization
+set_option maxHeartbeats 8000000 in
+/-- BRIDGE: validateOutGenesis (do-notation) = validateOutGenesisExplicit (if-else).
+    Needed because do-notation creates `__do_jp` join points that block `split at h`. -/
+private theorem validateOutGenesis_eq_explicit (out : TxOut) (txKind bh : Nat) :
+    validateOutGenesis out txKind bh = validateOutGenesisExplicit out txKind bh := by
+  unfold validateOutGenesis validateOutGenesisExplicit
+  simp only [Bind.bind, Except.bind, Pure.pure, Except.pure,
+             throwThe, MonadExcept.throw, MonadExceptOf.throw]
+  -- Each branch: split on guard condition, close by rfl/contradiction/simp_all
+  repeat (first | split | rfl | contradiction | (exfalso; contradiction) | simp_all)
+
+-- 8M heartbeats needed: 6 by_cases + nested split at h per branch
+set_option maxHeartbeats 8000000 in
+/-- **validateOutGenesis constrained universal** (§14 genesis surface):
+    when the live covenant genesis registry accepts an output, at least one
+    of six disjuncts holds — each constraining covenantType, value, and
+    payload conditions. This is NOT a tautology: each disjunct binds
+    concrete guards (value ≠ 0, size = 33, suiteId = ML_DSA_87, parser
+    succeeds, etc.) that the implementation actually checks.
+    No claim about HTLC spend-side preimage / crypto semantics. -/
+theorem validateOutGenesis_ok_constrained (out : TxOut) (txKind bh : Nat)
+    (h : validateOutGenesis out txKind bh = .ok ()) :
+    (out.covenantType = COV_TYPE_P2PK ∧ out.value ≠ 0 ∧
+     out.covenantData.size = MAX_P2PK_COVENANT_DATA ∧
+     (out.covenantData.get! 0).toNat = SUITE_ID_ML_DSA_87) ∨
+    (out.covenantType = COV_TYPE_ANCHOR ∧ out.value = 0 ∧
+     out.covenantData.size > 0 ∧ out.covenantData.size ≤ MAX_ANCHOR_PAYLOAD_SIZE) ∨
+    (out.covenantType = COV_TYPE_VAULT ∧ out.value ≠ 0 ∧
+     ∃ v, parseVaultCovenantData out.covenantData = .ok v) ∨
+    (out.covenantType = COV_TYPE_MULTISIG ∧ out.value ≠ 0 ∧
+     ∃ v, parseMultisigCovenantData out.covenantData = .ok v) ∨
+    (out.covenantType = COV_TYPE_HTLC ∧ out.value ≠ 0 ∧
+     ∃ v, parseHtlcCovenantData out.covenantData = .ok v) ∨
+    (out.covenantType = COV_TYPE_DA_COMMIT ∧ txKind = 1 ∧
+     out.value = 0 ∧ out.covenantData.size = 32) := by
+  rw [validateOutGenesis_eq_explicit] at h
+  unfold validateOutGenesisExplicit at h
+  -- Normalize all Bool/Prop comparisons and split exhaustively
+  simp only [beq_iff_eq, bne_iff_ne, ne_eq, Bool.or_eq_true, decide_eq_true_eq] at h
+  -- Case split on covenantType
+  by_cases hP2PK : out.covenantType = COV_TYPE_P2PK
+  · -- P2PK
+    simp only [hP2PK, ite_true] at h
+    split at h <;> [simp at h; skip]
+    split at h <;> [simp at h; skip]
+    split at h <;> [simp at h; skip]
+    -- After 3 splits, hypotheses in reverse order: hVal hSize hSuite
+    rename_i hVal hSize hSuite
+    have hSize' := Decidable.byContradiction hSize
+    have hSuite' := Decidable.byContradiction hSuite
+    left; exact ⟨hP2PK, hVal, hSize', hSuite'⟩
+  · simp only [hP2PK, ite_false] at h
+    by_cases hAnch : out.covenantType = COV_TYPE_ANCHOR
+    · -- ANCHOR
+      simp only [hAnch, ite_true] at h
+      split at h <;> [simp at h; skip]
+      split at h <;> [simp at h; skip]
+      rename_i hVal hBounds
+      simp only [not_or] at hBounds
+      have hVal' := Decidable.byContradiction hVal
+      right; left; exact ⟨hAnch, hVal', by omega, by omega⟩
+    · simp only [hAnch, ite_false] at h
+      by_cases hVault : out.covenantType = COV_TYPE_VAULT
+      · -- VAULT
+        simp only [hVault, ite_true] at h
+        split at h <;> [simp at h; skip]
+        cases hParse : parseVaultCovenantData out.covenantData with
+        | error e => simp [hParse] at h
+        | ok v =>
+          rename_i hValNZ
+          right; right; left; exact ⟨hVault, hValNZ, ⟨v, rfl⟩⟩
+      · simp only [hVault, ite_false] at h
+        by_cases hMulti : out.covenantType = COV_TYPE_MULTISIG
+        · -- MULTISIG
+          simp only [hMulti, ite_true] at h
+          split at h <;> [simp at h; skip]
+          cases hParse : parseMultisigCovenantData out.covenantData with
+          | error e => simp [hParse] at h
+          | ok v =>
+            rename_i hValNZ
+            right; right; right; left; exact ⟨hMulti, hValNZ, ⟨v, rfl⟩⟩
+        · simp only [hMulti, ite_false] at h
+          by_cases hHtlc : out.covenantType = COV_TYPE_HTLC
+          · -- HTLC
+            simp only [hHtlc, ite_true] at h
+            split at h <;> [simp at h; skip]
+            cases hParse : parseHtlcCovenantData out.covenantData with
+            | error e => simp [hParse] at h
+            | ok v =>
+              rename_i hValNZ
+              right; right; right; right; left; exact ⟨hHtlc, hValNZ, ⟨v, rfl⟩⟩
+          · simp only [hHtlc, ite_false] at h
+            by_cases hDaCom : out.covenantType = COV_TYPE_DA_COMMIT
+            · -- DA_COMMIT
+              simp only [hDaCom, ite_true] at h
+              split at h <;> [simp at h; skip]
+              split at h <;> [simp at h; skip]
+              split at h <;> [simp at h; skip]
+              simp only [ne_eq, not_not_iff_self, bne_iff_ne] at *
+              right; right; right; right; right; exact ⟨hDaCom, ‹_›, ‹_›, ‹_›⟩
+            · -- ELSE
+              simp only [hDaCom, ite_false] at h
 
 end RubinFormal
