@@ -1361,23 +1361,23 @@
       "section_heading": "## Spend Gate — Suite Acceptance Bridge",
       "status": "LIVE+BRIDGE",
       "theorems": [
-        "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence",
-        "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge"
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_ok_constrained",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_rejects_inactive_p2pk_suite"
       ],
       "file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
       "theorem_files": {
-        "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_ok_constrained": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_rejects_inactive_p2pk_suite": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
       },
-      "notes": "Bridge theorems proving equivalence between the abstract spend-gate model and live suite-check functions. Pre-rotation scope: only ML-DSA-87 + SENTINEL.",
+      "notes": "Universal closure of the descriptor-aware spend-side live gate bridge. validateP2PKSpendPreSig_ok_constrained and scanSingleInputStep_ok_constrained prove that, once the same preceding live structural guards have passed, the live P2PK spend helper and the live input-scan P2PK branch succeed iff the committed suite is active in NativeSpendSuites(h,d). Paired rejection theorems fix the exact inactive-suite live errors.",
       "limitations": [
-        "Pre-rotation scope only; post-rotation suite registry dispatch not yet bridged"
+        "Scope: descriptor-aware P2PK spend-side live gate bridge only; create-side gate and other spend validators are tracked in separate rows."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "feature_activation_fsm",

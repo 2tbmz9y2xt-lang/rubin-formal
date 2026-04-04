@@ -302,6 +302,29 @@
       ]
     },
     {
+      "op": "spend_gate_bridge",
+      "gate": "descriptor-aware P2PK spend gate",
+      "model_theorem": "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "theorem_file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§5.4 / §4.1.2",
+      "go_function": "validateP2PKSpendPreSig / scanSingleInputStep",
+      "contract_scope": "Universal closure of the descriptor-aware P2PK spend-side live gate bridge. Under the same preceding live structural guards, validateP2PKSpendPreSig and the P2PK branch of scanSingleInputStep succeed iff the committed suite is in NativeSpendSuites(h,d); inactive suites reject with the exact live error codes.",
+      "notes": "Universal closure of the live post-rotation spend gate bridge on the descriptor-aware P2PK spend path. The counted closure is the direct spend helper plus the input-scan gate; FI-ROT-04/FI-ROT-06 model theorems remain supporting evidence rather than the counted closure itself.",
+      "limitations": [
+        "Scope: descriptor-aware P2PK spend-side live gate bridge only; create-side gate and other spend validators are tracked separately."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_ok_constrained",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_rejects_inactive_p2pk_suite",
+        "RubinFormal.NativeSpendCreateGate.fi_rot_04_spend_gate_iff",
+        "RubinFormal.LegacySunset.fi_rot_06_old_suite_rejected_after_h4",
+        "RubinFormal.LegacySunset.fi_rot_06_new_suite_always_spendable_after_h4"
+      ]
+    },
+    {
       "op": "native_rotation",
       "gate": "FI-ROT",
       "model_theorem": "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained",

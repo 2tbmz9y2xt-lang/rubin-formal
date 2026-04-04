@@ -3,6 +3,7 @@ import RubinFormal.SHA3_256
 import RubinFormal.OutputDescriptorV2
 import RubinFormal.UtxoBasicV1
 import RubinFormal.CovenantGenesisV1
+import RubinFormal.NativeSpendCreateGate
 
 namespace RubinFormal
 
@@ -44,11 +45,17 @@ def lockIdOfEntry (e : UtxoEntry) : Bytes :=
 def parseU16le (b0 b1 : UInt8) : Nat :=
   Wire.u16le? b0 b1
 
-/-- **Pre-rotation scope**: rejects any `suite ≠ ML_DSA_87`.
-    Post-rotation (Q-FORMAL-ROTATION-04): `suite ∉ NATIVE_SPEND_SUITES(h) → reject`. -/
-def validateP2PKSpendPreSig (entry : UtxoEntry) (w : WitnessItem) (_blockHeight : Nat) : Except String Unit := do
+/-- Descriptor-aware live P2PK spend gate.
+    `none` keeps the pre-rotation singleton `{ML_DSA_87}`.
+    `some d` enforces `suite ∈ NATIVE_SPEND_SUITES(h,d)`. -/
+def validateP2PKSpendPreSig
+    (entry : UtxoEntry)
+    (w : WitnessItem)
+    (blockHeight : Nat)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String Unit := do
   let suite := w.suiteId
-  if suite != SUITE_ID_ML_DSA_87 then
+  if !NativeSpendCreateGate.liveSpendGateAllows rotDesc? blockHeight suite then
     throw "TX_ERR_SIG_ALG_INVALID"
   if entry.covenantData.size != CovenantGenesisV1.MAX_P2PK_COVENANT_DATA then
     throw "TX_ERR_COVENANT_TYPE_INVALID"
@@ -376,7 +383,9 @@ def applyNonCoinbaseTxBasicNoCrypto
     (height : Nat)
     (blockTimestamp : Nat)
     (blockMtp : Nat)
-    (chainId : Bytes) : Except String (Nat × Nat) := do
+    (chainId : Bytes)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String (Nat × Nat) := do
   let _ := chainId
   let tx ← UtxoBasicV1.parseTx txBytes
 
@@ -416,7 +425,7 @@ def applyNonCoinbaseTxBasicNoCrypto
     | .p2pk nextWitnessCursor =>
       let w := tx.witness.get! witnessCursor
       -- pre-signature checks only
-      validateP2PKSpendPreSig e w height
+      validateP2PKSpendPreSig e w height rotDesc?
       witnessCursor := nextWitnessCursor
     | .multisig m nextWitnessCursor =>
       let assigned := (tx.witness.drop witnessCursor).take (nextWitnessCursor - witnessCursor)

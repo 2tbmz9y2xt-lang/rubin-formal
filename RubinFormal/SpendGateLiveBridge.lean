@@ -1,15 +1,21 @@
 /-
-  RubinFormal/SpendGateLiveBridge.lean — Q-FORMAL-ROTATION-SPEND-GATE-LIVE-BRIDGE-01
+  RubinFormal/SpendGateLiveBridge.lean — Spend/Create Gate Bridge
 
-  Bridges the model-level nativeSpendGate (NativeSpendCreateGate.lean) to the
-  live validateP2PKSpendPreSig suite check (UtxoApplyGenesisV1.lean).
+  Counted LIVE+BRIDGE row for this file is the descriptor-aware spend-side
+  live bridge. `spend_create_gate_ok_constrained` remains a helper theorem
+  for the spend/create gate model surface: ∀ well-formed descriptor, ∀ height,
+  spend and create gates accept ↔ suite membership, and accepted suites
+  are never sentinel.
 
-  Pre-rotation scope: NativeSpendSuites(h) = {ML_DSA_87}.
-  The model gate accepting ↔ suiteId = SUITE_ID_ML_DSA_87 ↔ live check passes.
+  The counted closure is now the real live P2PK spend path:
+  - `validateP2PKSpendPreSig` on the descriptor-aware branch
+  - `scanSingleInputStep` on the descriptor-aware P2PK branch
+
+  Pre-rotation corollaries remain available through the `none` fallback.
 
   Spec: CANONICAL §5.4 (witness suite gating), §4.1.2 (rotation phases).
-  Depends: NativeSpendCreateGate.lean (FI-ROT-04).
-  Closes #285.
+  Depends: NativeSpendCreateGate.lean (FI-ROT-04/05).
+  Closes #285, #369.
 -/
 
 import RubinFormal.NativeSpendCreateGate
@@ -19,6 +25,7 @@ namespace RubinFormal
 
 namespace SpendGateLiveBridge
 
+open Rotation
 open NativeSuiteRotation
 open NativeSpendCreateGate
 open UtxoApplyGenesisV1
@@ -161,6 +168,35 @@ private theorem utxo_suite_eq_canonical :
     UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 = RubinFormal.SUITE_ID_ML_DSA_87 := by
   native_decide
 
+private theorem uint8_beq_eq_decide (x y : UInt8) :
+    BEq.beq x y = decide (x = y) := by
+  cases x with
+  | mk xv =>
+    cases y with
+    | mk yv =>
+      simp [BEq.beq]
+
+private theorem bytes_beq_refl (a : Bytes) : (a == a) = true := by
+  cases a with
+  | mk ad =>
+      show Array.isEqv ad ad BEq.beq = true
+      have h :
+          (fun (x y : UInt8) => @BEq.beq UInt8 _ x y) =
+          (fun x y => decide (x = y)) := by
+        funext x y
+        exact uint8_beq_eq_decide x y
+      have hrw :
+          Array.isEqv ad ad BEq.beq =
+          Array.isEqv ad ad (fun x y => decide (x = y)) := by
+        congr 1
+      rw [hrw]
+      exact Array.isEqv_self ad
+
+private theorem bytes_bne_self_false (a : Bytes) : (a != a) = false := by
+  show (!(a == a)) = false
+  rw [bytes_beq_refl]
+  rfl
+
 /-- Live suite check does not fire when model gate accepts.
     validateP2PKSpendPreSig line 44: `if suite != SUITE_ID_ML_DSA_87 then throw`.
     When model gate accepts (pre-rotation), suiteId = ML_DSA_87,
@@ -214,6 +250,161 @@ theorem gate_iff_live_suite_check
        · rfl
      have hSuiteEq := (eq_of_beq hbeq).trans utxo_suite_eq_canonical
      exact ml_dsa_87_implies_gate_accept d h w.suiteId hSuites hSuiteEq⟩
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §  Constrained universal theorem (spend + create gate)
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- **Spend/create gate constrained helper theorem** (§5.4/§4.1.2 model surface):
+    for any well-formed descriptor, at every height, both spend and create
+    gates accept iff the suite is in the active set, and accepted suites
+    are never sentinel. Covers all 5 rotation phases.
+    This theorem does not by itself close the post-rotation live bridge gap
+    (G7 residual). -/
+theorem spend_create_gate_ok_constrained
+    (d : RotationDeploymentDescriptor) (reg : SuiteRegistry)
+    (hwf : wellFormedDescriptor reg d)
+    (h : Nat) :
+    (∀ sid, nativeSpendGate d h sid = GateResult.accept ↔
+      sid ∈ NativeSpendSuites h d) ∧
+    (∀ sid, nativeP2PKCreateGate d h sid = GateResult.accept ↔
+      sid ∈ NativeCreateSuites h d) ∧
+    (∀ sid, nativeSpendGate d h sid = GateResult.accept →
+      sid ≠ RubinFormal.SUITE_ID_SENTINEL) ∧
+    (∀ sid, nativeP2PKCreateGate d h sid = GateResult.accept →
+      sid ≠ RubinFormal.SUITE_ID_SENTINEL) :=
+  ⟨fun sid => fi_rot_04_spend_gate_iff d h sid,
+   fun sid => fi_rot_05_create_gate_iff d h sid,
+   fun sid hacc => fi_rot_04_accepted_not_sentinel reg d h sid hwf hacc,
+   fun sid hacc => fi_rot_05_accepted_not_sentinel reg d h sid hwf hacc⟩
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §  Post-rotation live bridge on the real spend path
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- If a suite is inactive at height `h`, the live P2PK spend validator rejects
+    immediately with `TX_ERR_SIG_ALG_INVALID` on the descriptor-aware path. -/
+theorem validateP2PKSpendPreSig_rejects_inactive_suite
+    (d : RotationDeploymentDescriptor)
+    (entry : UtxoBasicV1.UtxoEntry)
+    (w : UtxoBasicV1.WitnessItem)
+    (h : Nat)
+    (hNotMem : w.suiteId ∉ NativeSpendSuites h d) :
+    UtxoApplyGenesisV1.validateP2PKSpendPreSig entry w h (some d) =
+      .error "TX_ERR_SIG_ALG_INVALID" := by
+  have hGate :
+      NativeSpendCreateGate.liveSpendGateAllows (some d) h w.suiteId = false :=
+    (NativeSpendCreateGate.liveSpendGateAllows_some_false_iff d h w.suiteId).mpr hNotMem
+  unfold UtxoApplyGenesisV1.validateP2PKSpendPreSig
+  simp [hGate]
+  rfl
+
+/-- Descriptor-aware live P2PK spend bridge: once the same structural
+    preconditions used by the live validator are satisfied, `.ok ()`
+    is equivalent to membership in `NativeSpendSuites h d`. -/
+theorem validateP2PKSpendPreSig_ok_constrained
+    (d : RotationDeploymentDescriptor)
+    (entry : UtxoBasicV1.UtxoEntry)
+    (w : UtxoBasicV1.WitnessItem)
+    (h : Nat)
+    (hSize : entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA)
+    (hTag : (entry.covenantData.get! 0).toNat = w.suiteId)
+    (hHash : SHA3.sha3_256 w.pubkey = entry.covenantData.extract 1 33) :
+    UtxoApplyGenesisV1.validateP2PKSpendPreSig entry w h (some d) = .ok () ↔
+    w.suiteId ∈ NativeSpendSuites h d := by
+  constructor
+  · intro hOk
+    by_contra hNotMem
+    have hErr :=
+      validateP2PKSpendPreSig_rejects_inactive_suite d entry w h hNotMem
+    rw [hErr] at hOk
+    cases hOk
+  · intro hMem
+    have hGate :
+        NativeSpendCreateGate.liveSpendGateAllows (some d) h w.suiteId = true :=
+      (NativeSpendCreateGate.liveSpendGateAllows_some_iff d h w.suiteId).mpr hMem
+    have hHashFalse : (SHA3.sha3_256 w.pubkey != entry.covenantData.extract 1 33) = false := by
+      rw [hHash]
+      exact bytes_bne_self_false _
+    unfold UtxoApplyGenesisV1.validateP2PKSpendPreSig
+    simp [hGate, hSize, hTag, hHashFalse]
+    rfl
+
+/-- Deterministic successful result for the P2PK branch of `scanSingleInputStep`
+    once all earlier live guards have passed. -/
+private def p2pkScanResult
+    (input : UtxoBasicV1.TxIn)
+    (e : UtxoBasicV1.UtxoEntry)
+    (acc : UtxoBasicV1.InputScanState) : UtxoBasicV1.InputScanState :=
+  { acc with
+      sumIn := acc.sumIn + e.value
+      inputLockIds := acc.inputLockIds.concat (UtxoBasicV1.outputDescriptorLockId e)
+      inputCovTypes := acc.inputCovTypes.concat e.covenantType
+      requiredWitnessSlots := acc.requiredWitnessSlots + 1
+      consumedOutpoints := acc.consumedOutpoints.concat (UtxoBasicV1.txInOutpoint input)
+  }
+
+/-- On the real input-scan path, an inactive P2PK suite is rejected with
+    `TX_ERR_COVENANT_TYPE_INVALID` once the earlier non-suite guards have passed. -/
+theorem scanSingleInputStep_rejects_inactive_p2pk_suite
+    (d : RotationDeploymentDescriptor)
+    (input : UtxoBasicV1.TxIn)
+    (utxoMap : Std.RBMap UtxoBasicV1.Outpoint UtxoBasicV1.UtxoEntry UtxoBasicV1.cmpOutpoint)
+    (height : Nat)
+    (acc : UtxoBasicV1.InputScanState)
+    (e : UtxoBasicV1.UtxoEntry)
+    (hNoDup : acc.consumedOutpoints.contains (UtxoBasicV1.txInOutpoint input) = false)
+    (hFind : utxoMap.find? (UtxoBasicV1.txInOutpoint input) = some e)
+    (hMaturity : UtxoBasicV1.validateCoinbaseMaturity e height = .ok ())
+    (hP2PK : e.covenantType = UtxoBasicV1.COV_TYPE_P2PK)
+    (hSize : e.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA)
+    (hNotMem : (e.covenantData.get! 0).toNat ∉ NativeSpendSuites height d) :
+    UtxoBasicV1.scanSingleInputStep input utxoMap height acc (some d) =
+      .error "TX_ERR_COVENANT_TYPE_INVALID" := by
+  have hGate :
+      NativeSpendCreateGate.liveSpendGateAllows (some d) height (e.covenantData.get! 0).toNat = false :=
+    (NativeSpendCreateGate.liveSpendGateAllows_some_false_iff d height (e.covenantData.get! 0).toNat).mpr hNotMem
+  unfold UtxoBasicV1.scanSingleInputStep
+  simp [hNoDup, hFind, hMaturity, hP2PK, hSize, hGate,
+    UtxoBasicV1.COV_TYPE_P2PK, UtxoBasicV1.COV_TYPE_ANCHOR, UtxoBasicV1.COV_TYPE_DA_COMMIT,
+    UtxoBasicV1.COV_TYPE_VAULT]
+  rfl
+
+/-- Descriptor-aware live input-scan bridge for the P2PK branch: under the
+    same preceding guards as the live scanner, the step succeeds iff the
+    committed suite is active in `NativeSpendSuites h d`. -/
+theorem scanSingleInputStep_ok_constrained
+    (d : RotationDeploymentDescriptor)
+    (input : UtxoBasicV1.TxIn)
+    (utxoMap : Std.RBMap UtxoBasicV1.Outpoint UtxoBasicV1.UtxoEntry UtxoBasicV1.cmpOutpoint)
+    (height : Nat)
+    (acc : UtxoBasicV1.InputScanState)
+    (e : UtxoBasicV1.UtxoEntry)
+    (hNoDup : acc.consumedOutpoints.contains (UtxoBasicV1.txInOutpoint input) = false)
+    (hFind : utxoMap.find? (UtxoBasicV1.txInOutpoint input) = some e)
+    (hMaturity : UtxoBasicV1.validateCoinbaseMaturity e height = .ok ())
+    (hP2PK : e.covenantType = UtxoBasicV1.COV_TYPE_P2PK)
+    (hSize : e.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA) :
+    UtxoBasicV1.scanSingleInputStep input utxoMap height acc (some d) =
+      .ok (p2pkScanResult input e acc) ↔
+    (e.covenantData.get! 0).toNat ∈ NativeSpendSuites height d := by
+  constructor
+  · intro hOk
+    by_contra hNotMem
+    have hErr :=
+      scanSingleInputStep_rejects_inactive_p2pk_suite
+        d input utxoMap height acc e hNoDup hFind hMaturity hP2PK hSize hNotMem
+    rw [hErr] at hOk
+    cases hOk
+  · intro hMem
+    have hGate :
+        NativeSpendCreateGate.liveSpendGateAllows (some d) height (e.covenantData.get! 0).toNat = true :=
+      (NativeSpendCreateGate.liveSpendGateAllows_some_iff d height (e.covenantData.get! 0).toNat).mpr hMem
+    unfold UtxoBasicV1.scanSingleInputStep
+    simp [p2pkScanResult, hNoDup, hFind, hMaturity, hP2PK, hSize, hGate,
+      UtxoBasicV1.COV_TYPE_P2PK, UtxoBasicV1.COV_TYPE_ANCHOR, UtxoBasicV1.COV_TYPE_DA_COMMIT,
+      UtxoBasicV1.COV_TYPE_VAULT]
+    rfl
 
 end SpendGateLiveBridge
 

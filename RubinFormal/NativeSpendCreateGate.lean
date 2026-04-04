@@ -46,6 +46,15 @@ def nativeSpendGate
   if suiteId ∈ NativeSpendSuites h d then GateResult.accept
   else GateResult.reject_sig_alg_invalid
 
+/-- Descriptor-aware live spend gate predicate.
+    `none` keeps the pre-rotation singleton behavior `{ML_DSA_87}`.
+    `some d` lifts the post-rotation model gate onto the live spend path. -/
+def liveSpendGateAllows
+    (rotDesc? : Option RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) : Bool :=
+  match rotDesc? with
+  | none => decide (suiteId = RubinFormal.SUITE_ID_ML_DSA_87)
+  | some d => decide (nativeSpendGate d h suiteId = GateResult.accept)
+
 /-- The native P2PK create gate: accepts iff suite_id ∈ NATIVE_CREATE_SUITES(h).
     P2PK is the only native covenant that commits suite_id at creation time. -/
 def nativeP2PKCreateGate
@@ -85,6 +94,52 @@ theorem fi_rot_04_spend_gate_iff
   · intro hmem
     unfold nativeSpendGate
     simp [hmem]
+
+/-- Pre-rotation fallback branch of the live spend gate helper. -/
+theorem liveSpendGateAllows_none_iff
+    (h : Nat) (suiteId : Nat) :
+    liveSpendGateAllows none h suiteId = true ↔
+    suiteId = RubinFormal.SUITE_ID_ML_DSA_87 := by
+  constructor
+  · intro hAllow
+    simpa [liveSpendGateAllows] using hAllow
+  · intro hEq
+    simp [liveSpendGateAllows, hEq]
+
+/-- Post-rotation branch of the live spend gate helper is equivalent to the
+    abstract spend gate acceptance criterion. -/
+theorem liveSpendGateAllows_some_iff
+    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) :
+    liveSpendGateAllows (some d) h suiteId = true ↔
+    suiteId ∈ NativeSpendSuites h d := by
+  constructor
+  · intro hAllow
+    have hGate : nativeSpendGate d h suiteId = GateResult.accept := by
+      simpa [liveSpendGateAllows] using hAllow
+    exact (fi_rot_04_spend_gate_iff d h suiteId).mp hGate
+  · intro hMem
+    have hGate : nativeSpendGate d h suiteId = GateResult.accept :=
+      (fi_rot_04_spend_gate_iff d h suiteId).mpr hMem
+    simp [liveSpendGateAllows, hGate]
+
+/-- Boolean false form of the post-rotation live spend gate helper. -/
+theorem liveSpendGateAllows_some_false_iff
+    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) :
+    liveSpendGateAllows (some d) h suiteId = false ↔
+    suiteId ∉ NativeSpendSuites h d := by
+  constructor
+  · intro hFalse
+    intro hMem
+    have hTrue : liveSpendGateAllows (some d) h suiteId = true :=
+      (liveSpendGateAllows_some_iff d h suiteId).mpr hMem
+    rw [hFalse] at hTrue
+    cases hTrue
+  · intro hNotMem
+    cases hAllow : liveSpendGateAllows (some d) h suiteId with
+    | false => rfl
+    | true =>
+        exfalso
+        exact hNotMem ((liveSpendGateAllows_some_iff d h suiteId).mp hAllow)
 
 /-- FI-ROT-04: spend gate is determined solely by (d, h, suiteId).
     No covenant-type-specific logic: the gate function signature takes
@@ -132,6 +187,14 @@ theorem fi_rot_05_create_gate_sound
   split at haccept
   · assumption
   · contradiction
+
+/-- FI-ROT-05 (equivalence): create gate is equivalent to membership. -/
+theorem fi_rot_05_create_gate_iff
+    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) :
+    nativeP2PKCreateGate d h suiteId = GateResult.accept ↔
+    suiteId ∈ NativeCreateSuites h d :=
+  ⟨fi_rot_05_create_gate_sound d h suiteId,
+   fun hmem => by unfold nativeP2PKCreateGate; simp [hmem]⟩
 
 /-- FI-ROT-05 (completeness): if suite ∉ NATIVE_CREATE_SUITES(h),
     P2PK creation is rejected. -/
