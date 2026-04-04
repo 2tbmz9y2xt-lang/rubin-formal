@@ -585,7 +585,7 @@
       },
       "evidence_level": "machine_checked_universal",
       "limitations": [],
-      "notes": "Universal closure of §14 covenant type registry. validateOutGenesis_ok_constrained decomposes .ok into 6 disjuncts (P2PK/ANCHOR/VAULT/MULTISIG/HTLC/DA_COMMIT) with per-type constraints on value, covenantData, and parser success. All sub-parsers (vault/multisig/htlc) are existentially witness-bound. Unknown-tag rejection is ∀-quantified via validate_out_genesis_rejects_unknown. CV-COVENANT-GENESIS replay remains complementary executable evidence."
+      "notes": "Universal for §14 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
     },
     {
       "section_key": "difficulty_update",

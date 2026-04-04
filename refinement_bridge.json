@@ -259,8 +259,8 @@
       "evidence_level": "machine_checked_universal",
       "spec_section": "§14",
       "go_function": "validateOutGenesis",
-      "contract_scope": "Universal closure of §14 covenant type registry. Constrained theorem decomposes .ok into 6 per-type disjuncts with value/payload/parser witnesses.",
-      "notes": "Universal closure of the live genesis covenant registry. validateOutGenesis_ok_constrained proves that acceptance implies exactly one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No SHA3/crypto dependency.",
+      "contract_scope": "Universal for §14 validateOutGenesis / covenant registry genesis surface. Constrained theorem decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses.",
+      "notes": "Universal for the live genesis covenant registry surface. validateOutGenesis_ok_constrained proves that acceptance implies at least one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics.",
       "limitations": [],
       "supporting_theorems": [
         "RubinFormal.validateOutGenesis_ok_constrained",

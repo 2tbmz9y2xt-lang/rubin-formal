@@ -4,11 +4,13 @@ import RubinFormal.CovenantParserGaps
 /-!
 # Covenant Registry Exhaustive + Universal Proofs (§14)
 
-Evidence level: machine_checked_universal.
-`validateOutGenesis_ok_constrained` decomposes `.ok` into 6 per-type
-disjuncts (P2PK/ANCHOR/VAULT/MULTISIG/HTLC/DA_COMMIT) with value,
-payload, and parser-success constraints. Sub-parsers (vault/multisig/htlc)
-are existentially witness-bound. No SHA3/crypto dependency.
+Evidence level: machine_checked_universal for §14 validateOutGenesis /
+covenant registry genesis surface.
+`validateOutGenesis_ok_constrained` decomposes `.ok` into at least one of
+6 per-type disjuncts (P2PK/ANCHOR/VAULT/MULTISIG/HTLC/DA_COMMIT) with
+value, payload, and parser-success constraints. Sub-parsers
+(vault/multisig/htlc) are existentially witness-bound.
+No claim about HTLC spend-side preimage / crypto semantics.
 Also proves pairwise tag distinctness and canonical accept samples.
 -/
 
@@ -208,29 +210,34 @@ private def validateOutGenesisExplicit (out : TxOut) (txKind : Nat) (_blockHeigh
     else Except.ok ()
   else Except.error "TX_ERR_COVENANT_TYPE_INVALID"
 
+-- 8M heartbeats needed: unfold + 6-branch do-notation normalization
 set_option maxHeartbeats 8000000 in
-/-- BRIDGE: validateOutGenesis = validateOutGenesisExplicit -/
+/-- BRIDGE: validateOutGenesis (do-notation) = validateOutGenesisExplicit (if-else).
+    Needed because do-notation creates `__do_jp` join points that block `split at h`. -/
 private theorem validateOutGenesis_eq_explicit (out : TxOut) (txKind bh : Nat) :
     validateOutGenesis out txKind bh = validateOutGenesisExplicit out txKind bh := by
   unfold validateOutGenesis validateOutGenesisExplicit
   simp only [Bind.bind, Except.bind, Pure.pure, Except.pure,
              throwThe, MonadExcept.throw, MonadExceptOf.throw]
+  -- Each branch: split on guard condition, close by rfl/contradiction/simp_all
   repeat (first | split | rfl | contradiction | (exfalso; contradiction) | simp_all)
 
+-- 8M heartbeats needed: 6 by_cases + nested split at h per branch
 set_option maxHeartbeats 8000000 in
-/-- **validateOutGenesis constrained universal**: when the live covenant
-    genesis registry accepts an output, exactly one of six disjuncts holds —
-    each constraining covenantType, value, and payload conditions.
-    This is NOT a tautology: each disjunct binds concrete guards
-    (value ≠ 0, size = 33, suiteId = ML_DSA_87, parser succeeds, etc.)
-    that the implementation actually checks. -/
+/-- **validateOutGenesis constrained universal** (§14 genesis surface):
+    when the live covenant genesis registry accepts an output, at least one
+    of six disjuncts holds — each constraining covenantType, value, and
+    payload conditions. This is NOT a tautology: each disjunct binds
+    concrete guards (value ≠ 0, size = 33, suiteId = ML_DSA_87, parser
+    succeeds, etc.) that the implementation actually checks.
+    No claim about HTLC spend-side preimage / crypto semantics. -/
 theorem validateOutGenesis_ok_constrained (out : TxOut) (txKind bh : Nat)
     (h : validateOutGenesis out txKind bh = .ok ()) :
     (out.covenantType = COV_TYPE_P2PK ∧ out.value ≠ 0 ∧
      out.covenantData.size = MAX_P2PK_COVENANT_DATA ∧
      (out.covenantData.get! 0).toNat = SUITE_ID_ML_DSA_87) ∨
     (out.covenantType = COV_TYPE_ANCHOR ∧ out.value = 0 ∧
-     out.covenantData.size > 0 ∧ ¬(out.covenantData.size > MAX_ANCHOR_PAYLOAD_SIZE)) ∨
+     out.covenantData.size > 0 ∧ out.covenantData.size ≤ MAX_ANCHOR_PAYLOAD_SIZE) ∨
     (out.covenantType = COV_TYPE_VAULT ∧ out.value ≠ 0 ∧
      ∃ v, parseVaultCovenantData out.covenantData = .ok v) ∨
     (out.covenantType = COV_TYPE_MULTISIG ∧ out.value ≠ 0 ∧
@@ -264,7 +271,7 @@ theorem validateOutGenesis_ok_constrained (out : TxOut) (txKind bh : Nat)
       rename_i hVal hBounds
       simp only [not_or] at hBounds
       have hVal' := Decidable.byContradiction hVal
-      right; left; exact ⟨hAnch, hVal', by omega, hBounds.2⟩
+      right; left; exact ⟨hAnch, hVal', by omega, by omega⟩
     · simp only [hAnch, ite_false] at h
       by_cases hVault : out.covenantType = COV_TYPE_VAULT
       · -- VAULT
