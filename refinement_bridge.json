@@ -286,7 +286,6 @@
         "Structural model ↔ Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
       ],
       "supporting_theorems": [
-        "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained",
         "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
         "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves",
         "RubinFormal.NativeRegistryResolution.fi_rot_03_active_create_suite_resolves",

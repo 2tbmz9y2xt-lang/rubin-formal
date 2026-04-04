@@ -188,7 +188,7 @@ theorem fi_rot_03_pre_rotation_no_duplicates :
     Scope: structural model parity with Go/Rust suite_registry.
     No claim about byte-level wire encoding trace (G7 residual). -/
 theorem native_rotation_ok_constrained
-    (reg : SuiteRegistry) (d : RotationDeploymentDescriptor)
+    (d : RotationDeploymentDescriptor) (reg : SuiteRegistry)
     (hwf : wellFormedDescriptor reg d)
     (hnd : registryNoDuplicates reg)
     (h : Nat) :
