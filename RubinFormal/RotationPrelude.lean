@@ -98,8 +98,9 @@ def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
     **Action for ROT-04**: generalise to `suiteId ∉ NATIVE_CREATE_SUITES(h) → reject`.
 
   #### UtxoApplyGenesisV1.lean
-  - `validateP2PKSpendPreSig`: `suite != SUITE_ID_ML_DSA_87 → reject`.
-    **Action for ROT-04**: generalise to `suite ∉ NATIVE_SPEND_SUITES(h) → reject`.
+  - `validateP2PKSpendPreSig`: descriptor-aware live spend gate.
+    `rotDesc? = none` keeps pre-rotation `{ML_DSA_87}`;
+    `rotDesc? = some d` enforces `suite ∈ NATIVE_SPEND_SUITES(h,d)`.
   - `validateWitnessItemLengths`: ML-DSA-87 branch with hardcoded bounds.
     **Action for ROT-02/ROT-03**: lookup bounds from registry.
   - `validateThresholdSigSpendNoCrypto`: ML-DSA-87 branch.
@@ -108,14 +109,16 @@ def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
     **Action**: update samples if registry model changes output format.
 
   #### UtxoBasicV1.lean
-  - `scanSingleInputStep`: `suite != SUITE_ID_ML_DSA_87 → reject` in P2PK path.
-    **Action for ROT-04**: generalise to `suite ∉ NATIVE_SPEND_SUITES(h)`.
+  - `scanSingleInputStep`: descriptor-aware P2PK input gate.
+    `rotDesc? = none` keeps pre-rotation `{ML_DSA_87}`;
+    `rotDesc? = some d` enforces `suite ∈ NATIVE_SPEND_SUITES(h,d)`.
 
   #### FormalGap03.lean
   - `sem001MLDSABoundedLengthStatement`: hypothesis `w.suiteId = SUITE_ID_ML_DSA_87`.
     **Already scoped** — valid pre-rotation; post-rotation needs per-suite variant.
   - `validateP2PKSpendPreSig_binds_pubkey`: conclusion includes `w.suiteId = SUITE_ID_ML_DSA_87`.
-    **Already scoped** — follows from `validateP2PKSpendPreSig` accepting only ML-DSA-87.
+    **Already scoped** — follows from `validateP2PKSpendPreSig` on the default `none`
+    pre-rotation branch accepting only ML-DSA-87.
   - `sem002_mldsa_binding_proved`: composition of above two.
     **Already scoped** — inherits scope from premises.
 -/
