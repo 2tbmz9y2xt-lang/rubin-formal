@@ -56,7 +56,7 @@ private def featureBitStateAtBoundaryIndexLoop
 /-- Fold witness list matching the Go/Rust boundary loop:
     `(0, 0)` first, then one `(boundaryHeight, prevWindowSignalCount)` pair for
     each later boundary. -/
-private def featureBitBoundaryWindows : Nat → List Nat → List (Nat × Nat)
+def featureBitBoundaryWindows : Nat → List Nat → List (Nat × Nat)
   | 0, _ => [(0, 0)]
   | boundaryIndex + 1, windowSignalCounts =>
       featureBitBoundaryWindows boundaryIndex windowSignalCounts ++
@@ -99,12 +99,6 @@ theorem featurebit_state_at_height_from_window_counts_state_eq_fold
   exact featureBitStateAtBoundaryIndexLoop_eq_fold d
     ((height - height % FEATURE_SIGNAL_WINDOW) / FEATURE_SIGNAL_WINDOW)
     windowSignalCounts
-
-/-! ## §1 Lock-in priority bridge
-
-The single-step FSM bridge theorems remain valid; the new multi-boundary fold
-above simply lifts them onto the live state-at-height helper path.
--/
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §1  Lock-in priority bridge
