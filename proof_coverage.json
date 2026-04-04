@@ -37,11 +37,11 @@
         "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
         "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
       },
-      "notes": "Upgraded from constant pinning to LIVE validator rejection for the witness-item-length subset of Section 4. validateWitnessItemLengths (LIVE function) rejection is proved for the three covered error paths: ML-DSA-87 bounds (TX_ERR_SIG_NONCANONICAL), unknown suite (TX_ERR_SIG_ALG_INVALID), and sentinel non-empty (TX_ERR_PARSE). Accept paths are proved for completeness within that witness-validation surface. Subsidy and HTLC constant facts remain covered by their dedicated theorem entries; other Section 4 constants are carried by their own dedicated rows such as weight accounting and DA integrity rather than by this single note block.",
+      "notes": "Behavioral ceiling for finite Section 4 constants. LIVE theorems in ConsensusConstantsBehavioral close the validateWitnessItemLengths witness-validation surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and exhaustive constrained outcome partition. Dedicated pinned theorem entries separately cover subsidy U128 safety and HTLC timelock semantics. Other Section 4 constants intentionally remain owned by their own dedicated rows such as weight accounting and DA integrity rather than being overclaimed here as a single section-wide universal theorem.",
       "limitations": [
-        "This row does not by itself prove every literal or bound named in canonical Section 4; it aggregates the witness-validation subset plus a narrow set of dedicated constant theorems."
+        "Finite pinned constants are not a meaningful section-wide universal target here. This row aggregates the live witness-validation subset plus dedicated subsidy/HTLC constant theorems, while other Section 4 literals remain claimed by their own dedicated rows."
       ],
-      "evidence_level": "machine_checked_contract"
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "transaction_wire",
