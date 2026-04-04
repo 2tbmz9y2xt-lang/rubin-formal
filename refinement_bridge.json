@@ -261,7 +261,9 @@
       "go_function": "validateOutGenesis",
       "contract_scope": "Universal for §14 validateOutGenesis / covenant registry genesis surface. Constrained theorem decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses.",
       "notes": "Universal for the live genesis covenant registry surface. validateOutGenesis_ok_constrained proves that acceptance implies at least one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics.",
-      "limitations": [],
+      "limitations": [
+        "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here."
+      ],
       "supporting_theorems": [
         "RubinFormal.validateOutGenesis_ok_constrained",
         "RubinFormal.validate_out_genesis_rejects_unknown",

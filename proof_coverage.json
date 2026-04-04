@@ -584,7 +584,9 @@
         "RubinFormal.validateOutGenesis_ok_constrained": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean"
       },
       "evidence_level": "machine_checked_universal",
-      "limitations": [],
+      "limitations": [
+        "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here; they belong to dedicated per-covenant and sighash rows."
+      ],
       "notes": "Universal for §14 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
     },
     {
