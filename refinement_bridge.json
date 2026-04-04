@@ -262,7 +262,7 @@
       "contract_scope": "Universal closure of §14 covenant type registry. Constrained theorem decomposes .ok into 6 per-type disjuncts with value/payload/parser witnesses.",
       "notes": "Universal closure of the live genesis covenant registry. validateOutGenesis_ok_constrained proves that acceptance implies exactly one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No SHA3/crypto dependency.",
       "limitations": [],
-      "theorems": [
+      "supporting_theorems": [
         "RubinFormal.validateOutGenesis_ok_constrained",
         "RubinFormal.validate_out_genesis_rejects_unknown",
         "RubinFormal.covenant_types_pairwise_distinct",
