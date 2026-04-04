@@ -1364,20 +1364,22 @@
         "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence",
         "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check",
         "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge"
+        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge",
+        "RubinFormal.SpendGateLiveBridge.spend_create_gate_ok_constrained"
       ],
       "file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
       "theorem_files": {
         "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
         "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
         "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
+        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.spend_create_gate_ok_constrained": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
       },
-      "notes": "Bridge theorems proving equivalence between the abstract spend-gate model and live suite-check functions. Pre-rotation scope: only ML-DSA-87 + SENTINEL.",
+      "notes": "Universal for §5.4/§4.1.2 spend/create gate model surface. spend_create_gate_ok_constrained: ∀ well-formed descriptor, ∀ height, gates accept ↔ suite membership, accepted ≠ sentinel. Pre-rotation live bridge covers hardcoded ML_DSA_87. Post-rotation live function not formalized (G7 residual).",
       "limitations": [
-        "Pre-rotation scope only; post-rotation suite registry dispatch not yet bridged"
+        "Model-level gate characterization universal for all 5 rotation phases. Live function bridge (validateP2PKSpendPreSig) covers pre-rotation surface; post-rotation live function not yet formalized (G7-class cross-language bridge residual)."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "feature_activation_fsm",

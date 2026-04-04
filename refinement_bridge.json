@@ -321,6 +321,27 @@
         "RubinFormal.NativeRegistryResolution.fi_rot_03_active_create_suite_resolves",
         "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff"
       ]
+    },
+    {
+      "op": "spend_gate_bridge",
+      "gate": "FI-ROT-04/05",
+      "model_theorem": "RubinFormal.SpendGateLiveBridge.spend_create_gate_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "theorem_file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§5.4/§4.1.2",
+      "go_function": "validateP2PKSpendPreSig",
+      "contract_scope": "Universal for spend/create gate model surface. ∀ well-formed descriptor, ∀ height → gates accept ↔ suite membership ∧ accepted ≠ sentinel.",
+      "notes": "Model-level gate universal for all 5 phases. Pre-rotation live bridge covers hardcoded ML_DSA_87. Post-rotation live function not formalized (G7 residual).",
+      "limitations": [
+        "Model-level gate universal for all 5 phases. Live bridge pre-rotation only; post-rotation live function not formalized (G7 residual)."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.NativeSpendCreateGate.fi_rot_04_spend_gate_iff",
+        "RubinFormal.NativeSpendCreateGate.fi_rot_05_create_gate_iff",
+        "RubinFormal.NativeSpendCreateGate.fi_rot_04_accepted_not_sentinel",
+        "RubinFormal.NativeSpendCreateGate.fi_rot_05_accepted_not_sentinel"
+      ]
     }
   ]
 }

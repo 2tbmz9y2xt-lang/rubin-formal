@@ -133,6 +133,14 @@ theorem fi_rot_05_create_gate_sound
   · assumption
   · contradiction
 
+/-- FI-ROT-05 (equivalence): create gate is equivalent to membership. -/
+theorem fi_rot_05_create_gate_iff
+    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) :
+    nativeP2PKCreateGate d h suiteId = GateResult.accept ↔
+    suiteId ∈ NativeCreateSuites h d :=
+  ⟨fi_rot_05_create_gate_sound d h suiteId,
+   fun hmem => by unfold nativeP2PKCreateGate; simp [hmem]⟩
+
 /-- FI-ROT-05 (completeness): if suite ∉ NATIVE_CREATE_SUITES(h),
     P2PK creation is rejected. -/
 theorem fi_rot_05_create_gate_rejects

@@ -1,15 +1,18 @@
 /-
-  RubinFormal/SpendGateLiveBridge.lean — Q-FORMAL-ROTATION-SPEND-GATE-LIVE-BRIDGE-01
+  RubinFormal/SpendGateLiveBridge.lean — Spend/Create Gate Bridge
 
-  Bridges the model-level nativeSpendGate (NativeSpendCreateGate.lean) to the
-  live validateP2PKSpendPreSig suite check (UtxoApplyGenesisV1.lean).
+  Evidence level: machine_checked_universal for model-level gate surface.
+  `spend_create_gate_ok_constrained` proves: ∀ well-formed descriptor,
+  ∀ height, spend and create gates accept ↔ suite membership,
+  and accepted suites are never sentinel.
 
-  Pre-rotation scope: NativeSpendSuites(h) = {ML_DSA_87}.
-  The model gate accepting ↔ suiteId = SUITE_ID_ML_DSA_87 ↔ live check passes.
+  Pre-rotation live bridge (validateP2PKSpendPreSig) covers the
+  pre-rotation hardcoded `suite != ML_DSA_87` check.
+  Post-rotation live function bridge not yet formalized (G7 residual).
 
   Spec: CANONICAL §5.4 (witness suite gating), §4.1.2 (rotation phases).
-  Depends: NativeSpendCreateGate.lean (FI-ROT-04).
-  Closes #285.
+  Depends: NativeSpendCreateGate.lean (FI-ROT-04/05).
+  Closes #285, #369.
 -/
 
 import RubinFormal.NativeSpendCreateGate
@@ -19,6 +22,7 @@ namespace RubinFormal
 
 namespace SpendGateLiveBridge
 
+open Rotation
 open NativeSuiteRotation
 open NativeSpendCreateGate
 open UtxoApplyGenesisV1
@@ -214,6 +218,32 @@ theorem gate_iff_live_suite_check
        · rfl
      have hSuiteEq := (eq_of_beq hbeq).trans utxo_suite_eq_canonical
      exact ml_dsa_87_implies_gate_accept d h w.suiteId hSuites hSuiteEq⟩
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §  Constrained universal theorem (spend + create gate)
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- **Spend/create gate constrained universal** (§5.4/§4.1.2 model surface):
+    for any well-formed descriptor, at every height, both spend and create
+    gates accept iff the suite is in the active set, and accepted suites
+    are never sentinel. Covers all 5 rotation phases.
+    No claim about post-rotation live function bridge (G7 residual). -/
+theorem spend_create_gate_ok_constrained
+    (d : RotationDeploymentDescriptor) (reg : SuiteRegistry)
+    (hwf : wellFormedDescriptor reg d)
+    (h : Nat) :
+    (∀ sid, nativeSpendGate d h sid = GateResult.accept ↔
+      sid ∈ NativeSpendSuites h d) ∧
+    (∀ sid, nativeP2PKCreateGate d h sid = GateResult.accept ↔
+      sid ∈ NativeCreateSuites h d) ∧
+    (∀ sid, nativeSpendGate d h sid = GateResult.accept →
+      sid ≠ RubinFormal.SUITE_ID_SENTINEL) ∧
+    (∀ sid, nativeP2PKCreateGate d h sid = GateResult.accept →
+      sid ≠ RubinFormal.SUITE_ID_SENTINEL) :=
+  ⟨fun sid => fi_rot_04_spend_gate_iff d h sid,
+   fun sid => fi_rot_05_create_gate_iff d h sid,
+   fun sid hacc => fi_rot_04_accepted_not_sentinel reg d h sid hwf hacc,
+   fun sid hacc => fi_rot_05_accepted_not_sentinel reg d h sid hwf hacc⟩
 
 end SpendGateLiveBridge
 
