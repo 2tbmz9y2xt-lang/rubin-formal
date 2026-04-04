@@ -259,8 +259,8 @@
       "evidence_level": "machine_checked_universal",
       "spec_section": "§23",
       "go_function": "FeatureBitStateAtHeightFromWindowCounts",
-      "contract_scope": "Universal closure of §23 feature activation FSM / state-only state-at-height fold surface. featurebit_state_at_height_from_window_counts_state_eq_fold bridges the live multi-boundary state helper to the fold-based FSM model, and featurebit_state_at_height_from_window_counts_state_monotone lifts multi_step_monotone onto the live height path.",
-      "notes": "Universal closure of the §23 feature activation FSM state surface. The state-only live multi-boundary state-at-height fold used by Go/Rust featurebits helpers is now transcribed in Lean and bridged to the fold-based FSM model; existing single-step transition and flagday theorems remain complementary support.",
+      "contract_scope": "Universal closure of §23 feature activation FSM / prechecked state-only state-at-height fold surface. featurebit_state_at_height_from_window_counts_state_eq_fold bridges the live multi-boundary state helper to the fold-based FSM model once the same sufficient window_signal_counts prefix guard enforced by Go/Rust has passed, and featurebit_state_at_height_from_window_counts_state_monotone lifts multi_step_monotone onto that reachable live height path.",
+      "notes": "Universal closure of the §23 feature activation FSM state surface on the reachable prechecked state-at-height fold path. The Go/Rust helper's out-of-range error branch remains outside this row's scoped state-only bridge; existing single-step transition and flagday theorems remain complementary support.",
       "limitations": [],
       "supporting_theorems": [
         "RubinFormal.active_terminal",

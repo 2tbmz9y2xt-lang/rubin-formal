@@ -1416,7 +1416,7 @@
         "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
       },
-      "notes": "Universal closure of §23 feature activation FSM / flag-day surface. FeatureActivationLiveBridge now bridges the state-only live multi-boundary state-at-height fold used by Go featurebits.go and Rust featurebits.rs to the existing fold-based FSM model, then lifts multi_step_monotone onto that live helper path. Single-step priority/no-skip/iff theorems plus flagday_complete_behavior remain complementary executable evidence. 14 theorems total.",
+      "notes": "Universal closure of §23 feature activation FSM / flag-day surface. FeatureActivationLiveBridge now bridges the prechecked state-only live multi-boundary state-at-height fold used by Go featurebits.go and Rust featurebits.rs to the existing fold-based FSM model, then lifts multi_step_monotone onto that reachable helper path under the same sufficient window_signal_counts prefix guard enforced by live code before the fold begins. Single-step priority/no-skip/iff theorems plus flagday_complete_behavior remain complementary executable evidence. 14 theorems total.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     }
