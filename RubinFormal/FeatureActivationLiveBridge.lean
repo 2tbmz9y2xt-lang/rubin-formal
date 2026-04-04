@@ -25,6 +25,87 @@ namespace RubinFormal
 
 namespace FeatureActivationLiveBridge
 
+private def FEATURE_SIGNAL_WINDOW : Nat := 2016
+
+/-! ## §0 Multi-boundary live fold bridge
+
+Go `FeatureBitStateAtHeightFromWindowCounts` and Rust
+`featurebit_state_at_height_from_window_counts` do not stop at a single
+`next_state` call. They compute a boundary-aligned target index and then run an
+inclusive fold from boundary 0 through that index, using the previous window's
+signal count at each step after the genesis boundary.
+
+The remaining gap for the §23 row is precisely this multi-boundary fold. We
+capture the state-only live loop here (without the helper's out-of-range error
+surface) and bridge it to the existing fold-based FSM model from
+`FeatureActivationFSM.lean`.
+-/
+
+/-- State-only live transcription of the Go/Rust multi-boundary featurebits
+    loop. This isolates the actual FSM fold after the helper has already chosen
+    the boundary-aligned target index and admitted a sufficient signal-count
+    prefix. -/
+private def featureBitStateAtBoundaryIndexLoop
+    (d : FeatureBitDeployment) : Nat → List Nat → FeatureBitState
+  | 0, _ => featureBitNextState .defined 0 0 d
+  | boundaryIndex + 1, windowSignalCounts =>
+      let prev := featureBitStateAtBoundaryIndexLoop d boundaryIndex windowSignalCounts
+      let prevCnt := windowSignalCounts.getD boundaryIndex 0
+      featureBitNextState prev ((boundaryIndex + 1) * FEATURE_SIGNAL_WINDOW) prevCnt d
+
+/-- Fold witness list matching the Go/Rust boundary loop:
+    `(0, 0)` first, then one `(boundaryHeight, prevWindowSignalCount)` pair for
+    each later boundary. -/
+private def featureBitBoundaryWindows : Nat → List Nat → List (Nat × Nat)
+  | 0, _ => [(0, 0)]
+  | boundaryIndex + 1, windowSignalCounts =>
+      featureBitBoundaryWindows boundaryIndex windowSignalCounts ++
+        [((boundaryIndex + 1) * FEATURE_SIGNAL_WINDOW, windowSignalCounts.getD boundaryIndex 0)]
+
+/-- State-only live transcription of the height-based Go/Rust helper:
+    align the queried height to its featurebits boundary, derive the target
+    boundary index, and run the inclusive multi-boundary fold. -/
+def featureBitStateAtHeightFromWindowCountsState
+    (d : FeatureBitDeployment) (height : Nat) (windowSignalCounts : List Nat) :
+    FeatureBitState :=
+  let boundaryHeight := height - (height % FEATURE_SIGNAL_WINDOW)
+  let targetBoundaryIndex := boundaryHeight / FEATURE_SIGNAL_WINDOW
+  featureBitStateAtBoundaryIndexLoop d targetBoundaryIndex windowSignalCounts
+
+private theorem featureBitStateAtBoundaryIndexLoop_eq_fold
+    (d : FeatureBitDeployment) (boundaryIndex : Nat)
+    (windowSignalCounts : List Nat) :
+    featureBitStateAtBoundaryIndexLoop d boundaryIndex windowSignalCounts =
+      (featureBitBoundaryWindows boundaryIndex windowSignalCounts).foldl
+        (fun s p => featureBitNextState s p.1 p.2 d) .defined := by
+  induction boundaryIndex with
+  | zero =>
+      simp [featureBitStateAtBoundaryIndexLoop, featureBitBoundaryWindows]
+  | succ boundaryIndex ih =>
+      simp [featureBitStateAtBoundaryIndexLoop, featureBitBoundaryWindows, ih,
+        List.foldl_append]
+
+/-- BRIDGE: the live multi-boundary state loop is extensionally equal to the
+    fold-based FSM model used by `multi_step_monotone`. This closes the
+    remaining `FeatureBitStateAtHeightFromWindowCounts` fold gap for §23. -/
+theorem featurebit_state_at_height_from_window_counts_state_eq_fold
+    (d : FeatureBitDeployment) (height : Nat) (windowSignalCounts : List Nat) :
+    featureBitStateAtHeightFromWindowCountsState d height windowSignalCounts =
+      (featureBitBoundaryWindows
+        ((height - (height % FEATURE_SIGNAL_WINDOW)) / FEATURE_SIGNAL_WINDOW)
+        windowSignalCounts).foldl
+        (fun s p => featureBitNextState s p.1 p.2 d) .defined := by
+  unfold featureBitStateAtHeightFromWindowCountsState
+  exact featureBitStateAtBoundaryIndexLoop_eq_fold d
+    ((height - height % FEATURE_SIGNAL_WINDOW) / FEATURE_SIGNAL_WINDOW)
+    windowSignalCounts
+
+/-! ## §1 Lock-in priority bridge
+
+The single-step FSM bridge theorems remain valid; the new multi-boundary fold
+above simply lifts them onto the live state-at-height helper path.
+-/
+
 -- ═══════════════════════════════════════════════════════════════════
 -- §1  Lock-in priority bridge
 --
@@ -234,6 +315,21 @@ theorem min_three_steps_to_active
   constructor
   · exact (defined_to_started_iff bh1 cnt1 d).mp hStep1
   · exact (started_to_lockedin_iff bh2 cnt2 d).mp hStep2
+
+/-- LIVE: the state produced by the live height-based multi-boundary helper is
+    monotone in the canonical FSM order. This is the live counterpart of
+    `multi_step_monotone`, now wired to the exact state-at-height fold path used
+    by Go/Rust featurebits helpers. -/
+theorem featurebit_state_at_height_from_window_counts_state_monotone
+    (d : FeatureBitDeployment) (height : Nat) (windowSignalCounts : List Nat) :
+    featureBitStateOrd .defined ≤
+      featureBitStateOrd
+        (featureBitStateAtHeightFromWindowCountsState d height windowSignalCounts) := by
+  rw [featurebit_state_at_height_from_window_counts_state_eq_fold]
+  exact multi_step_monotone d .defined
+    (featureBitBoundaryWindows
+      ((height - (height % FEATURE_SIGNAL_WINDOW)) / FEATURE_SIGNAL_WINDOW)
+      windowSignalCounts)
 
 end FeatureActivationLiveBridge
 

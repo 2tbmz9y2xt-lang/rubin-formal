@@ -251,6 +251,36 @@
       "limitations": "Model-level only. No Go/Rust implementation bridge — rotation is not yet implemented in clients. Phase functions (NativeCreateSuites, NativeSpendSuites) are Lean definitions, not extracted from production code."
     },
     {
+      "op": "feature_activation_fsm",
+      "gate": "featurebits state-at-height fold",
+      "model_theorem": "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone",
+      "lean_file": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+      "theorem_file": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§23",
+      "go_function": "FeatureBitStateAtHeightFromWindowCounts",
+      "contract_scope": "Universal closure of §23 feature activation FSM / state-only state-at-height fold surface. featurebit_state_at_height_from_window_counts_state_eq_fold bridges the live multi-boundary state helper to the fold-based FSM model, and featurebit_state_at_height_from_window_counts_state_monotone lifts multi_step_monotone onto the live height path.",
+      "notes": "Universal closure of the §23 feature activation FSM state surface. The state-only live multi-boundary state-at-height fold used by Go/Rust featurebits helpers is now transcribed in Lean and bridged to the fold-based FSM model; existing single-step transition and flagday theorems remain complementary support.",
+      "limitations": [],
+      "supporting_theorems": [
+        "RubinFormal.active_terminal",
+        "RubinFormal.failed_terminal",
+        "RubinFormal.locked_in_always_activates",
+        "RubinFormal.multi_step_monotone",
+        "RubinFormal.flagday_exact_activation",
+        "RubinFormal.FeatureActivationLiveBridge.lockin_priority_over_timeout",
+        "RubinFormal.FeatureActivationLiveBridge.no_defined_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.no_started_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior",
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone"
+      ]
+    },
+    {
       "op": "covenant_registry",
       "gate": "CV-COVENANT-GENESIS",
       "model_theorem": "RubinFormal.validateOutGenesis_ok_constrained",

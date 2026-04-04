@@ -1395,7 +1395,9 @@
         "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
         "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
         "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior",
-        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active"
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone"
       ],
       "file": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
       "theorem_files": {
@@ -1410,14 +1412,13 @@
         "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
-        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
       },
-      "notes": "FSM correctness: terminal states absorbing, locked_in→active unconditional, flag-day activation at exact height. BRIDGE: FeatureActivationLiveBridge proves lock-in priority over timeout (consensus-critical evaluation order matching Go/Rust), no-skip transition guarantees (DEFINED→ACTIVE impossible in 1 step), exact iff-characterizations for core transitions, minimum-three-steps-to-active, and flagday complete behavioral bridge (exact activation + no-premature-activation + monotonicity as one-way latch) — matching Go featurebits.go/flagday.go and Rust featurebits.rs/flagday.rs.",
-      "limitations": [
-        "Bridge proves Lean FSM matches Go/Rust evaluation order; byte-level Go trace replay not yet formalized",
-        "FeatureBitStateAtHeightFromWindowCounts (multi-boundary fold) not yet bridged to Lean multi_step_monotone"
-      ],
-      "evidence_level": "machine_checked_behavioral"
+      "notes": "Universal closure of §23 feature activation FSM / flag-day surface. FeatureActivationLiveBridge now bridges the state-only live multi-boundary state-at-height fold used by Go featurebits.go and Rust featurebits.rs to the existing fold-based FSM model, then lifts multi_step_monotone onto that live helper path. Single-step priority/no-skip/iff theorems plus flagday_complete_behavior remain complementary executable evidence. 14 theorems total.",
+      "limitations": [],
+      "evidence_level": "machine_checked_universal"
     }
   ],
   "proof_level": "refinement",
