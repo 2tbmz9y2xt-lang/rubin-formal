@@ -1217,7 +1217,7 @@
         "RubinFormal.connectBlockFullComputed_none_eq",
         "RubinFormal.connectBlockFullComputed_ok_implies_txctx_gates"
       ],
-      "file": "rubin-formal/RubinFormal/Refinement/ParallelEquivalence.lean",
+      "file": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
       "theorem_files": {
         "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence_live": "rubin-formal/RubinFormal/Refinement/ParallelEquivalence.lean",
         "RubinFormal.connectBlockFullComputed_eq_connectBlockFull": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
