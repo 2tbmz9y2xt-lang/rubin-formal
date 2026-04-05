@@ -267,13 +267,104 @@ class CollectRegistryErrorsTests(unittest.TestCase):
             self.assertEqual(theorem_errors, [])
 
 
-class MainFunctionSmokeTest(unittest.TestCase):
-    """Smoke test for the main() entry point using real repo files."""
+class MainFunctionTests(unittest.TestCase):
+    """Tests for the main() entry point."""
 
     def test_main_import(self) -> None:
         """Verify main can be imported without side effects."""
         from tools.check_formal_registry_truth import main
         self.assertTrue(callable(main))
+
+    def test_main_returns_1_on_missing_files(self) -> None:
+        """load_registry_inputs raises FileNotFoundError when files are missing, and fail returns 1."""
+        from tools.check_formal_registry_truth import load_registry_inputs, fail
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            old_stderr = sys.stderr
+            sys.stderr = io.StringIO()
+            try:
+                try:
+                    load_registry_inputs(root)
+                    self.fail("Should have raised FileNotFoundError")
+                except FileNotFoundError as exc:
+                    result = fail(str(exc))
+                    self.assertEqual(result, 1)
+            finally:
+                sys.stderr = old_stderr
+
+    def test_main_succeeds_with_valid_registry(self) -> None:
+        """main() returns 0 with a fully valid minimal registry."""
+        import unittest.mock as mock
+        from tools.check_formal_registry_truth import (
+            collect_registry_errors,
+            load_registry_inputs,
+            theorem_lookups,
+        )
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            lean_dir = root / "RubinFormal"
+            lean_dir.mkdir()
+
+            # Create lean file with theorems for all shared-op parity requirements
+            lean_file = lean_dir / "Ops.lean"
+            lean_file.write_text(
+                "namespace RubinFormal.Ops\n"
+                "theorem sighash_ok : True := by trivial\n"
+                "theorem da_ok : True := by trivial\n"
+                "theorem weight_ok : True := by trivial\n"
+                "end RubinFormal.Ops\n",
+                encoding="utf-8",
+            )
+
+            # Create .olean
+            lake_dir = root / ".lake" / "build" / "lib" / "RubinFormal"
+            lake_dir.mkdir(parents=True)
+            (lake_dir / "Ops.olean").write_text("")
+
+            lean_path = "rubin-formal/RubinFormal/Ops.lean"
+            evidence = "machine_checked_universal"
+            coverage = {
+                "coverage": [
+                    {
+                        "section_key": "sighash_v1",
+                        "file": lean_path,
+                        "theorems": ["RubinFormal.Ops.sighash_ok"],
+                        "theorem_files": {"RubinFormal.Ops.sighash_ok": lean_path},
+                        "evidence_level": evidence,
+                    },
+                    {
+                        "section_key": "da_set_integrity",
+                        "file": lean_path,
+                        "theorems": ["RubinFormal.Ops.da_ok"],
+                        "theorem_files": {"RubinFormal.Ops.da_ok": lean_path},
+                        "evidence_level": evidence,
+                    },
+                    {
+                        "section_key": "weight_accounting",
+                        "file": lean_path,
+                        "theorems": ["RubinFormal.Ops.weight_ok"],
+                        "theorem_files": {"RubinFormal.Ops.weight_ok": lean_path},
+                        "evidence_level": evidence,
+                    },
+                ]
+            }
+            bridge = {
+                "critical_ops": [
+                    {"op": "sighash_v1", "evidence_level": evidence},
+                    {"op": "da_set_integrity", "evidence_level": evidence},
+                    {"op": "weight_accounting", "evidence_level": evidence},
+                ]
+            }
+
+            (root / "proof_coverage.json").write_text(json.dumps(coverage), encoding="utf-8")
+            (root / "refinement_bridge.json").write_text(json.dumps(bridge), encoding="utf-8")
+
+            cov, br, lean_files = load_registry_inputs(root)
+            ea, eif = theorem_lookups(root, lean_files)
+            _, _, _, errors = collect_registry_errors(root, cov, br, ea, eif)
+            self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":
