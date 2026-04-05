@@ -17,7 +17,12 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         with:
           script: |
+            // Bots whose reviews always require dismiss-to-merge
             const MONITORED_BOTS = ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]'];
+            // Bots whose reviews require dismiss only when body matches a pattern
+            const CONDITIONAL_BOTS = [
+              { login: 'github-actions[bot]', bodyPattern: 'Hostile Formal Review:' }
+            ];
             const pr = context.payload.pull_request;
             const prNumber = pr.number;
             const headSha = pr.head.sha;
@@ -40,13 +45,26 @@ jobs:
               return;
             }
 
+            function isMonitored(review) {
+              const login = review.user?.login || '';
+              if (MONITORED_BOTS.includes(login)) return true;
+              const cond = CONDITIONAL_BOTS.find(b => b.login === login);
+              if (cond && (review.body || '').includes(cond.bodyPattern)) return true;
+              return false;
+            }
+
+            function botLabel(review) {
+              const login = review.user?.login || '';
+              const cond = CONDITIONAL_BOTS.find(b => b.login === login);
+              return cond ? `${login} (DeepSeek Formal Review)` : login;
+            }
+
             // Keep only the latest review per monitored bot
             const latestByBot = {};
             for (const review of reviews) {
-              const login = review.user?.login || '';
-              if (MONITORED_BOTS.includes(login)) {
-                latestByBot[login] = review;
-              }
+              if (!isMonitored(review)) continue;
+              const key = botLabel(review);
+              latestByBot[key] = review;
             }
 
             const blocking = [];
