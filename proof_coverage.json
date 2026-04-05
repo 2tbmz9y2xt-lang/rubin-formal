@@ -1212,22 +1212,24 @@
       "section_heading": "## Parallel Validation — Sequential Equivalence (Q-PV-19)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Refinement.ParallelEquivalence.reducer_equivalence",
-        "RubinFormal.Refinement.ParallelEquivalence.reducePar_eq_flushAccepts",
-        "RubinFormal.Refinement.ParallelEquivalence.validatePar_eq_validateParLive",
-        "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence",
         "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence_live",
-        "RubinFormal.Refinement.ParallelEquivalence.context_free_reducer_parity",
-        "RubinFormal.Refinement.ParallelEquivalence.reducer_permutation_invariant",
-        "RubinFormal.Refinement.ParallelEquivalence.precompute_enables_reorder"
+        "RubinFormal.connectBlockFullComputed_eq_connectBlockFull",
+        "RubinFormal.connectBlockFullComputed_none_eq",
+        "RubinFormal.connectBlockFullComputed_ok_implies_txctx_gates"
       ],
-      "file": "rubin-formal/RubinFormal/Refinement/ParallelEquivalence.lean",
-      "notes": "Helper-level bridge for the live parallel signature queue contract. The counted surface now closes only the accept/reject behavior that Go SigCheckQueue.Flush actually promises: success iff every queued signature verifies, rejection iff any queued signature fails. The row no longer counts cursor/signature purity wrappers or corollary wrappers as substantive evidence.",
+      "file": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+      "theorem_files": {
+        "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence_live": "rubin-formal/RubinFormal/Refinement/ParallelEquivalence.lean",
+        "RubinFormal.connectBlockFullComputed_eq_connectBlockFull": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.connectBlockFullComputed_none_eq": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+        "RubinFormal.connectBlockFullComputed_ok_implies_txctx_gates": "rubin-formal/RubinFormal/ConnectBlockFull.lean"
+      },
+      "notes": "Counted core is now the LIVE/BRIDGE quartet only: (1) accept_reject_equivalence_live for the Go SigCheckQueue.Flush contract, (2) connectBlockFullComputed_eq_connectBlockFull for exact some-path equality on the shared validated TxContext-input surface, (3) connectBlockFullComputed_none_eq for the unconditional none-path, and (4) connectBlockFullComputed_ok_implies_txctx_gates to derive the some-path gate assumptions from an actual live .ok result. Helper/model reducer lemmas remain in ParallelEquivalence.lean as supporting mathematics but are no longer counted here as separate coverage.",
       "limitations": [
-        "This row does not claim an end-to-end theorem for ConnectBlockBasicInMemoryAtHeight versus ConnectBlockParallelSigVerify over the full block pipeline.",
+        "The full block-pipeline equality is scoped to the shared validated TxContext-input surface: on the some-path, connectBlockFullComputed_eq_connectBlockFull applies once validateTxContextContinuingCounts and validateTxContextSighashWitness accept; malformed TxContext-input rejections remain covered by the live §14 TxContext gate row rather than duplicated here.",
         "Auxiliary tagged-result lowest-index theorems remain in ParallelEquivalence.lean for helper reasoning only; they are not counted here because the live queue may early-abort and surface a deterministic submission-order error instead of the absolute lowest failing index."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "txctx_coreext_fixture_replay",

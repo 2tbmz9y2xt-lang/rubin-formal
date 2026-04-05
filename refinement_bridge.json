@@ -203,6 +203,29 @@
       "contract_scope": "Universal closure of S21 DA set integrity. Constrained theorem decomposes .ok into all 4 stages with parse-derived witnesses."
     },
     {
+      "op": "parallel_validation_equivalence",
+      "model_theorem": "RubinFormal.connectBlockFullComputed_eq_connectBlockFull",
+      "lean_file": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+      "theorem_file": "rubin-formal/RubinFormal/ConnectBlockFull.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§18/§14/§19",
+      "go_function": "connect_block_parallel.go::BuildTxContext / ConnectBlockParallelSigVerify",
+      "contract_scope": "Universal closure of the shared validated sequential-versus-parallel block-connection surface. The row counts both the live queue accept/reject bridge in ParallelEquivalence.lean and the exact full block-pipeline equality between connectBlockFullComputed (computed TxContext path) and connectBlockFull (aggregate compatibility wrapper). The some-path equality is exact once the live TxContext continuing-count and sighash-witness gates accept; the none-path equality is unconditional.",
+      "limitations": [
+        "Malformed TxContext-input bundles that fail validateTxContextContinuingCounts or validateTxContextSighashWitness are intentionally tracked by the live §14 TxContext gate closure, not duplicated here as extra sequential↔parallel equivalence claims.",
+        "Auxiliary tagged-result lowest-index helper theorems are excluded from this bridge because the live queue promises deterministic submission-order surfacing under early abort, not a universal absolute-lowest-failing-index contract."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence_live",
+        "RubinFormal.connectBlockFullComputed_eq_connectBlockFull",
+        "RubinFormal.connectBlockFullComputed_none_eq",
+        "RubinFormal.connectBlockFullComputed_ok_implies_txctx_gates",
+        "RubinFormal.buildTxContextLive_eq_fromValues",
+        "RubinFormal.buildTxContextLive_eq_buildTxContext"
+      ],
+      "notes": "The previous behavioral ceiling came from counting only the queue reducer contract. The bridge now rests on the live queue accept/reject theorem plus the exact ConnectBlockFull computed-path equalities in ConnectBlockFull.lean; lower-level reducer algebra remains internal helper math rather than counted bridge surface. This upgrades the row honestly to universal without claiming malformed-TxContext equivalence or lowest-index error surfacing."
+    },
+    {
       "op": "weight_accounting",
       "gate": "CV-WEIGHT",
       "model_theorem": "RubinFormal.txWeightAndStats_ok_weight_eq_constrained",
