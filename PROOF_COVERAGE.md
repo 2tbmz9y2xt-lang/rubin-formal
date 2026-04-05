@@ -16,7 +16,8 @@
   - `toy` (только model-baseline),
   - `byte` (byte-accurate слой),
   - `refined` (refinement to executable path).
-- `status=proved/stated/deferred` относится к конкретной pinned-секции **в рамках указанного `proof_level`**.
+- `status=proved/proved_with_axiom/stated/deferred` относится к конкретной pinned-секции **в рамках указанного `proof_level`**.
+- `status=proved_with_axiom` означает: proof закрывает секцию, но опирается на явно названные криптографические или модельные допущения, поэтому честный ceiling такой записи — `machine_checked_assumption_backed`, а не unconditional `universal`.
 
 Внешний аудит / freeze-ready коммуникации **НЕ ДОЛЖНЫ** трактовать текущий `proof_level=refinement`
 как “formal verification of CANONICAL for all inputs/sections”.
