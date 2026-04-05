@@ -5,7 +5,7 @@
 ## Что есть сейчас
 
 - Lean4-пакет `RubinFormal`
-- `proof_coverage.json` с machine-readable coverage registry по 24 текущим section entries
+- `proof_coverage.json` с machine-readable coverage registry по 25 текущим section entries
 - formal registry entries с явным `evidence_level`, `notes` и `limitations`, чтобы публичные claims не обгоняли реальную границу доказательств
 
 ## Граница claims (критично)
@@ -45,8 +45,8 @@
 
 - Это **не** полный freeze-ready пакет уровня "универсальная байтовая модель wire + state transition для всех секций".
 - Консенсусные правила не меняются.
-- Формальный coverage registry сейчас содержит 24 machine-checked section entries.
-- По силе claims текущая раскладка такая: `18` universal, `3` assumption-backed, `2` behavioral, `1` contract-level.
+- Формальный coverage registry сейчас содержит 25 machine-checked section entries.
+- По силе claims текущая раскладка такая: `19` universal, `3` assumption-backed, `2` behavioral, `1` contract-level.
 - Единый статус `proved` в registry не означает одинаковую силу claim: честная граница задаётся `evidence_level` и `limitations` в `proof_coverage.json`.
 - Extra formal-only theorems не считаются pinned-section claims, если они не внесены в machine-readable registry.
 
