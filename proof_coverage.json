@@ -1410,8 +1410,8 @@
         "RubinFormal.HtlcSpendStructuralLiveBridge.unknown_path_rejects_parse",
         "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_timelock_precedes_sig_checks",
         "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_timelock_precedes_sig_checks",
-        "RubinFormal.Conformance.cv_htlc_vectors_pass",
-        "RubinFormal.Conformance.cv_htlc_ordering_vectors_pass"
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_path_accepts",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_path_accepts"
       ],
       "file": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
       "theorem_files": {
@@ -1422,10 +1422,10 @@
         "RubinFormal.HtlcSpendStructuralLiveBridge.unknown_path_rejects_parse": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
         "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_timelock_precedes_sig_checks": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
         "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_timelock_precedes_sig_checks": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
-        "RubinFormal.Conformance.cv_htlc_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVHtlcReplay.lean",
-        "RubinFormal.Conformance.cv_htlc_ordering_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVHtlcOrderingReplay.lean"
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_path_accepts": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_path_accepts": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean"
       },
-      "notes": "Universal closure for the real HTLC spend-side structural/live lane only. The new LIVE theorems sit directly on `dispatchCovenantValidation` and `validateHTLCSpendNoCrypto`, proving branch routing into the HTLC path, fixed two-slot witness cursor advancement, sentinel/path-shape parse rejection, claim-prefix parse rejection, unknown-path rejection, and refund timelock enforcement with explicit precedence before later signature checks. Conformance HTLC replay and ordering replay remain complementary executable evidence on the same spend helper path.",
+      "notes": "Universal closure for the real HTLC spend-side structural/live lane only. The new LIVE theorems sit directly on `dispatchCovenantValidation` and `validateHTLCSpendNoCrypto`, proving branch routing into the HTLC path, fixed two-slot witness cursor advancement, sentinel/path-shape parse rejection, claim-prefix parse rejection, unknown-path rejection, refund timelock enforcement with explicit precedence before later signature checks, and positive refund-path acceptance once the live structural guards pass.",
       "limitations": [
         "Scope: live structural HTLC spend-side only. Claim-path preimage/hash equality, hashlock crypto semantics, and broader cryptographic guarantees remain outside this row and belong to the dedicated assumption-backed HTLC crypto follow-up."
       ],

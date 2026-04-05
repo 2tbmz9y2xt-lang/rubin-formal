@@ -1,6 +1,5 @@
 import RubinFormal.UtxoApplyGenesisV1
-import RubinFormal.Conformance.CVHtlcReplay
-import RubinFormal.Conformance.CVHtlcOrderingReplay
+import RubinFormal.ConsensusConstantsBehavioral
 
 namespace RubinFormal
 
@@ -175,6 +174,54 @@ theorem refund_timestamp_timelock_precedes_sig_checks
   simp [Except.bind, hSuite, hPub, hSize, hPath1, hRefundKey, hRefundSize32, hMode, hLt, bytes_bne_self_false]
   change (Except.error "TX_ERR_TIMELOCK_NOT_MET" : Except String Unit) = Except.error "TX_ERR_TIMELOCK_NOT_MET"
   rfl
+
+/-- Positive LIVE refund-path bridge:
+    once the sentinel/path-shape guards, refund-key binding, timelock, and live
+    signature-item structural checks all pass, the real spend helper accepts. -/
+theorem refund_height_path_accepts
+    (c : CovenantGenesisV1.HtlcCovenant)
+    (pathItem sigItem : UtxoBasicV1.WitnessItem)
+    (blockHeight blockMtp : Nat)
+    (hSuite : pathItem.suiteId = RubinFormal.SUITE_ID_SENTINEL)
+    (hPub : pathItem.pubkey.size = 32)
+    (hSize : pathItem.signature.size = 1)
+    (hPath1 : (pathItem.signature.get! 0).toNat = 1)
+    (hRefundKey : pathItem.pubkey = c.refundKeyId)
+    (hMode : c.lockMode = CovenantGenesisV1.LOCK_MODE_HEIGHT)
+    (hGe : c.lockValue ≤ blockHeight)
+    (hSigOk : UtxoApplyGenesisV1.validateWitnessItemLengths sigItem blockHeight = .ok ())
+    (hSigHash : SHA3.sha3_256 sigItem.pubkey = c.refundKeyId) :
+    UtxoApplyGenesisV1.validateHTLCSpendNoCrypto c pathItem sigItem blockHeight blockMtp =
+      .ok () := by
+  have hRefundSize32 : c.refundKeyId.size = 32 := by
+    simpa [hRefundKey] using hPub
+  unfold UtxoApplyGenesisV1.validateHTLCSpendNoCrypto
+  simp [Except.bind, hSuite, hPub, hSize, hPath1, hRefundKey, hRefundSize32, hMode, hSigOk, hSigHash,
+    bytes_bne_self_false, Nat.not_lt.mpr hGe]
+
+/-- Positive LIVE refund-path bridge for timestamp mode:
+    the real helper accepts once the timestamp timelock is satisfied and the
+    later signature-item structural/hash guards also pass. -/
+theorem refund_timestamp_path_accepts
+    (c : CovenantGenesisV1.HtlcCovenant)
+    (pathItem sigItem : UtxoBasicV1.WitnessItem)
+    (blockHeight blockMtp : Nat)
+    (hSuite : pathItem.suiteId = RubinFormal.SUITE_ID_SENTINEL)
+    (hPub : pathItem.pubkey.size = 32)
+    (hSize : pathItem.signature.size = 1)
+    (hPath1 : (pathItem.signature.get! 0).toNat = 1)
+    (hRefundKey : pathItem.pubkey = c.refundKeyId)
+    (hMode : c.lockMode ≠ CovenantGenesisV1.LOCK_MODE_HEIGHT)
+    (hGe : c.lockValue ≤ blockMtp)
+    (hSigOk : UtxoApplyGenesisV1.validateWitnessItemLengths sigItem blockHeight = .ok ())
+    (hSigHash : SHA3.sha3_256 sigItem.pubkey = c.refundKeyId) :
+    UtxoApplyGenesisV1.validateHTLCSpendNoCrypto c pathItem sigItem blockHeight blockMtp =
+      .ok () := by
+  have hRefundSize32 : c.refundKeyId.size = 32 := by
+    simpa [hRefundKey] using hPub
+  unfold UtxoApplyGenesisV1.validateHTLCSpendNoCrypto
+  simp [Except.bind, hSuite, hPub, hSize, hPath1, hRefundKey, hRefundSize32, hMode, hSigOk, hSigHash,
+    bytes_bne_self_false, Nat.not_lt.mpr hGe]
 
 end HtlcSpendStructuralLiveBridge
 
