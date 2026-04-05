@@ -4,7 +4,7 @@
 Машинный реестр: `rubin-formal/proof_coverage.json`
 
 Текущее состояние: machine-readable source-of-truth (`proof_coverage.json`) фиксирует
-`proof_level=refinement`, `claim_level=refined`, полный registry по 24 current section entries и явные
+`proof_level=refinement`, `claim_level=refined`, полный registry по 25 current section entries и явные
 `notes` / `limitations` для non-universal claims. Conformance-фикстуры
 `conformance/fixtures/CV-*.json` покрыты Lean replay/refinement слоем.
 
@@ -25,15 +25,15 @@
 
 Связка с hash-pinning:
 
-- `proof_coverage.json` сейчас содержит 24 machine-checked registry entries.
-- Все 24 текущие entries уже machine-checked; активных `stated` / `deferred` rows сейчас нет.
-- Не все 24 entries равны по силе claims: честная граница определяется `evidence_level` и `limitations`.
+- `proof_coverage.json` сейчас содержит 25 machine-checked registry entries.
+- Все 25 текущих entries уже machine-checked; активных `stated` / `deferred` rows сейчас нет.
+- Не все 25 entries равны по силе claims: честная граница определяется `evidence_level` и `limitations`.
 - Extra formal-only theorems (например, `CORE_EXT` tightening) не считаются pinned-section coverage,
   если они не внесены отдельной registry entry.
 
 ## Текущая раскладка evidence levels
 
-- `machine_checked_universal`: 18
+- `machine_checked_universal`: 19
 - `machine_checked_assumption_backed`: 3
 - `machine_checked_behavioral`: 2
 - `machine_checked_contract`: 1

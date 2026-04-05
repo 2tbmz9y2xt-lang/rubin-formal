@@ -1399,6 +1399,39 @@
       "evidence_level": "machine_checked_universal"
     },
     {
+      "section_key": "htlc_spend_side_structural",
+      "section_heading": "## HTLC Spend-Side Structural Live Bridge",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.HtlcSpendStructuralLiveBridge.htlc_witness_slots_fixed",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.dispatch_htlc_ok_constrained",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.non_sentinel_path_rejects_parse",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.claim_short_prefix_rejects_parse",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.unknown_path_rejects_parse",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_timelock_precedes_sig_checks",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_timelock_precedes_sig_checks",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_path_accepts",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_path_accepts"
+      ],
+      "file": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+      "theorem_files": {
+        "RubinFormal.HtlcSpendStructuralLiveBridge.htlc_witness_slots_fixed": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.dispatch_htlc_ok_constrained": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.non_sentinel_path_rejects_parse": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.claim_short_prefix_rejects_parse": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.unknown_path_rejects_parse": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_timelock_precedes_sig_checks": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_timelock_precedes_sig_checks": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_height_path_accepts": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean",
+        "RubinFormal.HtlcSpendStructuralLiveBridge.refund_timestamp_path_accepts": "rubin-formal/RubinFormal/HtlcSpendStructuralLiveBridge.lean"
+      },
+      "notes": "Universal closure for the real HTLC spend-side structural/live lane only. The new LIVE theorems sit directly on `dispatchCovenantValidation` and `validateHTLCSpendNoCrypto`, proving branch routing into the HTLC path, fixed two-slot witness cursor advancement, sentinel/path-shape parse rejection, claim-prefix parse rejection, unknown-path rejection, refund timelock enforcement with explicit precedence before later signature checks, and positive refund-path acceptance once the live structural guards pass.",
+      "limitations": [
+        "Scope: live structural HTLC spend-side only. Claim-path preimage/hash equality, hashlock crypto semantics, and broader cryptographic guarantees remain outside this row and belong to the dedicated assumption-backed HTLC crypto follow-up."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
       "section_key": "feature_activation_fsm",
       "section_heading": "## Feature Activation FSM (BIP9-like)",
       "status": "proved",
@@ -1443,9 +1476,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 24 machine-checked section entries, but this is still not a universal proof of full CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 25 machine-checked section entries, but this is still not a universal proof of full CANONICAL semantics",
       "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
-      "The pinned-section registry currently covers 24 section entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
+      "The pinned-section registry currently covers 25 section entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
