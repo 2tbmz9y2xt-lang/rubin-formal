@@ -103,9 +103,25 @@ theorem validateP2PKSpendPreSig_binds_pubkey
     entry.covenantData.size = CovenantGenesisV1.MAX_P2PK_COVENANT_DATA ∧
     (entry.covenantData.get! 0).toNat = w.suiteId ∧
     p2pkPubkeyKeyIdBound entry w := by
+  have hSuiteCanonical :
+      UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 = RubinFormal.SUITE_ID_ML_DSA_87 := by
+    native_decide
   by_cases hSuite : (w.suiteId != UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true
-  · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_ALG_INVALID" := by
-      simp [validateP2PKSpendPreSig, hSuite, Except.bind]
+  · have hSuiteNe : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := by
+      intro hEq
+      simp [hEq] at hSuite
+    have hSuiteNeCanonical : w.suiteId ≠ RubinFormal.SUITE_ID_ML_DSA_87 := by
+      intro hEq
+      apply hSuiteNe
+      rw [hSuiteCanonical]
+      exact hEq
+    have hGateFalse :
+        NativeSpendCreateGate.liveSpendGateAllows none blockHeight w.suiteId = false := by
+      unfold NativeSpendCreateGate.liveSpendGateAllows
+      simp [hSuiteNeCanonical]
+    have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_ALG_INVALID" := by
+      unfold validateP2PKSpendPreSig
+      simp [hGateFalse]
       rfl
     rw [hErr] at hOk
     cases hOk
@@ -117,9 +133,18 @@ theorem validateP2PKSpendPreSig_binds_pubkey
     have hSuiteEq : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := by
       by_contra hNeEq
       exact hSuite (by simp [hNeEq])
+    have hSuiteEqCanonical : w.suiteId = RubinFormal.SUITE_ID_ML_DSA_87 := by
+      calc
+        w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 := hSuiteEq
+        _ = RubinFormal.SUITE_ID_ML_DSA_87 := hSuiteCanonical
+    have hGateTrue :
+        NativeSpendCreateGate.liveSpendGateAllows none blockHeight w.suiteId = true := by
+      unfold NativeSpendCreateGate.liveSpendGateAllows
+      simp [hSuiteEqCanonical]
     by_cases hSize : (entry.covenantData.size != CovenantGenesisV1.MAX_P2PK_COVENANT_DATA) = true
     · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
-        simp [validateP2PKSpendPreSig, hSuiteFalse, hSize, Except.bind]
+        unfold validateP2PKSpendPreSig
+        simp [hGateTrue, hSize]
         rfl
       rw [hErr] at hOk
       cases hOk
@@ -133,7 +158,8 @@ theorem validateP2PKSpendPreSig_binds_pubkey
         exact hSize (by simp [hNeEq])
       by_cases hTag : ((entry.covenantData.get! 0).toNat != w.suiteId) = true
       · have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_COVENANT_TYPE_INVALID" := by
-          simp [validateP2PKSpendPreSig, hSuiteFalse, hSizeFalse, hTag, Except.bind]
+          unfold validateP2PKSpendPreSig
+          simp [hGateTrue, hSizeFalse, hTag]
           rfl
         rw [hErr] at hOk
         cases hOk
@@ -148,7 +174,8 @@ theorem validateP2PKSpendPreSig_binds_pubkey
         cases hHash : (SHA3.sha3_256 w.pubkey != entry.covenantData.extract 1 33) with
         | true =>
           have hErr : validateP2PKSpendPreSig entry w blockHeight = .error "TX_ERR_SIG_INVALID" := by
-            simp [validateP2PKSpendPreSig, hSuiteFalse, hSizeFalse, hTagFalse, hHash, Except.bind]
+            unfold validateP2PKSpendPreSig
+            simp [hGateTrue, hSizeFalse, hTagFalse, hHash]
             rfl
           rw [hErr] at hOk
           cases hOk

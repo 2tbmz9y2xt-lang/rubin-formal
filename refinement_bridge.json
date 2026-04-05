@@ -272,6 +272,101 @@
       "evidence_level": "machine_checked_behavioral",
       "contract_scope": "State-machine model of §23.2.1 descriptor activation lifecycle proving at-most-one uniqueness (inductive), five-phase exhaustive height partition with mutual exclusion. Conformance: 11 vectors (6 cutoff + 5 sunset) structurally replayed.",
       "limitations": "Model-level only. No Go/Rust implementation bridge — rotation is not yet implemented in clients. Phase functions (NativeCreateSuites, NativeSpendSuites) are Lean definitions, not extracted from production code."
+    },
+    {
+      "op": "feature_activation_fsm",
+      "gate": "featurebits state-at-height fold",
+      "model_theorem": "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone",
+      "lean_file": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+      "theorem_file": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§23",
+      "go_function": "FeatureBitStateAtHeightFromWindowCounts",
+      "contract_scope": "Universal closure of §23 feature activation FSM / prechecked state-only state-at-height fold surface. featurebit_state_at_height_from_window_counts_state_eq_fold bridges the live multi-boundary state helper to the fold-based FSM model once the same sufficient window_signal_counts prefix guard enforced by Go/Rust has passed, and featurebit_state_at_height_from_window_counts_state_monotone lifts multi_step_monotone onto that reachable live height path.",
+      "notes": "Universal closure of the §23 feature activation FSM state surface on the reachable prechecked state-at-height fold path. The Go/Rust helper's out-of-range error branch remains outside this row's scoped state-only bridge; existing single-step transition and flagday theorems remain complementary support.",
+      "limitations": [],
+      "supporting_theorems": [
+        "RubinFormal.active_terminal",
+        "RubinFormal.failed_terminal",
+        "RubinFormal.locked_in_always_activates",
+        "RubinFormal.multi_step_monotone",
+        "RubinFormal.flagday_exact_activation",
+        "RubinFormal.FeatureActivationLiveBridge.lockin_priority_over_timeout",
+        "RubinFormal.FeatureActivationLiveBridge.no_defined_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.no_started_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.defined_to_started_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
+        "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
+        "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior",
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone"
+      ]
+    },
+    {
+      "op": "covenant_registry",
+      "gate": "CV-COVENANT-GENESIS",
+      "model_theorem": "RubinFormal.validateOutGenesis_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+      "theorem_file": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§14",
+      "go_function": "validateOutGenesis",
+      "contract_scope": "Universal for §14 validateOutGenesis / covenant registry genesis surface. Constrained theorem decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses.",
+      "notes": "Universal for the live genesis covenant registry surface. validateOutGenesis_ok_constrained proves that acceptance implies at least one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics.",
+      "limitations": [
+        "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.validateOutGenesis_ok_constrained",
+        "RubinFormal.validate_out_genesis_rejects_unknown",
+        "RubinFormal.covenant_types_pairwise_distinct",
+        "RubinFormal.dispatch_unknown_covenant_error"
+      ]
+    },
+    {
+      "op": "spend_gate_bridge",
+      "gate": "descriptor-aware P2PK spend gate",
+      "model_theorem": "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "theorem_file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§5.4 / §4.1.2",
+      "go_function": "validateP2PKSpendPreSig / scanSingleInputStep",
+      "contract_scope": "Universal closure of the descriptor-aware P2PK spend-side live gate bridge. Under the same preceding live structural guards, validateP2PKSpendPreSig and the P2PK branch of scanSingleInputStep succeed iff the committed suite is in NativeSpendSuites(h,d); inactive suites reject with the exact live error codes.",
+      "notes": "Universal closure of the live post-rotation spend gate bridge on the descriptor-aware P2PK spend path. The counted closure is the direct spend helper plus the input-scan gate; FI-ROT-04/FI-ROT-06 model theorems remain supporting evidence rather than the counted closure itself.",
+      "limitations": [
+        "Scope: descriptor-aware P2PK spend-side live gate bridge only; create-side gate and other spend validators are tracked separately."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_ok_constrained",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_rejects_inactive_p2pk_suite",
+        "RubinFormal.NativeSpendCreateGate.fi_rot_04_spend_gate_iff",
+        "RubinFormal.LegacySunset.fi_rot_06_old_suite_rejected_after_h4",
+        "RubinFormal.LegacySunset.fi_rot_06_new_suite_always_spendable_after_h4"
+      ]
+    },
+    {
+      "op": "native_rotation",
+      "gate": "FI-ROT",
+      "model_theorem": "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained",
+      "lean_file": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+      "theorem_file": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+      "evidence_level": "machine_checked_universal",
+      "spec_section": "§4.1.2/§4.1.3/§23.2.1",
+      "go_function": "DescriptorRotationProvider",
+      "contract_scope": "Universal for native crypto suite rotation. Constrained theorem: ∀ well-formed descriptor+registry, ∀ height → phase partition holds ∧ all active create/spend suites resolve uniquely.",
+      "notes": "Universal for the native suite rotation model surface. Composes fi_rot_02_phase_partition + fi_rot_03_active_{create,suite}_resolves. No claim about byte-level wire encoding trace (G7 residual).",
+      "limitations": [
+        "Structural model ↔ Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
+      ],
+      "supporting_theorems": [
+        "RubinFormal.NativeSuiteRotation.fi_rot_02_phase_partition",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_active_suite_resolves",
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_active_create_suite_resolves",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff"
+      ]
     }
   ]
 }

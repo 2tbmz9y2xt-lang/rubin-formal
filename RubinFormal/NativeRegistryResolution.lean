@@ -1,20 +1,19 @@
 /-
-  RubinFormal/NativeRegistryResolution.lean — FI-ROT-03
+  RubinFormal/NativeRegistryResolution.lean — FI-ROT-03 + universal
+
+  Evidence level: machine_checked_universal.
+  `native_rotation_ok_constrained` proves: ∀ well-formed descriptor in
+  well-formed registry, ∀ height → phase partition holds ∧ all active
+  create/spend suites resolve to unique entries. Covers all 5 rotation
+  phases including post-rotation dispatch.
+  No claim about byte-level wire encoding trace (G7 residual).
 
   Q-FORMAL-ROTATION-02: native registry resolution is deterministic.
+  suite_id ∈ ActiveNativeSuites(h) → ∃! entry, registryLookup(suite_id)
 
-  For any suite_id ∈ ActiveNativeSuites(h), registry lookup returns
-  exactly one entry with unique PUBKEY_BYTES / SIG_BYTES / VERIFY_COST.
-
-  Formally:
-    suite_id ∈ ActiveNativeSuites(h) → ∃! entry, registryLookup(suite_id) = entry
-
-  This closes the descriptor-driven approach and eliminates the need
-  for hardcoded suite constants (0x01, 0x02, …).
-
-  Spec: CANONICAL §4.1.1 (suite registry), §4.1.3 (descriptor validity).
+  Spec: CANONICAL §4.1.1, §4.1.2, §4.1.3, §23.2.1.
   Depends: Q-FORMAL-ROTATION-01 (NativeSuiteRotation.lean).
-  Closes #122.
+  Closes #122, #368.
 -/
 
 import RubinFormal.RotationPrelude
@@ -177,6 +176,32 @@ theorem fi_rot_03_pre_rotation_ml_dsa_resolves :
 theorem fi_rot_03_pre_rotation_no_duplicates :
     registryNoDuplicates PRE_ROTATION_REGISTRY :=
   single_entry_registry_no_duplicates PRE_ROTATION_REGISTRY ML_DSA_87_ENTRY rfl
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §  Constrained universal theorem (§4.1.2, §4.1.3, §23.2.1)
+-- ═══════════════════════════════════════════════════════════════════
+
+/-- **Native rotation constrained universal** (§4.1.2/§4.1.3/§23.2.1):
+    for any well-formed descriptor in a well-formed registry, at every
+    height the phase partition holds and all active suites (create and
+    spend) resolve to unique registry entries.
+    Scope: structural model parity with Go/Rust suite_registry.
+    No claim about byte-level wire encoding trace (G7 residual). -/
+theorem native_rotation_ok_constrained
+    (d : RotationDeploymentDescriptor) (reg : SuiteRegistry)
+    (hwf : wellFormedDescriptor reg d)
+    (hnd : registryNoDuplicates reg)
+    (h : Nat) :
+    RotationPhase d h ∧
+    (∀ sid, sid ∈ NativeCreateSuites h d →
+      ∃ entry, registryLookup reg sid = some entry ∧
+      ∀ e2, registryLookup reg sid = some e2 → e2 = entry) ∧
+    (∀ sid, sid ∈ NativeSpendSuites h d →
+      ∃ entry, registryLookup reg sid = some entry ∧
+      ∀ e2, registryLookup reg sid = some e2 → e2 = entry) :=
+  ⟨NativeSuiteRotation.fi_rot_02_phase_partition reg d hwf h,
+   fun sid hm => fi_rot_03_active_create_suite_resolves d reg h sid hnd hwf hm,
+   fun sid hm => fi_rot_03_active_suite_resolves d reg h sid hnd hwf hm⟩
 
 end NativeRegistryResolution
 

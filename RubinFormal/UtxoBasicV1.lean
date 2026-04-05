@@ -5,6 +5,7 @@ import RubinFormal.OutputDescriptorV2
 import RubinFormal.SighashV1
 import RubinFormal.TxParseV2
 import RubinFormal.CovenantGenesisV1
+import RubinFormal.NativeSpendCreateGate
 
 namespace RubinFormal
 
@@ -516,7 +517,9 @@ def scanSingleInputStep
     (input : TxIn)
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (height : Nat)
-    (acc : InputScanState) : Except String InputScanState := do
+    (acc : InputScanState)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String InputScanState := do
   let op := txInOutpoint input
   if acc.consumedOutpoints.contains op then
     throw "TX_ERR_PARSE"
@@ -533,10 +536,10 @@ def scanSingleInputStep
   if e.covenantType == COV_TYPE_P2PK then
     if e.covenantData.size != MAX_P2PK_COVENANT_DATA then
       throw "TX_ERR_COVENANT_TYPE_INVALID"
-    -- Pre-rotation scope: only ML-DSA-87 allowed for P2PK spend.
-    -- Post-rotation (Q-FORMAL-ROTATION-04): suite ∉ NATIVE_SPEND_SUITES(h) → reject.
+    -- Descriptor-aware spend gate: none => pre-rotation {ML_DSA_87};
+    -- some d => suite ∉ NATIVE_SPEND_SUITES(h,d) → reject.
     let suite := (e.covenantData.get! 0).toNat
-    if suite != SUITE_ID_ML_DSA_87 then
+    if !NativeSpendCreateGate.liveSpendGateAllows rotDesc? height suite then
       throw "TX_ERR_COVENANT_TYPE_INVALID"
 
   let lockId := outputDescriptorLockId e
@@ -571,18 +574,22 @@ def scanInputsGo
     (inputs : List TxIn)
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (height : Nat)
-    (acc : InputScanState) : Except String InputScanState := do
+    (acc : InputScanState)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String InputScanState := do
   match inputs with
   | [] => pure acc
   | i :: rest =>
-      let nextAcc ← scanSingleInputStep i utxoMap height acc
-      scanInputsGo rest utxoMap height nextAcc
+      let nextAcc ← scanSingleInputStep i utxoMap height acc rotDesc?
+      scanInputsGo rest utxoMap height nextAcc rotDesc?
 
 def scanInputs
     (inputs : List TxIn)
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
-    (height : Nat) : Except String InputScanState :=
-  scanInputsGo inputs utxoMap height InputScanState.empty
+    (height : Nat)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String InputScanState :=
+  scanInputsGo inputs utxoMap height InputScanState.empty rotDesc?
 
 def eraseInputs
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
@@ -669,14 +676,16 @@ def prepareNonCoinbaseTxCore
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (height : Nat)
     (blockTimestamp : Nat)
-    (chainId : Bytes) : Except String PreparedNonCoinbaseTxCore := do
+    (chainId : Bytes)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String PreparedNonCoinbaseTxCore := do
   let _ := blockTimestamp
   let _ := chainId
   let tx ← parseTx txBytes
 
   validateBasicTxEnvelope tx
   validateStructuralInputs tx.inputs
-  let inputState ← scanInputs tx.inputs utxoMap height
+  let inputState ← scanInputs tx.inputs utxoMap height rotDesc?
 
   validateBasicWitnessLayout tx inputState
   validateBasicVaultSpend tx inputState
@@ -688,8 +697,10 @@ def prepareNonCoinbaseTxBasic
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (height : Nat)
     (blockTimestamp : Nat)
-    (chainId : Bytes) : Except String PreparedNonCoinbaseTx := do
-  let core ← prepareNonCoinbaseTxCore txBytes utxoMap height blockTimestamp chainId
+    (chainId : Bytes)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String PreparedNonCoinbaseTx := do
+  let core ← prepareNonCoinbaseTxCore txBytes utxoMap height blockTimestamp chainId rotDesc?
 
   let txid :=
     let r := RubinFormal.TxV2.parseTx txBytes
@@ -708,8 +719,10 @@ def applyNonCoinbaseTxBasicState
     (utxoMap : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
     (height : Nat)
     (blockTimestamp : Nat)
-    (chainId : Bytes) : Except String (Nat × Std.RBMap Outpoint UtxoEntry cmpOutpoint) := do
-  let prepared ← prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId
+    (chainId : Bytes)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String (Nat × Std.RBMap Outpoint UtxoEntry cmpOutpoint) := do
+  let prepared ← prepareNonCoinbaseTxBasic txBytes utxoMap height blockTimestamp chainId rotDesc?
   pure (prepared.fee, prepared.nextUtxoMap)
 
 def applyNonCoinbaseTxBasic
@@ -717,8 +730,11 @@ def applyNonCoinbaseTxBasic
     (utxos : List (Outpoint × UtxoEntry))
     (height : Nat)
     (blockTimestamp : Nat)
-    (chainId : Bytes) : Except String (Nat × Nat) := do
-  let (fee, next) ← applyNonCoinbaseTxBasicState txBytes (buildUtxoMap utxos) height blockTimestamp chainId
+    (chainId : Bytes)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String (Nat × Nat) := do
+  let (fee, next) ←
+    applyNonCoinbaseTxBasicState txBytes (buildUtxoMap utxos) height blockTimestamp chainId rotDesc?
   pure (fee, next.size)
 
 end UtxoBasicV1

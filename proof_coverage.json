@@ -37,11 +37,11 @@
         "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
         "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
       },
-      "notes": "Upgraded from constant pinning to LIVE validator rejection for the witness-item-length subset of Section 4. validateWitnessItemLengths (LIVE function) rejection is proved for the three covered error paths: ML-DSA-87 bounds (TX_ERR_SIG_NONCANONICAL), unknown suite (TX_ERR_SIG_ALG_INVALID), and sentinel non-empty (TX_ERR_PARSE). Accept paths are proved for completeness within that witness-validation surface. Subsidy and HTLC constant facts remain covered by their dedicated theorem entries; other Section 4 constants are carried by their own dedicated rows such as weight accounting and DA integrity rather than by this single note block.",
+      "notes": "Behavioral ceiling for finite Section 4 constants. LIVE theorems in ConsensusConstantsBehavioral close the validateWitnessItemLengths witness-validation surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and exhaustive constrained outcome partition. Dedicated pinned theorem entries separately cover subsidy U128 safety and HTLC timelock semantics. Other Section 4 constants intentionally remain owned by their own dedicated rows such as weight accounting and DA integrity rather than being overclaimed here as a single section-wide universal theorem.",
       "limitations": [
-        "This row does not by itself prove every literal or bound named in canonical Section 4; it aggregates the witness-validation subset plus a narrow set of dedicated constant theorems."
+        "Finite pinned constants are not a meaningful section-wide universal target here. This row aggregates the live witness-validation subset plus dedicated subsidy/HTLC constant theorems, while other Section 4 literals remain claimed by their own dedicated rows."
       ],
-      "evidence_level": "machine_checked_contract"
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "transaction_wire",
@@ -562,7 +562,8 @@
         "RubinFormal.validate_out_genesis_da_commit_canonical_ok",
         "RubinFormal.validate_out_genesis_rejects_unknown",
         "RubinFormal.validate_out_genesis_reserved_future_rejects",
-        "RubinFormal.dispatch_unknown_covenant_error"
+        "RubinFormal.dispatch_unknown_covenant_error",
+        "RubinFormal.validateOutGenesis_ok_constrained"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -579,15 +580,14 @@
         "RubinFormal.validate_out_genesis_da_commit_canonical_ok": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
         "RubinFormal.validate_out_genesis_rejects_unknown": "rubin-formal/RubinFormal/CovenantParserGaps.lean",
         "RubinFormal.validate_out_genesis_reserved_future_rejects": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
-        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean"
+        "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean",
+        "RubinFormal.validateOutGenesis_ok_constrained": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean"
       },
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "machine_checked_universal",
       "limitations": [
-        "This remains a contract-level row: canonical accept coverage is proved on explicit live sample outputs for the supported covenant tags, while unknown-tag rejection is proved on the live registry/dispatch helpers.",
-        "No universal theorem is claimed here for every malformed covenant payload on every known tag; deep parser semantics for vault/multisig/htlc remain owned by their dedicated rows and replay bundles.",
-        "Spend-side dispatch is still covered through the documented live helper `dispatchCovenantValidation`, not a direct theorem over the full inline loop in `applyNonCoinbaseTxBasicNoCrypto`."
+        "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here; they belong to dedicated per-covenant and sighash rows."
       ],
-      "notes": "Section §14 is no longer replay-only. `CovenantRegistryExhaustive.lean` now covers canonical registry values, pairwise tag distinctness, canonical accept cases for each supported output covenant type, and universal unknown-tag rejection on `validateOutGenesis`; `dispatch_unknown_covenant_error` supplies the live spend-side unknown-covenant reject path. CV-COVENANT-GENESIS replay remains the executable evidence for the shipped fixture set."
+      "notes": "Universal for §14 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
     },
     {
       "section_key": "difficulty_update",
@@ -1331,7 +1331,8 @@
         "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites",
         "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only",
         "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only",
-        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered"
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered",
+        "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained"
       ],
       "file": "rubin-formal/RubinFormal/NativeSuiteRotation.lean",
       "theorem_files": {
@@ -1348,37 +1349,37 @@
         "RubinFormal.RegistryResolutionLiveBridge.transition_phase_both_suites": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
         "RubinFormal.RegistryResolutionLiveBridge.post_transition_create_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
         "RubinFormal.RegistryResolutionLiveBridge.post_sunset_spend_new_only": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
-        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean"
+        "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained": "rubin-formal/RubinFormal/NativeRegistryResolution.lean"
       },
-      "notes": "FI-ROT-01: at-most-one active descriptor via state-machine induction (no axioms). FI-ROT-02: five-phase exhaustive partition with mutual exclusion (10 pairwise contradictions). FI-ROT-03: registry resolution deterministic. BRIDGE: RegistryResolutionLiveBridge proves universal IsRegistered characterization (iff sid=0x01), constant parity (pubkey/sig/cost), phase-dependent suite set bridges for all 5 rotation phases, and DefaultRotationProvider safety — matching Go suite_registry.go / Rust suite_registry.rs.",
+      "notes": "Universal for §4.1.2/§4.1.3/§23.2.1 native crypto suite rotation. native_rotation_ok_constrained proves that for any well-formed descriptor in any well-formed registry, at every height: the phase partition holds and all active create/spend suites resolve to unique entries. Covers all 5 rotation phases including post-rotation dispatch. No claim about byte-level wire encoding trace (G7 residual).",
       "limitations": [
-        "Post-rotation dispatch path not yet covered; pre-rotation ML-DSA-87 resolution proved and bridged",
-        "Bridge proves Lean model matches Go/Rust structure; byte-level trace bridge not yet formalized"
+        "Structural model ↔ Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "spend_gate_bridge",
       "section_heading": "## Spend Gate — Suite Acceptance Bridge",
       "status": "LIVE+BRIDGE",
       "theorems": [
-        "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence",
-        "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge"
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_ok_constrained",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_rejects_inactive_p2pk_suite"
       ],
       "file": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
       "theorem_files": {
-        "RubinFormal.SpendGateLiveBridge.spend_gate_live_equivalence": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.gate_iff_live_suite_check": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_phase1_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
-        "RubinFormal.SpendGateLiveBridge.spend_gate_rejection_bridge": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_ok_constrained": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean",
+        "RubinFormal.SpendGateLiveBridge.scanSingleInputStep_rejects_inactive_p2pk_suite": "rubin-formal/RubinFormal/SpendGateLiveBridge.lean"
       },
-      "notes": "Bridge theorems proving equivalence between the abstract spend-gate model and live suite-check functions. Pre-rotation scope: only ML-DSA-87 + SENTINEL.",
+      "notes": "Universal closure of the descriptor-aware spend-side live gate bridge. validateP2PKSpendPreSig_ok_constrained and scanSingleInputStep_ok_constrained prove that, once the same preceding live structural guards have passed, the live P2PK spend helper and the live input-scan P2PK branch succeed iff the committed suite is active in NativeSpendSuites(h,d). Paired rejection theorems fix the exact inactive-suite live errors.",
       "limitations": [
-        "Pre-rotation scope only; post-rotation suite registry dispatch not yet bridged"
+        "Scope: descriptor-aware P2PK spend-side live gate bridge only; create-side gate and other spend validators are tracked in separate rows."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "feature_activation_fsm",
@@ -1396,7 +1397,9 @@
         "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff",
         "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff",
         "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior",
-        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active"
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone"
       ],
       "file": "rubin-formal/RubinFormal/FeatureActivationFSM.lean",
       "theorem_files": {
@@ -1411,14 +1414,13 @@
         "RubinFormal.FeatureActivationLiveBridge.started_to_lockedin_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.started_to_failed_iff": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.flagday_complete_behavior": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
-        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
+        "RubinFormal.FeatureActivationLiveBridge.min_three_steps_to_active": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
+        "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
       },
-      "notes": "FSM correctness: terminal states absorbing, locked_in→active unconditional, flag-day activation at exact height. BRIDGE: FeatureActivationLiveBridge proves lock-in priority over timeout (consensus-critical evaluation order matching Go/Rust), no-skip transition guarantees (DEFINED→ACTIVE impossible in 1 step), exact iff-characterizations for core transitions, minimum-three-steps-to-active, and flagday complete behavioral bridge (exact activation + no-premature-activation + monotonicity as one-way latch) — matching Go featurebits.go/flagday.go and Rust featurebits.rs/flagday.rs.",
-      "limitations": [
-        "Bridge proves Lean FSM matches Go/Rust evaluation order; byte-level Go trace replay not yet formalized",
-        "FeatureBitStateAtHeightFromWindowCounts (multi-boundary fold) not yet bridged to Lean multi_step_monotone"
-      ],
-      "evidence_level": "machine_checked_behavioral"
+      "notes": "Universal closure of §23 feature activation FSM / flag-day surface. FeatureActivationLiveBridge now bridges the prechecked state-only live multi-boundary state-at-height fold used by Go featurebits.go and Rust featurebits.rs to the existing fold-based FSM model, then lifts multi_step_monotone onto that reachable helper path under the same sufficient window_signal_counts prefix guard enforced by live code before the fold begins. Single-step priority/no-skip/iff theorems plus flagday_complete_behavior remain complementary executable evidence. 14 theorems total.",
+      "limitations": [],
+      "evidence_level": "machine_checked_universal"
     }
   ],
   "proof_level": "refinement",
