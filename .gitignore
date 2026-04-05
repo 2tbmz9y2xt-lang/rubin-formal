@@ -1,5 +1,6 @@
 .DS_Store
 .lake/
+__pycache__/
 
 # Claude Code hooks (keep in private orchestration repo only)
 .claude/
