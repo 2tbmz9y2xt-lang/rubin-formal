@@ -5,9 +5,12 @@ import io
 import json
 import sys
 import unittest
+import unittest.mock as mock
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
+import tools.check_formal_registry_truth as registry_truth
 from tools.check_formal_registry_truth import (
     collect_registry_errors,
     load_registry_inputs,
@@ -49,8 +52,8 @@ class LoadRegistryInputsTests(unittest.TestCase):
     def test_successful_load(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            coverage_data = {"coverage": []}
-            bridge_data = {"critical_ops": []}
+            coverage_data: dict[str, list[dict[str, Any]]] = {"coverage": []}
+            bridge_data: dict[str, list[dict[str, Any]]] = {"critical_ops": []}
             (root / "proof_coverage.json").write_text(
                 json.dumps(coverage_data), encoding="utf-8"
             )
@@ -87,7 +90,7 @@ end RubinFormal.Deep
 """,
                 encoding="utf-8",
             )
-            ea, eif = theorem_lookups(root, [sample])
+            ea, _ = theorem_lookups(root, [sample])
             self.assertTrue(ea("RubinFormal.Deep.Inner.nested_thm"))
             self.assertFalse(ea("RubinFormal.Deep.nested_thm"))
 
@@ -117,7 +120,7 @@ end RubinFormal.Deep
                 encoding="utf-8",
             )
 
-            ea, eif = theorem_lookups(root, [file_a, file_b])
+            _, eif = theorem_lookups(root, [file_a, file_b])
             self.assertTrue(eif("RubinFormal.A.a_thm", "rubin-formal/RubinFormal/A.lean"))
             self.assertFalse(eif("RubinFormal.A.a_thm", "rubin-formal/RubinFormal/B.lean"))
 
@@ -227,10 +230,10 @@ class CollectRegistryErrorsTests(unittest.TestCase):
 
             path = "rubin-formal/RubinFormal/Foo.lean"
             coverage = {"coverage": [{"file": path}]}
-            bridge = {"critical_ops": []}
+            bridge: dict[str, list[dict[str, Any]]] = {"critical_ops": []}
             ea, eif = theorem_lookups(root, [sample])
-            paths, _, _, _ = collect_registry_errors(root, coverage, bridge, ea, eif)
-            self.assertIn(path, paths)
+            registered_paths, _, _, _ = collect_registry_errors(root, coverage, bridge, ea, eif)
+            self.assertIn(path, registered_paths)
 
     def test_bridge_theorem_with_global_fallback(self) -> None:
         """Bridge theorems allow global fallback, so a theorem found in any file passes."""
@@ -270,101 +273,95 @@ class CollectRegistryErrorsTests(unittest.TestCase):
 class MainFunctionTests(unittest.TestCase):
     """Tests for the main() entry point."""
 
+    @staticmethod
+    def _write_minimal_valid_registry(root: Path) -> None:
+        lean_dir = root / "RubinFormal"
+        lean_dir.mkdir()
+
+        lean_file = lean_dir / "Ops.lean"
+        lean_file.write_text(
+            "namespace RubinFormal.Ops\n"
+            "theorem sighash_ok : True := by trivial\n"
+            "theorem da_ok : True := by trivial\n"
+            "theorem weight_ok : True := by trivial\n"
+            "end RubinFormal.Ops\n",
+            encoding="utf-8",
+        )
+
+        lake_dir = root / ".lake" / "build" / "lib" / "RubinFormal"
+        lake_dir.mkdir(parents=True)
+        (lake_dir / "Ops.olean").write_text("", encoding="utf-8")
+
+        lean_path = "rubin-formal/RubinFormal/Ops.lean"
+        evidence = "machine_checked_universal"
+        coverage: dict[str, list[dict[str, Any]]] = {
+            "coverage": [
+                {
+                    "section_key": "sighash_v1",
+                    "file": lean_path,
+                    "theorems": ["RubinFormal.Ops.sighash_ok"],
+                    "theorem_files": {"RubinFormal.Ops.sighash_ok": lean_path},
+                    "evidence_level": evidence,
+                },
+                {
+                    "section_key": "da_set_integrity",
+                    "file": lean_path,
+                    "theorems": ["RubinFormal.Ops.da_ok"],
+                    "theorem_files": {"RubinFormal.Ops.da_ok": lean_path},
+                    "evidence_level": evidence,
+                },
+                {
+                    "section_key": "weight_accounting",
+                    "file": lean_path,
+                    "theorems": ["RubinFormal.Ops.weight_ok"],
+                    "theorem_files": {"RubinFormal.Ops.weight_ok": lean_path},
+                    "evidence_level": evidence,
+                },
+            ]
+        }
+        bridge: dict[str, list[dict[str, Any]]] = {
+            "critical_ops": [
+                {"op": "sighash_v1", "evidence_level": evidence},
+                {"op": "da_set_integrity", "evidence_level": evidence},
+                {"op": "weight_accounting", "evidence_level": evidence},
+            ]
+        }
+        (root / "proof_coverage.json").write_text(json.dumps(coverage), encoding="utf-8")
+        (root / "refinement_bridge.json").write_text(json.dumps(bridge), encoding="utf-8")
+
+    @staticmethod
+    def _patched_main_file(root: Path):
+        fake_tool_path = root / "tools" / "check_formal_registry_truth.py"
+        fake_tool_path.parent.mkdir()
+        fake_tool_path.write_text("# patched by tests\n", encoding="utf-8")
+        return mock.patch.object(registry_truth, "__file__", str(fake_tool_path))
+
     def test_main_import(self) -> None:
         """Verify main can be imported without side effects."""
-        from tools.check_formal_registry_truth import main
-        self.assertTrue(callable(main))
+        self.assertTrue(callable(registry_truth.main))
 
     def test_main_returns_1_on_missing_files(self) -> None:
-        """load_registry_inputs raises FileNotFoundError when files are missing, and fail returns 1."""
-        from tools.check_formal_registry_truth import load_registry_inputs, fail
-
+        """main() returns 1 and emits the file-not-found error for an invalid repo root."""
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            old_stderr = sys.stderr
-            sys.stderr = io.StringIO()
-            try:
-                try:
-                    load_registry_inputs(root)
-                    self.fail("Should have raised FileNotFoundError")
-                except FileNotFoundError as exc:
-                    result = fail(str(exc))
-                    self.assertEqual(result, 1)
-            finally:
-                sys.stderr = old_stderr
+            stderr = io.StringIO()
+            with self._patched_main_file(root), mock.patch("sys.stderr", stderr):
+                result = registry_truth.main()
+            self.assertEqual(result, 1)
+            self.assertIn("proof_coverage.json not found", stderr.getvalue())
 
     def test_main_succeeds_with_valid_registry(self) -> None:
         """main() returns 0 with a fully valid minimal registry."""
-        import unittest.mock as mock
-        from tools.check_formal_registry_truth import (
-            collect_registry_errors,
-            load_registry_inputs,
-            theorem_lookups,
-        )
-
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            lean_dir = root / "RubinFormal"
-            lean_dir.mkdir()
-
-            # Create lean file with theorems for all shared-op parity requirements
-            lean_file = lean_dir / "Ops.lean"
-            lean_file.write_text(
-                "namespace RubinFormal.Ops\n"
-                "theorem sighash_ok : True := by trivial\n"
-                "theorem da_ok : True := by trivial\n"
-                "theorem weight_ok : True := by trivial\n"
-                "end RubinFormal.Ops\n",
-                encoding="utf-8",
-            )
-
-            # Create .olean
-            lake_dir = root / ".lake" / "build" / "lib" / "RubinFormal"
-            lake_dir.mkdir(parents=True)
-            (lake_dir / "Ops.olean").write_text("")
-
-            lean_path = "rubin-formal/RubinFormal/Ops.lean"
-            evidence = "machine_checked_universal"
-            coverage = {
-                "coverage": [
-                    {
-                        "section_key": "sighash_v1",
-                        "file": lean_path,
-                        "theorems": ["RubinFormal.Ops.sighash_ok"],
-                        "theorem_files": {"RubinFormal.Ops.sighash_ok": lean_path},
-                        "evidence_level": evidence,
-                    },
-                    {
-                        "section_key": "da_set_integrity",
-                        "file": lean_path,
-                        "theorems": ["RubinFormal.Ops.da_ok"],
-                        "theorem_files": {"RubinFormal.Ops.da_ok": lean_path},
-                        "evidence_level": evidence,
-                    },
-                    {
-                        "section_key": "weight_accounting",
-                        "file": lean_path,
-                        "theorems": ["RubinFormal.Ops.weight_ok"],
-                        "theorem_files": {"RubinFormal.Ops.weight_ok": lean_path},
-                        "evidence_level": evidence,
-                    },
-                ]
-            }
-            bridge = {
-                "critical_ops": [
-                    {"op": "sighash_v1", "evidence_level": evidence},
-                    {"op": "da_set_integrity", "evidence_level": evidence},
-                    {"op": "weight_accounting", "evidence_level": evidence},
-                ]
-            }
-
-            (root / "proof_coverage.json").write_text(json.dumps(coverage), encoding="utf-8")
-            (root / "refinement_bridge.json").write_text(json.dumps(bridge), encoding="utf-8")
-
-            cov, br, lean_files = load_registry_inputs(root)
-            ea, eif = theorem_lookups(root, lean_files)
-            _, _, _, errors = collect_registry_errors(root, cov, br, ea, eif)
-            self.assertEqual(errors, [])
+            self._write_minimal_valid_registry(root)
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with self._patched_main_file(root), mock.patch("sys.stdout", stdout), mock.patch("sys.stderr", stderr):
+                result = registry_truth.main()
+            self.assertEqual(result, 0)
+            self.assertEqual(stderr.getvalue(), "")
+            self.assertIn("OK: formal registry truth passed", stdout.getvalue())
 
 
 if __name__ == "__main__":
