@@ -5,6 +5,7 @@ import RubinFormal.CoreExtInvariants
 import RubinFormal.SighashV1
 import RubinFormal.CovenantGenesisV1
 import RubinFormal.WitnessCommitmentV1
+import RubinFormal.TxIdBehavioral
 
 namespace RubinFormal
 
@@ -18,12 +19,22 @@ def transactionWireStatement : Prop :=
     ByteWireLegacy.parseCompactSizeToy (ByteWireLegacy.encodeCompactSizeToy n) = some (n, [])) ∧
   (∀ tx : ByteWireLegacy.TxMini, ByteWireLegacy.txMiniByteValid tx →
     ByteWireLegacy.parseTxMini (ByteWireLegacy.serializeTxMini tx) = some tx)
-/-- v2 (F-01 fix): ByteArray preimage distinctness for txid ≠ wtxid.
-    When witness is non-empty (coreEnd < tx.size), the txid preimage
-    (tx.extract 0 coreEnd) differs from the wtxid preimage (full tx). -/
+/-- §8 identifier boundary surface.
+    (1) `TxCoreBytes` and `TxBytes` are structurally distinct for every
+        serialized transaction because the full wire encoding always retains
+        witness-count / payload-length markers after the core bytes.
+    (2) The witness-empty lane is covered explicitly: the full bytes still carry
+        a `CompactSize(0)` witness-count marker before the DA payload length. -/
 def transactionIdentifiersStatement : Prop :=
-  ∀ (tx : ByteArray) (coreEnd : Nat),
-    coreEnd < tx.size → tx.extract 0 coreEnd ≠ tx
+  (∀ tx : UtxoBasicV1.Tx,
+    UtxoBasicV1.serializeTxCore tx ≠ UtxoBasicV1.serializeTx tx) ∧
+  (∀ tx : UtxoBasicV1.Tx,
+    tx.witness = [] →
+      UtxoBasicV1.serializeTx tx =
+        UtxoBasicV1.serializeTxCore tx ++
+          RubinFormal.WireEnc.compactSize 0 ++
+          RubinFormal.WireEnc.compactSize tx.daPayloadLen ++
+          tx.daPayload)
 def weightAccountingStatement : Prop :=
   ∀ base witness1 witness2 sigCost : Nat, witness1 ≤ witness2 → weight base witness1 sigCost ≤ weight base witness2 sigCost
 /-- v3 (D08-F02 fix): standalone witness-commitment semantics.
@@ -186,8 +197,11 @@ theorem transaction_wire_proved : transactionWireStatement := by
     exact ByteWireLegacy.parse_serializeTxMini_roundtrip tx htx
 
 theorem transaction_identifiers_proved : transactionIdentifiersStatement := by
-  intro tx coreEnd h
-  exact txid_wtxid_preimage_bytes_distinct tx coreEnd h
+  refine ⟨?_, ?_⟩
+  · intro tx
+    exact txid_wtxid_payloads_distinct tx
+  · intro tx hEmpty
+    exact txid_wtxid_witness_empty_serialization_shape tx hEmpty
 
 theorem weight_accounting_proved : weightAccountingStatement := by
   intro base witness1 witness2 sigCost hw
