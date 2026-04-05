@@ -197,7 +197,7 @@
     {
       "section_key": "witness_commitment",
       "section_heading": "### 10.4.1 Witness Commitment (Coinbase Anchor)",
-      "status": "proved",
+      "status": "proved_with_axiom",
       "theorems": [
         "RubinFormal.witness_commitment_proved",
         "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot",
@@ -215,13 +215,13 @@
         "RubinFormal.Merkle.merkle_tag_equivalence_leaf_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/MerkleStructure.lean",
         "RubinFormal.Merkle.merkle_tag_equivalence_node_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/MerkleStructure.lean"
       },
-      "notes": "Standalone witness-commitment theorems (PR#104) plus merkle tag domain-separation theorems showing txid tags (0x00/0x01) and witness-merkle tags (0x02/0x03) inhabit distinct SHA3 preimage domains.",
+      "notes": "Standalone witness-commitment theorems (PR#104) plus merkle-tag reduction theorems showing that cross-domain root equality between txid tags (0x00/0x01) and witness-merkle tags (0x02/0x03) would require a SHA3-256 collision on distinct tagged preimages.",
       "limitations": [
-        "The semantic surface proves the canonical witness-commitment step over the current BlockBasicV1 model, not cryptographic collision resistance of SHA3-256.",
+        "The semantic surface proves the canonical witness-commitment step over the current BlockBasicV1 model, but the cross-domain anti-aliasing argument is assumption-backed: ruling out txid/wtxid tagged-root aliasing relies on SHA3-256 collision resistance.",
         "Executable replay remains complementary evidence for concrete fixture coverage and regression checking.",
-        "The merkle-tag theorems are structural domain-separation results only: cross-domain root equality would require a SHA3 collision."
+        "The merkle-tag theorems are reduction theorems (equality implies a SHA3 collision on distinct tagged preimages), not an axiom-free cryptographic impossibility proof."
       ],
-      "evidence_level": "machine_checked_contract"
+      "evidence_level": "machine_checked_assumption_backed"
     },
     {
       "section_key": "sighash_v1",
