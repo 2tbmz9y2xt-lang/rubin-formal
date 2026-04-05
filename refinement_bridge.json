@@ -22,14 +22,14 @@
       "model_theorem": "RubinFormal.Conformance.cv_sighash_vectors_pass",
       "lean_file": "rubin-formal/RubinFormal/Conformance/CVSighashReplay.lean",
       "theorem_file": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
-      "evidence_level": "machine_checked_contract",
+      "evidence_level": "machine_checked_assumption_backed",
       "spec_section": "§12",
       "go_function": "DigestV1",
-      "contract_scope": "CV-SIGHASH replay plus substantive live sighash-selection rejection theorems on selectHashPrevouts/selectHashSequences/selectHashOutputs and exhaustive hasValidBaseType coverage. This closes the currently shipped fixture subset and the live invalid-type selection surface without claiming a universal tx-level digest equivalence theorem.",
+      "contract_scope": "CV-SIGHASH replay plus substantive live sighash-selection rejection theorems on selectHashPrevouts/selectHashSequences/selectHashOutputs, live TXCTX allowed_sighash_set bridge theorems on validateTxContextSighashGate/validateTxContextSighashWitness, and an explicit reduction theorem showing that equal live digestV1 outputs on distinct executable preimages would require a SHA3-256 collision.",
       "limitations": [
         "This remains a contract-level bridge: the executable replay covers the current CV-SIGHASH fixture set, not every possible raw transaction / witness-carried sighash_type combination.",
-        "No cryptographic injectivity claim over SHA3-256 digests is made here; buildPreimageFrameParts_injective reasons about frame parts, not collision resistance.",
-        "TXCTX-aware allowed_sighash_set policy is tracked in the separate §14 TxContext row, not claimed here as extra §12 bridge strength."
+        "The digest reduction theorem is assumption-backed: it turns equal live digests plus distinct executable preimages into a SHA3-256 collision obligation, but it does not itself prove such collisions impossible.",
+        "No universal proof is claimed here for deriving preimage distinctness from arbitrary raw transaction pairs, DaCoreFieldsBytes variation, or every witness-carried sighash_type combination."
       ],
       "supporting_theorems": [
         "RubinFormal.sighash_v1_proved",
@@ -46,9 +46,17 @@
         "RubinFormal.selectHashPrevouts_invalid_returns_none",
         "RubinFormal.selectHashSequences_invalid_returns_none",
         "RubinFormal.selectHashOutputs_invalid_returns_none",
-        "RubinFormal.hasValidBaseType_exhaustive"
+        "RubinFormal.hasValidBaseType_exhaustive",
+        "RubinFormal.validateTxContextSighashGate_ok_iff",
+        "RubinFormal.validateTxContextSighashGate_invalid_base_rejects",
+        "RubinFormal.validateTxContextSighashGate_disallowed_rejects",
+        "RubinFormal.validateTxContextSighashWitness_ok_iff",
+        "RubinFormal.validateTxContextSighashWitness_empty_signature_rejects",
+        "RubinFormal.validateTxContextSighashWitness_invalid_base_rejects",
+        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects",
+        "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision"
       ],
-      "notes": "Bridge upgraded from baseline because the shared-op surface now has both executable CV-SIGHASH replay and substantive live theorems on the real sighash helper functions. This is still an honest contract lane, not a universal claim for every raw tx / witness path."
+      "notes": "Bridge upgraded from contract to assumption-backed because the section now includes both the live TXCTX allowlist surface and an explicit digest-collision reduction theorem. The result is still honest about residual raw-tx/preimage distinctness gaps and does not overclaim universal tx-level digest equivalence."
     },
     {
       "op": "retarget_v1",

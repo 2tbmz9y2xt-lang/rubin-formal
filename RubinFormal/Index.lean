@@ -63,6 +63,7 @@ import RubinFormal.GenesisRuleBehavioral
 import RubinFormal.CoinbaseBehavioral
 import RubinFormal.TxContextBehavioral
 import RubinFormal.ConnectBlockFull
+import RubinFormal.SighashAssumptionBridge
 import RubinFormal.PerTxStateMachine
 import RubinFormal.UtxoMapProperties
 import RubinFormal.FeatureActivationFSM
