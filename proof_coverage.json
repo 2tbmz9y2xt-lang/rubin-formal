@@ -4,7 +4,7 @@
   "claim_level": "refined",
   "spec_source_file": "spec/RUBIN_L1_CANONICAL.md",
   "spec_section_hashes_file": "spec/SECTION_HASHES.json",
-  "spec_section_hashes_sha3_256": "e6f6daf93926eb0fb4a1e7db68dff7803f0796cb8af70f03e9238398fcd3c602",
+  "spec_section_hashes_sha3_256": "bfd9a8ed879b788b685fb9e8452e4c6cc3a409267d149ec68b35d8138e1c2f9a",
   "lean_toolchain_file": "rubin-formal/lean-toolchain",
   "refinement_bridge_file": "rubin-formal/refinement_bridge.json",
   "coverage": [
@@ -96,9 +96,9 @@
       },
       "limitations": [
         "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via triple-segment content hash (~192-bit collision resistance).",
-        "Cross-language Lean→Go/Rust byte-level equivalence relies on human-reviewed parity, not machine-checked bridge. The universal roundtrip is proved within Lean only."
+        "Cross-language Lean\u2192Go/Rust byte-level equivalence relies on human-reviewed parity, not machine-checked bridge. The universal roundtrip is proved within Lean only."
       ],
-      "notes": "Full transaction parse-serialize roundtrip universally proved: ∀ tx, txStructurallyWellFormed tx → parseTx (serializeTx tx) = Except.ok tx (PR #351/#353). Covers all 14 structural well-formedness fields, all 3 txKind variants (0x00, 0x01, 0x02), and the complete serialize→parse chain including header (version + txKind + nonce) and body (inputs, outputs, locktime, daCore, witness, daPayload). Also includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16). parseTx_result_integrity proves ok/err/txid/wtxid consistency (#337).",
+      "notes": "Full transaction parse-serialize roundtrip universally proved: \u2200 tx, txStructurallyWellFormed tx \u2192 parseTx (serializeTx tx) = Except.ok tx (PR #351/#353). Covers all 14 structural well-formedness fields, all 3 txKind variants (0x00, 0x01, 0x02), and the complete serialize\u2192parse chain including header (version + txKind + nonce) and body (inputs, outputs, locktime, daCore, witness, daPayload). Also includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16). parseTx_result_integrity proves ok/err/txid/wtxid consistency (#337).",
       "evidence_level": "machine_checked_universal"
     },
     {
@@ -123,7 +123,7 @@
         "The non-fixture theorem surface now proves the structural preimage boundary for canonical serializer outputs, including the witness-empty lane, but concluding digest inequality / identifier uniqueness from those distinct preimages still relies on explicit SHA3-256 collision and second-preimage resistance assumptions.",
         "CV-PARSE and CV-SIG replay remain the executable evidence that the current parser emits the pinned txid/wtxid bytes on shipped fixtures; the theorem surface does not replace fixture replay for concrete digest values."
       ],
-      "notes": "Section §8 is now honest assumption-backed evidence: `transaction_identifiers_proved` lifts the section statement onto the live canonical serializer boundary (`serializeTxCore` vs `serializeTx`), `txid_wtxid_witness_empty_serialization_shape` closes the witness-empty lane explicitly via the retained `CompactSize(0)` marker, and `txid_wtxid_identifier_domain_contract` keeps the Merkle leaf domains disjoint. CV-PARSE and CV-SIG replay remain the executable evidence for concrete emitted txid/wtxid values."
+      "notes": "Section \u00a78 is now honest assumption-backed evidence: `transaction_identifiers_proved` lifts the section statement onto the live canonical serializer boundary (`serializeTxCore` vs `serializeTx`), `txid_wtxid_witness_empty_serialization_shape` closes the witness-empty lane explicitly via the retained `CompactSize(0)` marker, and `txid_wtxid_identifier_domain_contract` keeps the Merkle leaf domains disjoint. CV-PARSE and CV-SIG replay remain the executable evidence for concrete emitted txid/wtxid values."
     },
     {
       "section_key": "weight_accounting",
@@ -276,9 +276,9 @@
         "RubinFormal.validateTxContextSighashWitness_disallowed_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
         "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean"
       },
-      "notes": "Counted core now combines the existing CV-SIGHASH replay + live selection theorems with the live TXCTX `allowed_sighash_set` gate/witness bridge and an explicit reduction theorem: equal live `digestV1` outputs on distinct executable preimages imply a SHA3-256 collision obligation. This is the honest assumption-backed ceiling for §12 without overclaiming arbitrary raw-tx equivalence.",
+      "notes": "Counted core now combines the existing CV-SIGHASH replay + live selection theorems with the live TXCTX `allowed_sighash_set` gate/witness bridge and an explicit reduction theorem: equal live `digestV1` outputs on distinct executable preimages imply a SHA3-256 collision obligation. This is the honest assumption-backed ceiling for \u00a712 without overclaiming arbitrary raw-tx equivalence.",
       "limitations": [
-        "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
+        "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every \u00a712 sighash_type branch or invalid-type rejection path.",
         "The digest theorem is a reduction theorem: when two live digestV1 executions succeed with equal outputs and their executable preimages are distinct, SHA3-256 would have to collide. The proof does not itself claim cryptographic impossibility.",
         "No universal proof is claimed here for deriving preimage distinctness from arbitrary raw transaction pairs, DaCoreFieldsBytes variation, or every witness-carried sighash_type path.",
         "The TXCTX allowlist bridge now covers the live `validateTxContextSighashGate` / `validateTxContextSighashWitness` surface, but broader raw-tx/hash equivalence residuals remain out of scope."
@@ -556,7 +556,7 @@
         "RubinFormal.ptpi_outputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.ptpi_locktime_fail": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity is formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages are bridged to live functions — ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: all 8 enum stages are now live-bridged — EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, and ValueConservation. `dispatchCovenantValidation` is called directly from the live `applyNonCoinbaseTxBasicNoCrypto` per-input loop before branch-specific checks/state updates, so the covenant-dispatch / TXCTX sub-ordering is now claimed on the direct live call path rather than through a parallel-model helper caveat. Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective on the full live semantic stage set), ext_error_pipeline_deterministic (strict ordering + commutativity on the modeled ext-error surface).",
+      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity is formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages are bridged to live functions \u2014 ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: all 8 enum stages are now live-bridged \u2014 EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, and ValueConservation. `dispatchCovenantValidation` is called directly from the live `applyNonCoinbaseTxBasicNoCrypto` per-input loop before branch-specific checks/state updates, so the covenant-dispatch / TXCTX sub-ordering is now claimed on the direct live call path rather than through a parallel-model helper caveat. Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective on the full live semantic stage set), ext_error_pipeline_deterministic (strict ordering + commutativity on the modeled ext-error surface).",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -604,7 +604,7 @@
       "limitations": [
         "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here; they belong to dedicated per-covenant and sighash rows."
       ],
-      "notes": "Universal for §14 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
+      "notes": "Universal for \u00a714 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
     },
     {
       "section_key": "difficulty_update",
@@ -695,7 +695,7 @@
         "RubinFormal.cwsInnerGen_nonempty": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
         "RubinFormal.clampWindowTimestamps_ok": "rubin-formal/RubinFormal/RetargetBehavioral.lean"
       },
-      "notes": "Universal closure of §15 retarget formula. 6 constant pins, identity/zero cases, lo≤hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio. 4 LIVE theorems on retargetV1 monadic function (parse/validation error paths + pattern=None success). CV-POW conformance replay on real vectors. Helper nat_div_le_div_right proved from Nat.div_add_mod.",
+      "notes": "Universal closure of \u00a715 retarget formula. 6 constant pins, identity/zero cases, lo\u2264hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio. 4 LIVE theorems on retargetV1 monadic function (parse/validation error paths + pattern=None success). CV-POW conformance replay on real vectors. Helper nat_div_le_div_right proved from Nat.div_add_mod.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -783,7 +783,7 @@
       },
       "evidence_level": "machine_checked_universal",
       "limitations": [],
-      "notes": "Section §1 now reaches universal level on the exact live duplicate-replay path: `ReplayDomainBehavioral.lean` keeps the parseTx nonce-determinism / duplicate-nonce bridge, while `ReplayDomainUniversal.lean` proves the executable `anyDuplicate` helper is extensionally equivalent to the abstract `nonceReplayFree` invariant and that the live `nonceReplayCheck` accepts exactly replay-free nonce lists and rejects duplicate-bearing nonce lists. CV-REPLAY remains the executable vector lane for shipped fixtures and block-basic replay examples; broader chain-wide/state-threaded replay semantics stay outside this section's own statement rather than as a residual limitation of the row."
+      "notes": "Section \u00a71 now reaches universal level on the exact live duplicate-replay path: `ReplayDomainBehavioral.lean` keeps the parseTx nonce-determinism / duplicate-nonce bridge, while `ReplayDomainUniversal.lean` proves the executable `anyDuplicate` helper is extensionally equivalent to the abstract `nonceReplayFree` invariant and that the live `nonceReplayCheck` accepts exactly replay-free nonce lists and rejects duplicate-bearing nonce lists. CV-REPLAY remains the executable vector lane for shipped fixtures and block-basic replay examples; broader chain-wide/state-threaded replay semantics stay outside this section's own statement rather than as a residual limitation of the row."
     },
     {
       "section_key": "utxo_state_model",
@@ -916,10 +916,10 @@
         "RubinFormal.utxo_apply_basic_universal_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean",
         "RubinFormal.utxo_apply_basic_chain_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean"
       },
-      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline — caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking is proved through the current list-to-RBMap bridge surface, with query-level semantics and non-spendable exclusion theorems covering the live behavior that has actually been mechanized. Vault policy replay remains useful evidence for the spend-side safe subset and default-order path, but it is not presented here as a full L1↔L2 equivalence model.",
+      "notes": "Block connection pipeline with coinbase, value conservation, and per-tx state machine. validateVaultSpend is LIVE (wired in applyNonCoinbaseTxBasicNoCrypto). TxContext: buildTxContext parameters threaded through connectBlockFull but NOT computed from tx contents inside the pipeline \u2014 caller provides activeExtIds/totalIn/totalOut. Coinbase UTXO marking is proved through the current list-to-RBMap bridge surface, with query-level semantics and non-spendable exclusion theorems covering the live behavior that has actually been mechanized. Vault policy replay remains useful evidence for the spend-side safe subset and default-order path, but it is not presented here as a full L1\u2194L2 equivalence model.",
       "limitations": [
         "RBMap-level operational equivalence is not fully proved end-to-end; the current closure relies on the explicit list-to-RBMap bridge and query-level semantics now available in CoinbaseBehavioral.",
-        "vault_policy_default_order_safe_proved covers the spend-side safe subset / default-order path only and is not a full L1↔L2 equivalence theorem for every vault-policy branch."
+        "vault_policy_default_order_safe_proved covers the spend-side safe subset / default-order path only and is not a full L1\u2194L2 equivalence theorem for every vault-policy branch."
       ],
       "evidence_level": "machine_checked_universal"
     },
@@ -1192,7 +1192,7 @@
         "RubinFormal.forkSelect_equal_chains": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
         "RubinFormal.forkSelect_exhaustive": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
       },
-      "notes": "Fork-choice selector with universal exhaustive determinism proof. forkSelect_exhaustive is the master theorem: for ALL 32-byte hash inputs, forkSelect yields consistent cross-node agreement — zero axioms, zero semantic premises. forkSelect_equal_chains covers identical-chain trivial case. forkSelect_total_det covers all distinguishable pairs. bytesLT_antisym + bytesLT_total_of_ne provide tie-break properties. fork_choice_select_cv_contract_proved adds concrete evidence: all 16 CV-FORK-CHOICE fork_choice_select vectors (12 positive + 4 negative) machine-checked via native_decide, including edge cases: identical chains, all-zero vs all-0xFF tiebreak, single chain, max-difficulty, off-by-one work, last-byte tiebreak. The block_hash_collision_resistance axiom has been removed; all determinism proofs are now fully axiom-free.",
+      "notes": "Fork-choice selector with universal exhaustive determinism proof. forkSelect_exhaustive is the master theorem: for ALL 32-byte hash inputs, forkSelect yields consistent cross-node agreement \u2014 zero axioms, zero semantic premises. forkSelect_equal_chains covers identical-chain trivial case. forkSelect_total_det covers all distinguishable pairs. bytesLT_antisym + bytesLT_total_of_ne provide tie-break properties. fork_choice_select_cv_contract_proved adds concrete evidence: all 16 CV-FORK-CHOICE fork_choice_select vectors (12 positive + 4 negative) machine-checked via native_decide, including edge cases: identical chains, all-zero vs all-0xFF tiebreak, single chain, max-difficulty, off-by-one work, last-byte tiebreak. The block_hash_collision_resistance axiom has been removed; all determinism proofs are now fully axiom-free.",
       "limitations": [
         "forkSelect models the runtime fork_choice_select. Go/Rust code follows identical if/else chain. Structural equivalence evident from inspection but not proved via rfl (Go/Rust not importable to Lean).",
         "The 32-byte hash length premise (hL/hR) is a protocol type invariant (SHA3-256 output), not a semantic precondition. Runtime block hashes are always 32 bytes by construction."
@@ -1226,7 +1226,7 @@
     },
     {
       "section_key": "parallel_validation_equivalence",
-      "section_heading": "## Parallel Validation — Sequential Equivalence (Q-PV-19)",
+      "section_heading": "## Parallel Validation \u2014 Sequential Equivalence (Q-PV-19)",
       "status": "proved",
       "theorems": [
         "RubinFormal.Refinement.ParallelEquivalence.accept_reject_equivalence_live",
@@ -1243,14 +1243,14 @@
       },
       "notes": "Counted core is now the LIVE/BRIDGE quartet only: (1) accept_reject_equivalence_live for the Go SigCheckQueue.Flush contract, (2) connectBlockFullComputed_eq_connectBlockFull for exact some-path equality on the shared validated TxContext-input surface, (3) connectBlockFullComputed_none_eq for the unconditional none-path, and (4) connectBlockFullComputed_ok_implies_txctx_gates to derive the some-path gate assumptions from an actual live .ok result. Helper/model reducer lemmas remain in ParallelEquivalence.lean as supporting mathematics but are no longer counted here as separate coverage.",
       "limitations": [
-        "The full block-pipeline equality is scoped to the shared validated TxContext-input surface: on the some-path, connectBlockFullComputed_eq_connectBlockFull applies once validateTxContextContinuingCounts and validateTxContextSighashWitness accept; malformed TxContext-input rejections remain covered by the live §14 TxContext gate row rather than duplicated here.",
+        "The full block-pipeline equality is scoped to the shared validated TxContext-input surface: on the some-path, connectBlockFullComputed_eq_connectBlockFull applies once validateTxContextContinuingCounts and validateTxContextSighashWitness accept; malformed TxContext-input rejections remain covered by the live \u00a714 TxContext gate row rather than duplicated here.",
         "Auxiliary tagged-result lowest-index theorems remain in ParallelEquivalence.lean for helper reasoning only; they are not counted here because the live queue may early-abort and surface a deterministic submission-order error instead of the absolute lowest failing index."
       ],
       "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "txctx_coreext_fixture_replay",
-      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Fixture Replay Lane",
+      "section_heading": "## SPEC-TXCTX-01 \u00a714 / CORE_EXT Fixture Replay Lane",
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_ext_vectors_pass",
@@ -1261,17 +1261,17 @@
         "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
       },
-      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry checks the shipped bundle shape only: vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit. It does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
+      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry checks the shipped bundle shape only: vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit. It does not reopen or replace the live \u00a714 theorem closure recorded in txcontext_formal.",
       "limitations": [
         "This lane is a structural fixture contract, not a universal theorem over live TxContext/CoreExt semantics.",
         "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
-        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; this replay lane is complementary evidence only."
+        "The 10 live \u00a714 closure theorems remain the substantive TxContext proof surface; this replay lane is complementary evidence only."
       ],
       "evidence_level": "machine_checked_contract"
     },
     {
       "section_key": "txcontext_formal",
-      "section_heading": "## SPEC-TXCTX-01 §14. TxContext Pre-Activation Gates",
+      "section_heading": "## SPEC-TXCTX-01 \u00a714. TxContext Pre-Activation Gates",
       "status": "proved",
       "theorems": [
         "RubinFormal.sortExtIds_order_independent",
@@ -1326,13 +1326,13 @@
         "RubinFormal.buildTxContextLive_eq_fromValues": "rubin-formal/RubinFormal/TxContextBehavioral.lean",
         "RubinFormal.buildTxContextLive_eq_buildTxContext": "rubin-formal/RubinFormal/TxContextBehavioral.lean"
       },
-      "notes": "§14 pre-activation gate closure on the LIVE Lean TxContext surface. All 24 substantive theorems are ∀-quantified over live functions (sortExtIds, buildTxContext, buildTxContextFromValues, buildTxContextLive, compareUint128, validateContinuingOutputCount, checkSighashPolicy, checkValueConservation↔validateValueConservation). 18 LIVE theorems prove properties directly on live functions. 6 BRIDGE theorems wire live↔model equivalences (sortExtIds↔sortAscending, compareUint128↔uint128GTE, buildTxContextLive↔fromValues↔buildTxContext, vault conservation paths). 2 WRAPPER theorems excluded from registry: max_continuing_is_two (rfl constant), continuing_bound_is_invariant (type field projection). Zero limitations. Zero fixture dependencies. Zero sorry/admit/axiom. Sighash policy exhaustive 256×256 native_decide in SighashV1.lean.",
+      "notes": "\u00a714 pre-activation gate closure on the LIVE Lean TxContext surface. All 24 substantive theorems are \u2200-quantified over live functions (sortExtIds, buildTxContext, buildTxContextFromValues, buildTxContextLive, compareUint128, validateContinuingOutputCount, checkSighashPolicy, checkValueConservation\u2194validateValueConservation). 18 LIVE theorems prove properties directly on live functions. 6 BRIDGE theorems wire live\u2194model equivalences (sortExtIds\u2194sortAscending, compareUint128\u2194uint128GTE, buildTxContextLive\u2194fromValues\u2194buildTxContext, vault conservation paths). 2 WRAPPER theorems excluded from registry: max_continuing_is_two (rfl constant), continuing_bound_is_invariant (type field projection). Zero limitations. Zero fixture dependencies. Zero sorry/admit/axiom. Sighash policy exhaustive 256\u00d7256 native_decide in SighashV1.lean.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "native_rotation",
-      "section_heading": "Native Crypto Suite Rotation (§4.1.2, §4.1.3, §23.2.1)",
+      "section_heading": "Native Crypto Suite Rotation (\u00a74.1.2, \u00a74.1.3, \u00a723.2.1)",
       "status": "proved",
       "theorems": [
         "RubinFormal.NativeSuiteRotation.fi_rot_01_descriptor_unique",
@@ -1369,15 +1369,15 @@
         "RubinFormal.RegistryResolutionLiveBridge.default_provider_suite_registered": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
         "RubinFormal.NativeRegistryResolution.native_rotation_ok_constrained": "rubin-formal/RubinFormal/NativeRegistryResolution.lean"
       },
-      "notes": "Universal for §4.1.2/§4.1.3/§23.2.1 native crypto suite rotation. native_rotation_ok_constrained proves that for any well-formed descriptor in any well-formed registry, at every height: the phase partition holds and all active create/spend suites resolve to unique entries. Covers all 5 rotation phases including post-rotation dispatch. No claim about byte-level wire encoding trace (G7 residual).",
+      "notes": "Universal for \u00a74.1.2/\u00a74.1.3/\u00a723.2.1 native crypto suite rotation. native_rotation_ok_constrained proves that for any well-formed descriptor in any well-formed registry, at every height: the phase partition holds and all active create/spend suites resolve to unique entries. Covers all 5 rotation phases including post-rotation dispatch. No claim about byte-level wire encoding trace (G7 residual).",
       "limitations": [
-        "Structural model ↔ Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
+        "Structural model \u2194 Go/Rust parity proved; byte-level wire encoding trace not formalized (G7-class cross-language bridge residual)."
       ],
       "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "spend_gate_bridge",
-      "section_heading": "## Spend Gate — Suite Acceptance Bridge",
+      "section_heading": "## Spend Gate \u2014 Suite Acceptance Bridge",
       "status": "proved",
       "theorems": [
         "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",
@@ -1468,7 +1468,7 @@
         "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_eq_fold": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean",
         "RubinFormal.FeatureActivationLiveBridge.featurebit_state_at_height_from_window_counts_state_monotone": "rubin-formal/RubinFormal/FeatureActivationLiveBridge.lean"
       },
-      "notes": "Universal closure of §23 feature activation FSM / flag-day surface. FeatureActivationLiveBridge now bridges the prechecked state-only live multi-boundary state-at-height fold used by Go featurebits.go and Rust featurebits.rs to the existing fold-based FSM model, then lifts multi_step_monotone onto that reachable helper path under the same sufficient window_signal_counts prefix guard enforced by live code before the fold begins. Single-step priority/no-skip/iff theorems plus flagday_complete_behavior remain complementary executable evidence. 14 theorems total.",
+      "notes": "Universal closure of \u00a723 feature activation FSM / flag-day surface. FeatureActivationLiveBridge now bridges the prechecked state-only live multi-boundary state-at-height fold used by Go featurebits.go and Rust featurebits.rs to the existing fold-based FSM model, then lifts multi_step_monotone onto that reachable helper path under the same sufficient window_signal_counts prefix guard enforced by live code before the fold begins. Single-step priority/no-skip/iff theorems plus flagday_complete_behavior remain complementary executable evidence. 14 theorems total.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     }
@@ -1477,7 +1477,7 @@
   "claims": {
     "allowed": [
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 25 machine-checked section entries, but this is still not a universal proof of full CANONICAL semantics",
-      "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
+      "Go(reference) \u2192 Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
       "The pinned-section registry currently covers 25 section entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
@@ -1488,7 +1488,7 @@
       "bit-exact wire/serialization proof beyond what is exercised by conformance fixtures",
       "treating formal-only extra theorems as additional pinned-section coverage when they are not in the registry",
       "universal mechanized refinement between spec text and Go/Rust implementations",
-      "claiming machine-checked Lean-to-Go/Rust equivalence for bridge theorems — Lean cannot import Go/Rust; parity is human-verified by code review"
+      "claiming machine-checked Lean-to-Go/Rust equivalence for bridge theorems \u2014 Lean cannot import Go/Rust; parity is human-verified by code review"
     ]
   },
   "status_taxonomy": {
