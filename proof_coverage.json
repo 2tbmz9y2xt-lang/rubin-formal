@@ -226,7 +226,7 @@
     {
       "section_key": "sighash_v1",
       "section_heading": "## 12. Sighash v1 (Normative)",
-      "status": "proved",
+      "status": "proved_with_axiom",
       "theorems": [
         "RubinFormal.Conformance.cv_sighash_vectors_pass",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
@@ -241,7 +241,15 @@
         "RubinFormal.selectHashPrevouts_invalid_returns_none",
         "RubinFormal.selectHashSequences_invalid_returns_none",
         "RubinFormal.selectHashOutputs_invalid_returns_none",
-        "RubinFormal.hasValidBaseType_exhaustive"
+        "RubinFormal.hasValidBaseType_exhaustive",
+        "RubinFormal.validateTxContextSighashGate_ok_iff",
+        "RubinFormal.validateTxContextSighashGate_invalid_base_rejects",
+        "RubinFormal.validateTxContextSighashGate_disallowed_rejects",
+        "RubinFormal.validateTxContextSighashWitness_ok_iff",
+        "RubinFormal.validateTxContextSighashWitness_empty_signature_rejects",
+        "RubinFormal.validateTxContextSighashWitness_invalid_base_rejects",
+        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects",
+        "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
@@ -257,16 +265,24 @@
         "RubinFormal.selectHashPrevouts_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
         "RubinFormal.selectHashSequences_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
         "RubinFormal.selectHashOutputs_invalid_returns_none": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
-        "RubinFormal.hasValidBaseType_exhaustive": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean"
+        "RubinFormal.hasValidBaseType_exhaustive": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
+        "RubinFormal.validateTxContextSighashGate_ok_iff": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashGate_invalid_base_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashGate_disallowed_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashWitness_ok_iff": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashWitness_empty_signature_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashWitness_invalid_base_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean"
       },
-      "notes": "Tautological digestV1_deterministic/ext removed from registry. 5 wrapper commits_* theorems removed (congrArg corollaries of injective). Substantive: 3 invalid-type rejections + hasValidBaseType exhaustive + buildPreimageFrameParts_injective + checkSighashPolicy_exhaustive_256x256 + 8 selectHash*/Output individual type theorems.",
+      "notes": "Counted core now combines the existing CV-SIGHASH replay + live selection theorems with the live TXCTX `allowed_sighash_set` gate/witness bridge and an explicit reduction theorem: equal live `digestV1` outputs on distinct executable preimages imply a SHA3-256 collision obligation. This is the honest assumption-backed ceiling for §12 without overclaiming arbitrary raw-tx equivalence.",
       "limitations": [
         "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
-        "The strengthened theorems are structural over pre-hashed components and segmented preimage parts, not a claim about cryptographic collision resistance of SHA3-256.",
-        "No universal proof is claimed here for deriving all hashed components directly from arbitrary raw transactions, DaCoreFieldsBytes, or witness-carried sighash_type extraction.",
-        "The TxContext-aware verify_sig_ext dispatch and allowed_sighash_set policy introduced by TXCTX are not yet covered by a dedicated section-level proof."
+        "The digest theorem is a reduction theorem: when two live digestV1 executions succeed with equal outputs and their executable preimages are distinct, SHA3-256 would have to collide. The proof does not itself claim cryptographic impossibility.",
+        "No universal proof is claimed here for deriving preimage distinctness from arbitrary raw transaction pairs, DaCoreFieldsBytes variation, or every witness-carried sighash_type path.",
+        "The TXCTX allowlist bridge now covers the live `validateTxContextSighashGate` / `validateTxContextSighashWitness` surface, but broader raw-tx/hash equivalence residuals remain out of scope."
       ],
-      "evidence_level": "machine_checked_contract"
+      "evidence_level": "machine_checked_assumption_backed"
     },
     {
       "section_key": "consensus_error_codes",
