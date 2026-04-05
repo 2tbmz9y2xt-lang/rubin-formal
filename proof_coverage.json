@@ -1378,7 +1378,7 @@
     {
       "section_key": "spend_gate_bridge",
       "section_heading": "## Spend Gate — Suite Acceptance Bridge",
-      "status": "LIVE+BRIDGE",
+      "status": "proved",
       "theorems": [
         "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",
         "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_rejects_inactive_suite",
@@ -1401,7 +1401,7 @@
     {
       "section_key": "feature_activation_fsm",
       "section_heading": "## Feature Activation FSM (BIP9-like)",
-      "status": "LIVE+BRIDGE",
+      "status": "proved",
       "theorems": [
         "RubinFormal.active_terminal",
         "RubinFormal.failed_terminal",
@@ -1443,9 +1443,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; this is not a universal proof of CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 24 machine-checked section entries, but this is still not a universal proof of full CANONICAL semantics",
       "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
-      "The pinned-section registry covers all 17 hash-pinned section keys. Each entry carries an explicit evidence_level distinguishing universal proofs from subset contracts, assumption-backed proofs, and CV-replay-only entries.",
+      "The pinned-section registry currently covers 24 section entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],

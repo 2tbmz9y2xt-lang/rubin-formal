@@ -1,11 +1,11 @@
-# Proof Coverage (bootstrap)
+# Proof Coverage
 
 Источник: `spec/SECTION_HASHES.json`  
 Машинный реестр: `rubin-formal/proof_coverage.json`
 
 Текущее состояние: machine-readable source-of-truth (`proof_coverage.json`) фиксирует
-`proof_level=refinement`, `claim_level=refined`, полный registry по 17 pinned section keys и явные
-`notes` / `limitations` для thin или partial entries. Conformance-фикстуры
+`proof_level=refinement`, `claim_level=refined`, полный registry по 24 current section entries и явные
+`notes` / `limitations` для non-universal claims. Conformance-фикстуры
 `conformance/fixtures/CV-*.json` покрыты Lean replay/refinement слоем.
 
 ## Термины (важно)
@@ -16,26 +16,33 @@
   - `toy` (только model-baseline),
   - `byte` (byte-accurate слой),
   - `refined` (refinement to executable path).
-- `status=proved/proved_with_axiom/stated/deferred` относится к конкретной pinned-секции **в рамках указанного `proof_level`**.
+- `status=proved/proved_with_axiom` относится к конкретной registry entry **в рамках указанного `proof_level`**.
 - `status=proved_with_axiom` означает: proof закрывает секцию, но опирается на явно названные криптографические или модельные допущения, поэтому честный ceiling такой записи — `machine_checked_assumption_backed`, а не unconditional `universal`.
+- `evidence_level` — главный public-facing taxonomy field. Именно он различает universal / behavioral / assumption-backed / contract-level ceiling.
 
 Внешний аудит / freeze-ready коммуникации **НЕ ДОЛЖНЫ** трактовать текущий `proof_level=refinement`
 как “formal verification of CANONICAL for all inputs/sections”.
 
 Связка с hash-pinning:
 
-- `spec/SECTION_HASHES.json` сейчас содержит 17 pinned section keys.
-- `proof_coverage.json` теперь явно отслеживает все 17 ключей.
-- Не все 17 entries равны по силе claims: часть оставлена как `stated`, а часть `proved`
-  дополнительно ограничена `notes` / `limitations`.
+- `proof_coverage.json` сейчас содержит 24 machine-checked registry entries.
+- Все 24 текущие entries уже machine-checked; активных `stated` / `deferred` rows сейчас нет.
+- Не все 24 entries равны по силе claims: честная граница определяется `evidence_level` и `limitations`.
 - Extra formal-only theorems (например, `CORE_EXT` tightening) не считаются pinned-section coverage,
   если они не внесены отдельной registry entry.
 
+## Текущая раскладка evidence levels
+
+- `machine_checked_universal`: 18
+- `machine_checked_assumption_backed`: 3
+- `machine_checked_behavioral`: 2
+- `machine_checked_contract`: 1
+
 ## Путь к freeze-ready
 
-1. Углубить `stated` entries и scope-limited `proved` entries до более сильных секционных теорем.
-2. Углубить доказательства beyond-fixtures для consensus-critical safety-инвариантов.
-3. Держать матрицу покрытия в синхроне с hash-pinning CANONICAL и narrative в spec docs.
+1. Держать матрицу покрытия в синхроне с public narrative и closeout evidence.
+2. Углублять non-universal entries там, где это реально снижает consensus-risk или audit ambiguity.
+3. Не смешивать truth-correction с отдельными hygiene lanes вроде theorem traceability.
 
 ## Risk scoring / gates
 

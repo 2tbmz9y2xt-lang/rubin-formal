@@ -17,8 +17,9 @@
 - **Pinned section**: секция из `spec/SECTION_HASHES.json`, которая hash‑pin’ится и должна быть синхронна со спекой.
 - `status=proved`: утверждения для pinned‑секции доказаны в рамках текущего `proof_level`.
 - `status=proved_with_axiom`: утверждения доказаны, но proof опирается на один или более явно названных допущений. Для hash/commitment-секций это обычно означает reduction к collision resistance, а не аксиомо-свободную невозможность коллизии.
-- `status=stated`: утверждения сформулированы как леммы/аксиомы, но доказательства не добавлены.
-- `status=deferred`: секция сознательно не покрыта формально на данном этапе.
+- `status=stated`: резервный статус для будущих registry rows без machine-checked доказательства. В текущем registry таких строк нет.
+- `status=deferred`: резервный статус для сознательно не покрытой секции. В текущем registry таких строк нет.
+- `evidence_level`: главный truth-correction field для честного public claim ceiling. Он отделяет universal, behavioral, assumption-backed и contract-level entries даже когда registry status уже `proved`.
 
 ## Уровни доказательств (`proof_level`)
 
@@ -58,6 +59,19 @@
 Минимальный “freeze‑adjacent” профиль:
 - `proof_level ∈ {byte-model, refinement}`;
 - `stated=0` и `deferred=0`.
+
+## Текущая truth snapshot
+
+На текущем refinement-срезе registry содержит:
+
+- `18` universal entries;
+- `3` assumption-backed entries;
+- `2` behavioral entries;
+- `1` contract-level entry;
+- `0` stated rows;
+- `0` deferred rows.
+
+Это сильнее старого bootstrap narrative, но всё ещё не даёт права заявлять universal proof of full CANONICAL semantics.
 
 ## Risk scoring (информативно)
 
