@@ -1,25 +1,25 @@
-# RUBIN Formal (Lean4) — bootstrap
+# RUBIN Formal (Lean4)
 
-Этот каталог содержит in-repo formal proof-pack baseline для RUBIN.
+Этот репозиторий содержит machine-checked formal proof surface для RUBIN.
 
 ## Что есть сейчас
 
 - Lean4-пакет `RubinFormal`
-- `proof_coverage.json` с machine-readable coverage registry по всем 17 pinned section keys
-- formal registry entries со статусами `proved` / `stated` и явными `notes` / `limitations` там, где claim scope уже не тянет на полное секционное доказательство
+- `proof_coverage.json` с machine-readable coverage registry по 24 текущим section entries
+- formal registry entries с явным `evidence_level`, `notes` и `limitations`, чтобы публичные claims не обгоняли реальную границу доказательств
 
 ## Граница claims (критично)
 
-Этот proof-pack — executable replay/refinement coverage для conformance-фикстур (CV-*.json) и baseline-слой
-для дальнейшей формализации. Он нужен для воспроизводимого “якоря”, но **не** является универсальной
-формальной верификацией CANONICAL.
+Этот proof-pack — executable replay/refinement surface для conformance-фикстур (CV-*.json) и live Lean theorems
+по части секций. Он даёт reproducible machine-checked evidence, но **не** является универсальной
+формальной верификацией всего CANONICAL.
 Текущий machine-readable статус: `proof_level=refinement`, `claim_level=refined`.
 
 Разрешённые формулировки (OK):
 
 - "Lean executable semantics replay all conformance fixtures (CV-*.json)"
 - "Go(reference) → Lean refinement is checked for critical ops over conformance fixture set"
-- "Pinned-section coverage is machine-readable, but some section entries are intentionally `stated` or explicitly scope-limited"
+- "Pinned-section coverage is machine-readable with explicit evidence levels: universal, behavioral, assumption-backed, and contract-level"
 
 Запрещённые формулировки (NOT OK):
 
@@ -45,9 +45,9 @@
 
 - Это **не** полный freeze-ready пакет уровня "универсальная байтовая модель wire + state transition для всех секций".
 - Консенсусные правила не меняются.
-- Формальный coverage registry сейчас явно отражает все 17 pinned section keys.
-- Не все 17 записей имеют одинаковую силу: часть entries остаётся `stated`, а часть `proved` entries
-  дополнительно ограничена `notes` / `limitations` в `proof_coverage.json`.
+- Формальный coverage registry сейчас содержит 24 machine-checked section entries.
+- По силе claims текущая раскладка такая: `18` universal, `3` assumption-backed, `2` behavioral, `1` contract-level.
+- Единый статус `proved` в registry не означает одинаковую силу claim: честная граница задаётся `evidence_level` и `limitations` в `proof_coverage.json`.
 - Extra formal-only theorems не считаются pinned-section claims, если они не внесены в machine-readable registry.
 
 ## Локальный запуск
@@ -66,6 +66,6 @@ cd ../rubin-protocol && scripts/dev-env.sh -- bash -lc 'cd ../rubin-formal && la
 
 ## Дальше
 
-1. Углубить `stated` entries и scope-limited `proved` entries до более сильных секционных теорем там, где это действительно нужно.
-2. Поддерживать `proof_coverage.json` в синхроне со `spec/SECTION_HASHES.json` и narrative в `rubin-spec`.
-3. Не поднимать formal-only extra theorems в публичные pinned-section claims без явного registry update.
+1. Поддерживать `proof_coverage.json`, public narrative и closeout evidence в синхроне.
+2. Не поднимать formal-only extra theorems в публичные pinned-section claims без явного registry update.
+3. Отдельно добрать theorem-level traceability (`theorem_refs`) как самостоятельный hygiene/improvement трек, не смешивая его с truth-correction.
