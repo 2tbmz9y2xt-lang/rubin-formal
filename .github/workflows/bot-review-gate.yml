@@ -17,7 +17,7 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         with:
           script: |
-            const MONITORED_BOTS = ['copilot[bot]'];
+            const MONITORED_BOTS = ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]'];
             const pr = context.payload.pull_request;
             const prNumber = pr.number;
             const headSha = pr.head.sha;
