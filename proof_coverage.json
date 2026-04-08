@@ -1437,18 +1437,17 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_ok_constrained",
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite",
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_none_ok_iff"
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite"
       ],
       "file": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
       "theorem_files": {
         "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_ok_constrained": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_none_ok_iff": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean"
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean"
       },
-      "notes": "Dedicated counted LIVE/BRIDGE row for the descriptor-aware create-side P2PK gate. The extracted live path `validateP2PKCreateWithRotation` mirrors runtime ordering (value/length guards first, then create-suite gating), and `validateP2PKCreateWithRotation_ok_constrained` proves `.ok ()` iff the committed suite is active in `NativeCreateSuites(h,d)` under the same structural preconditions. Rejection theorem fixes the inactive-suite live error (`TX_ERR_SIG_ALG_INVALID`) on the descriptor-aware path. This row is intentionally separate from `spend_gate_bridge`.",
+      "notes": "Dedicated counted LIVE/BRIDGE row for the descriptor-aware post-rotation P2PK create branch only. The extracted branch `validateP2PKCreateWithRotation` mirrors the runtime ordering on that branch (value/length structural guards first, then create-suite gating), and `validateP2PKCreateWithRotation_ok_constrained` proves `.ok ()` iff the committed suite is active in `NativeCreateSuites(h,d)` under those same P2PK structural guards. The paired rejection theorem fixes the inactive-suite error as `TX_ERR_SIG_ALG_INVALID` on the descriptor-aware path. This row is intentionally separate from `spend_gate_bridge` and does not claim legacy pre-rotation fallback behavior.",
       "limitations": [
-        "Scope: descriptor-aware P2PK create-side gate only; other create-time covenant branches stay in their dedicated rows."
+        "Scope: descriptor-aware post-rotation P2PK create-side gate only; legacy `validateOutGenesis` behavior and other create-time covenant branches stay in their dedicated rows.",
+        "The counted theorems start after P2PK branch selection and are constrained by the same live value/length guards enforced on that branch."
       ],
       "evidence_level": "machine_checked_universal"
     },
@@ -1463,9 +1462,10 @@
       "theorem_files": {
         "RubinFormal.HtlcSpendCryptoAssumptionBridge.claim_hash_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/HtlcSpendCryptoAssumptionBridge.lean"
       },
-      "notes": "Dedicated assumption-backed HTLC claim-path crypto lane. The theorem states the honest ceiling directly: if two distinct executable claim preimages satisfy the same hashlock target, SHA3-256 would have to collide on distinct inputs. This row intentionally records reduction evidence only and does not overclaim an axiom-free cryptographic impossibility proof.",
+      "notes": "Dedicated assumption-backed HTLC claim-path crypto lane. The counted theorem now sits on the extracted claim-path hashlock helper `validateHTLCClaimHashlock`, which isolates the preimage/hashlock slice after the structural claim-path guards already separated from the main HTLC row. If two distinct executable claim preimages both satisfy that helper for the same covenant hashlock target, then SHA3-256 would have to collide on distinct inputs. This row intentionally records reduction evidence only and does not overclaim an axiom-free cryptographic impossibility proof or a full live spend-path closure.",
       "limitations": [
-        "Cryptographic impossibility (collision/second-preimage resistance for SHA3-256) remains an external assumption boundary; this row provides reduction theorems only."
+        "Structural branch selection, parse ordering, refund-path semantics, and the later shared `sigItem` checks remain owned by other rows; this row covers only the extracted claim-path hashlock slice.",
+        "Cryptographic impossibility (collision/second-preimage resistance for SHA3-256) remains an external assumption boundary; this row provides reduction evidence only."
       ],
       "evidence_level": "machine_checked_assumption_backed"
     },
