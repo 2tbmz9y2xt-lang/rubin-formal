@@ -1,5 +1,6 @@
 import RubinFormal.UtxoApplyGenesisV1
 import RubinFormal.ConsensusConstantsBehavioral
+import RubinFormal.BytesEqLemmas
 
 namespace RubinFormal
 
@@ -8,35 +9,6 @@ namespace HtlcSpendStructuralLiveBridge
 open RubinFormal
 open RubinFormal.UtxoApplyGenesisV1
 open RubinFormal.CovenantGenesisV1
-
-private theorem uint8_beq_eq_decide (x y : UInt8) :
-    BEq.beq x y = decide (x = y) := by
-  cases x with
-  | mk xv =>
-    cases y with
-    | mk yv =>
-      simp [BEq.beq]
-
-private theorem bytes_beq_refl (a : Bytes) : (a == a) = true := by
-  cases a with
-  | mk ad =>
-      show Array.isEqv ad ad BEq.beq = true
-      have h :
-          (fun (x y : UInt8) => @BEq.beq UInt8 _ x y) =
-          (fun x y => decide (x = y)) := by
-        funext x y
-        exact uint8_beq_eq_decide x y
-      have hrw :
-          Array.isEqv ad ad BEq.beq =
-          Array.isEqv ad ad (fun x y => decide (x = y)) := by
-        congr 1
-      rw [hrw]
-      exact Array.isEqv_self ad
-
-private theorem bytes_bne_self_false (a : Bytes) : (a != a) = false := by
-  show (!(a == a)) = false
-  rw [bytes_beq_refl]
-  rfl
 
 /-- LIVE invariant: HTLC spend-side always reserves exactly two witness slots. -/
 theorem htlc_witness_slots_fixed (covData : Bytes) :
