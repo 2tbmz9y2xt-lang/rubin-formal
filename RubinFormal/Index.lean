@@ -29,7 +29,9 @@ import RubinFormal.NativeRegistryResolution
 import RubinFormal.WeightSuiteAware
 import RubinFormal.NativeSpendCreateGate
 import RubinFormal.SpendGateLiveBridge
+import RubinFormal.CreateSideLiveGateBridge
 import RubinFormal.HtlcSpendStructuralLiveBridge
+import RubinFormal.HtlcSpendCryptoAssumptionBridge
 import RubinFormal.LegacySunset
 import RubinFormal.NativeExtIndependence
 import RubinFormal.BlockValidationOrder

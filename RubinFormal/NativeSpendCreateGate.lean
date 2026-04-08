@@ -55,6 +55,15 @@ def liveSpendGateAllows
   | none => decide (suiteId = RubinFormal.SUITE_ID_ML_DSA_87)
   | some d => decide (nativeSpendGate d h suiteId = GateResult.accept)
 
+/-- Descriptor-aware live P2PK create gate predicate.
+    `none` keeps the pre-rotation singleton behavior `{ML_DSA_87}`.
+    `some d` lifts the post-rotation model create gate onto the live create path. -/
+def liveCreateGateAllows
+    (rotDesc? : Option RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) : Bool :=
+  match rotDesc? with
+  | none => decide (suiteId = RubinFormal.SUITE_ID_ML_DSA_87)
+  | some d => decide (suiteId ∈ NativeCreateSuites h d)
+
 /-- The native P2PK create gate: accepts iff suite_id ∈ NATIVE_CREATE_SUITES(h).
     P2PK is the only native covenant that commits suite_id at creation time. -/
 def nativeP2PKCreateGate
@@ -140,6 +149,44 @@ theorem liveSpendGateAllows_some_false_iff
     | true =>
         exfalso
         exact hNotMem ((liveSpendGateAllows_some_iff d h suiteId).mp hAllow)
+
+/-- Pre-rotation fallback branch of the live create gate helper. -/
+theorem liveCreateGateAllows_none_iff
+    (h : Nat) (suiteId : Nat) :
+    liveCreateGateAllows none h suiteId = true ↔
+    suiteId = RubinFormal.SUITE_ID_ML_DSA_87 := by
+  constructor
+  · intro hAllow
+    simpa [liveCreateGateAllows] using hAllow
+  · intro hEq
+    simp [liveCreateGateAllows, hEq]
+
+/-- Post-rotation branch of the live create gate helper is equivalent to the
+    abstract create gate acceptance criterion. -/
+theorem liveCreateGateAllows_some_iff
+    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) :
+    liveCreateGateAllows (some d) h suiteId = true ↔
+    suiteId ∈ NativeCreateSuites h d := by
+  simp [liveCreateGateAllows]
+
+/-- Boolean false form of the post-rotation live create gate helper. -/
+theorem liveCreateGateAllows_some_false_iff
+    (d : RotationDeploymentDescriptor) (h : Nat) (suiteId : Nat) :
+    liveCreateGateAllows (some d) h suiteId = false ↔
+    suiteId ∉ NativeCreateSuites h d := by
+  constructor
+  · intro hFalse
+    intro hMem
+    have hTrue : liveCreateGateAllows (some d) h suiteId = true :=
+      (liveCreateGateAllows_some_iff d h suiteId).mpr hMem
+    rw [hFalse] at hTrue
+    cases hTrue
+  · intro hNotMem
+    cases hAllow : liveCreateGateAllows (some d) h suiteId with
+    | false => rfl
+    | true =>
+        exfalso
+        exact hNotMem ((liveCreateGateAllows_some_iff d h suiteId).mp hAllow)
 
 /-- FI-ROT-04: spend gate is determined solely by (d, h, suiteId).
     No covenant-type-specific logic: the gate function signature takes

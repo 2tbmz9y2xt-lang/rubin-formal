@@ -1432,6 +1432,44 @@
       "evidence_level": "machine_checked_universal"
     },
     {
+      "section_key": "create_side_live_gate",
+      "section_heading": "## Create-Side Live Gate (Descriptor-Aware P2PK)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_ok_constrained",
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite",
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_none_ok_iff"
+      ],
+      "file": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+      "theorem_files": {
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_ok_constrained": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_none_ok_iff": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean"
+      },
+      "notes": "Dedicated counted LIVE/BRIDGE row for the descriptor-aware create-side P2PK gate. The extracted live path `validateP2PKCreateWithRotation` mirrors runtime ordering (value/length guards first, then create-suite gating), and `validateP2PKCreateWithRotation_ok_constrained` proves `.ok ()` iff the committed suite is active in `NativeCreateSuites(h,d)` under the same structural preconditions. Rejection theorem fixes the inactive-suite live error (`TX_ERR_SIG_ALG_INVALID`) on the descriptor-aware path. This row is intentionally separate from `spend_gate_bridge`.",
+      "limitations": [
+        "Scope: descriptor-aware P2PK create-side gate only; other create-time covenant branches stay in their dedicated rows."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
+      "section_key": "htlc_spend_side_crypto_assumption",
+      "section_heading": "## HTLC Spend-Side Crypto Assumption Bridge",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.HtlcSpendCryptoAssumptionBridge.claim_hash_collision_reduces_to_sha3_collision"
+      ],
+      "file": "rubin-formal/RubinFormal/HtlcSpendCryptoAssumptionBridge.lean",
+      "theorem_files": {
+        "RubinFormal.HtlcSpendCryptoAssumptionBridge.claim_hash_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/HtlcSpendCryptoAssumptionBridge.lean"
+      },
+      "notes": "Dedicated assumption-backed HTLC claim-path crypto lane. The theorem states the honest ceiling directly: if two distinct executable claim preimages satisfy the same hashlock target, SHA3-256 would have to collide on distinct inputs. This row intentionally records reduction evidence only and does not overclaim an axiom-free cryptographic impossibility proof.",
+      "limitations": [
+        "Cryptographic impossibility (collision/second-preimage resistance for SHA3-256) remains an external assumption boundary; this row provides reduction theorems only."
+      ],
+      "evidence_level": "machine_checked_assumption_backed"
+    },
+    {
       "section_key": "feature_activation_fsm",
       "section_heading": "## Feature Activation FSM (BIP9-like)",
       "status": "proved",
