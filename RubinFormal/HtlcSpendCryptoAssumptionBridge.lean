@@ -16,6 +16,14 @@ def claimPathPreLen (pathItem : UtxoBasicV1.WitnessItem) : Nat :=
   else
     UtxoApplyGenesisV1.parseU16le (pathItem.signature.get! 1) (pathItem.signature.get! 2)
 
+/-- Executable claim-path selector byte from the live HTLC spend path.
+    Returns `0xff` when the signature is empty so downstream helpers stay total. -/
+def claimPathSelector (pathItem : UtxoBasicV1.WitnessItem) : Nat :=
+  if pathItem.signature.size < 1 then
+    0xff
+  else
+    (pathItem.signature.get! 0).toNat
+
 /-- Executable claim-path preimage slicer from the live HTLC spend path. -/
 def claimPathPreimage (pathItem : UtxoBasicV1.WitnessItem) : Bytes :=
   let preLen := claimPathPreLen pathItem
@@ -25,12 +33,15 @@ def claimPathPreimage (pathItem : UtxoBasicV1.WitnessItem) : Bytes :=
     pathItem.signature.extract 3 (3 + preLen)
 
 /-- Extracted live claim-path hashlock helper:
-    this is exactly the HTLC claim sub-branch between path dispatch and the
-    later shared `sigItem` checks. -/
+    this is exactly the HTLC claim sub-branch, including the `pathId = 0x00`
+    selector guard, between HTLC path dispatch and the later shared
+    `sigItem` checks. -/
 def validateHTLCClaimHashlock
     (c : CovenantGenesisV1.HtlcCovenant)
     (pathItem : UtxoBasicV1.WitnessItem) : Except String Bytes := do
   if pathItem.signature.size < 3 then
+    throw "TX_ERR_PARSE"
+  if claimPathSelector pathItem != 0x00 then
     throw "TX_ERR_PARSE"
   let preLen := claimPathPreLen pathItem
   if preLen == 0 then
@@ -50,6 +61,7 @@ set_option maxHeartbeats 10000000 in
 theorem validateHTLCClaimHashlock_hash_mismatch_rejects_sig_invalid
     (c : CovenantGenesisV1.HtlcCovenant)
     (pathItem : UtxoBasicV1.WitnessItem)
+    (hPath0 : claimPathSelector pathItem = 0x00)
     (hPrePos : 0 < claimPathPreLen pathItem)
     (hPreBound : claimPathPreLen pathItem ≤ 256)
     (hSigSize : pathItem.signature.size = 3 + claimPathPreLen pathItem)
@@ -60,6 +72,8 @@ theorem validateHTLCClaimHashlock_hash_mismatch_rejects_sig_invalid
   have hNotShort : ¬ pathItem.signature.size < 3 := by
     rw [hSigSize]
     omega
+  have hPathOk : (claimPathSelector pathItem != 0x00) = false := by
+    simp [bne_iff_ne, hPath0]
   have hPreNeZero : (claimPathPreLen pathItem == 0) = false := by
     simp [beq_iff_eq, Nat.ne_of_gt hPrePos]
   have hPreNotGt : ¬ claimPathPreLen pathItem > 256 := by
@@ -72,12 +86,14 @@ theorem validateHTLCClaimHashlock_hash_mismatch_rejects_sig_invalid
   have hHashTrue : (SHA3.sha3_256 (claimPathPreimage pathItem) != c.hash) = true := by
     exact bytes_bne_true_of_ne _ _ hHashNe
   unfold validateHTLCClaimHashlock
-  simp only [Except.bind, hNotShort, hPreNeZero, hPreNotGt, hSigSizeOk, hClaimKeyFalse, hHashTrue, ite_false, ite_true]
+  simp only [Except.bind, hNotShort, hPathOk, hPreNeZero, hPreNotGt, hSigSizeOk,
+    hClaimKeyFalse, hHashTrue, ite_false, ite_true]
   rfl
 
 theorem validateHTLCClaimHashlock_ok_implies_hash_match
     (c : CovenantGenesisV1.HtlcCovenant)
     (pathItem : UtxoBasicV1.WitnessItem)
+    (hPath0 : claimPathSelector pathItem = 0x00)
     (hPrePos : 0 < claimPathPreLen pathItem)
     (hPreBound : claimPathPreLen pathItem ≤ 256)
     (hSigSize : pathItem.signature.size = 3 + claimPathPreLen pathItem)
@@ -87,7 +103,7 @@ theorem validateHTLCClaimHashlock_ok_implies_hash_match
   by_contra hHashNe
   have hErr :=
     validateHTLCClaimHashlock_hash_mismatch_rejects_sig_invalid c pathItem
-      hPrePos hPreBound hSigSize hClaimKey hHashNe
+      hPath0 hPrePos hPreBound hSigSize hClaimKey hHashNe
   rw [hErr] at hOk
   cases hOk
 
@@ -100,11 +116,13 @@ set_option maxHeartbeats 200000
 theorem claim_hash_collision_reduces_to_sha3_collision
     (c : CovenantGenesisV1.HtlcCovenant)
     (pathItem₁ pathItem₂ : UtxoBasicV1.WitnessItem)
+    (hPath0₁ : claimPathSelector pathItem₁ = 0x00)
     (hPrePos₁ : 0 < claimPathPreLen pathItem₁)
     (hPreBound₁ : claimPathPreLen pathItem₁ ≤ 256)
     (hSigSize₁ : pathItem₁.signature.size = 3 + claimPathPreLen pathItem₁)
     (hClaimKey₁ : pathItem₁.pubkey = c.claimKeyId)
     (hOk₁ : validateHTLCClaimHashlock c pathItem₁ = .ok c.claimKeyId)
+    (hPath0₂ : claimPathSelector pathItem₂ = 0x00)
     (hPrePos₂ : 0 < claimPathPreLen pathItem₂)
     (hPreBound₂ : claimPathPreLen pathItem₂ ≤ 256)
     (hSigSize₂ : pathItem₂.signature.size = 3 + claimPathPreLen pathItem₂)
@@ -117,11 +135,11 @@ theorem claim_hash_collision_reduces_to_sha3_collision
   have hHash₁ :
       SHA3.sha3_256 (claimPathPreimage pathItem₁) = c.hash :=
     validateHTLCClaimHashlock_ok_implies_hash_match c pathItem₁
-      hPrePos₁ hPreBound₁ hSigSize₁ hClaimKey₁ hOk₁
+      hPath0₁ hPrePos₁ hPreBound₁ hSigSize₁ hClaimKey₁ hOk₁
   have hHash₂ :
       SHA3.sha3_256 (claimPathPreimage pathItem₂) = c.hash :=
     validateHTLCClaimHashlock_ok_implies_hash_match c pathItem₂
-      hPrePos₂ hPreBound₂ hSigSize₂ hClaimKey₂ hOk₂
+      hPath0₂ hPrePos₂ hPreBound₂ hSigSize₂ hClaimKey₂ hOk₂
   constructor
   · calc
       SHA3.sha3_256 (claimPathPreimage pathItem₁) = c.hash := hHash₁

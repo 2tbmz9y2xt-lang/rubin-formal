@@ -12,7 +12,11 @@ open NativeSpendCreateGate
     genesis validator.
     Ordering mirrors the live path:
     value/length structural guards first, then native create-suite gating.
-    `none` keeps the pre-rotation singleton fallback `{ML_DSA_87}`;
+    On suite-gate failure this live surface returns `TX_ERR_SIG_ALG_INVALID`,
+    matching Go `ValidateTxCovenantsGenesis`; this intentionally differs from
+    legacy `validateOutGenesis`, which still owns the older
+    `TX_ERR_COVENANT_TYPE_INVALID` classification.
+    `none` keeps the default-provider singleton fallback `{ML_DSA_87}`;
     `some d` lifts the descriptor-aware `NativeCreateSuites(h,d)` gate. -/
 def validateP2PKCreateLiveBranch
     (out : TxOut)
@@ -40,7 +44,9 @@ def validateP2PKCreateWithRotation
 /-- Descriptor-aware output-level genesis validator matching the live
     runtime create path:
     P2PK outputs use the rotation-aware create gate, while every non-P2PK
-    branch delegates unchanged to `validateOutGenesis`. -/
+    branch delegates unchanged to `validateOutGenesis`. This means the P2PK
+    branch follows the newer `ValidateTxCovenantsGenesis` surface, while the
+    remaining covenant types keep the legacy validator behavior verbatim. -/
 def validateOutGenesisWithRotation
     (out : TxOut)
     (txKind : Nat)

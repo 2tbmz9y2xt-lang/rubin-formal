@@ -34,8 +34,11 @@ open NativeRegistryResolution
 /-- Result of a native spend gate check. -/
 inductive GateResult where
   | accept : GateResult
-  | reject_sig_alg_invalid : GateResult     -- spend path: TX_ERR_SIG_ALG_INVALID
-  | reject_covenant_type_invalid : GateResult -- create path: TX_ERR_COVENANT_TYPE_INVALID
+  | reject_sig_alg_invalid : GateResult
+      -- exact live spend path, and the newer runtime create validator, both
+      -- surface TX_ERR_SIG_ALG_INVALID for suite-gate failure
+  | reject_covenant_type_invalid : GateResult
+      -- retained for the older abstract/legacy create-side classification
   deriving Repr, DecidableEq
 
 /-- The native spend gate: accepts iff suite_id ∈ NATIVE_SPEND_SUITES(h).
