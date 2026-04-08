@@ -74,12 +74,18 @@ private theorem bytes_bne_true_of_ne
 
 /-- Executable claim-path preimage length parser from the live HTLC spend path. -/
 def claimPathPreLen (pathItem : UtxoBasicV1.WitnessItem) : Nat :=
-  UtxoApplyGenesisV1.parseU16le (pathItem.signature.get! 1) (pathItem.signature.get! 2)
+  if pathItem.signature.size < 3 then
+    0
+  else
+    UtxoApplyGenesisV1.parseU16le (pathItem.signature.get! 1) (pathItem.signature.get! 2)
 
 /-- Executable claim-path preimage slicer from the live HTLC spend path. -/
 def claimPathPreimage (pathItem : UtxoBasicV1.WitnessItem) : Bytes :=
   let preLen := claimPathPreLen pathItem
-  pathItem.signature.extract 3 (3 + preLen)
+  if pathItem.signature.size != 3 + preLen then
+    ByteArray.empty
+  else
+    pathItem.signature.extract 3 (3 + preLen)
 
 /-- Extracted live claim-path hashlock helper:
     this is exactly the HTLC claim sub-branch between path dispatch and the
