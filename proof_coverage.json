@@ -1432,6 +1432,50 @@
       "evidence_level": "machine_checked_universal"
     },
     {
+      "section_key": "create_side_live_gate",
+      "section_heading": "## Create-Side Live Gate (Top-Level Runtime P2PK Path)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_ok_iff",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_rejects_inactive_suite",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_eq_validateOutGenesis_of_not_p2pk",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_ok_iff",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_rejects_non_ml_dsa_87"
+      ],
+      "file": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+      "theorem_files": {
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_ok_iff": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_rejects_inactive_suite": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_eq_validateOutGenesis_of_not_p2pk": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_ok_iff": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_rejects_non_ml_dsa_87": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean"
+      },
+      "notes": "Dedicated counted LIVE/BRIDGE row for the exact output-level runtime create validator `validateOutGenesisWithRotation`. The counted surface starts at the real top-level P2PK branch dispatch, not an extracted inner helper. `validateOutGenesisWithRotation_some_p2pk_ok_iff` proves that on the descriptor-aware branch `.ok ()` is equivalent to the full live P2PK prefix at that surface: `covenantType = COV_TYPE_P2PK`, `value ≠ 0`, `covenantData.size = 33`, and suite membership in `NativeCreateSuites(h,d)`. The paired rejection theorem fixes inactive-suite failure as `TX_ERR_SIG_ALG_INVALID` on that same top-level live path. `validateOutGenesisWithRotation_eq_validateOutGenesis_of_not_p2pk` proves zero blast radius outside the P2PK branch, and the `none` corollaries characterize the exact pre-rotation singleton fallback (`ML-DSA-87`) with the same top-level error ordering.",
+      "limitations": [
+        "Scope: exact output-level create validator only; tx-level nil-transaction handling and loop-over-outputs behavior from Go `ValidateTxCovenantsGenesis` remain outside this row.",
+        "Other create-time covenant semantics stay owned by their dedicated rows; this row closes the runtime P2PK branch and its delegation boundary, not the entire covenant registry theorem surface."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
+      "section_key": "htlc_spend_side_crypto_assumption",
+      "section_heading": "## HTLC Spend-Side Crypto Assumption Bridge",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.HtlcSpendCryptoAssumptionBridge.claim_hash_collision_reduces_to_sha3_collision"
+      ],
+      "file": "rubin-formal/RubinFormal/HtlcSpendCryptoAssumptionBridge.lean",
+      "theorem_files": {
+        "RubinFormal.HtlcSpendCryptoAssumptionBridge.claim_hash_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/HtlcSpendCryptoAssumptionBridge.lean"
+      },
+      "notes": "Dedicated assumption-backed HTLC claim-path crypto lane. The counted theorem now sits on the extracted claim-path hashlock helper `validateHTLCClaimHashlock`, which isolates the preimage/hashlock slice after the structural claim-path guards already separated from the main HTLC row. If two distinct executable claim preimages both satisfy that helper for the same covenant hashlock target, then SHA3-256 would have to collide on distinct inputs. This row intentionally records reduction evidence only and does not overclaim an axiom-free cryptographic impossibility proof or a full live spend-path closure.",
+      "limitations": [
+        "Structural branch selection outside the claim selector, refund-path semantics, and the later shared `sigItem` checks remain owned by other rows; this row covers the extracted claim-path selector plus hashlock slice only.",
+        "Cryptographic impossibility (collision/second-preimage resistance for SHA3-256) remains an external assumption boundary; this row provides reduction evidence only."
+      ],
+      "evidence_level": "machine_checked_assumption_backed"
+    },
+    {
       "section_key": "feature_activation_fsm",
       "section_heading": "## Feature Activation FSM (BIP9-like)",
       "status": "proved",

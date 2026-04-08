@@ -1,5 +1,6 @@
 import RubinFormal.BlockBasicV1
 import RubinFormal.ConnectBlockStrong
+import RubinFormal.BytesEqLemmas
 
 namespace RubinFormal
 
@@ -54,32 +55,6 @@ theorem bool_gate_pass
       rfl
   | true =>
       simp [hCond] at h
-
-theorem bytes_beq_true_eq
-    (a b : Bytes)
-    (h : (a == b) = true) :
-    a = b := by
-  cases a with
-  | mk ad =>
-      cases b with
-      | mk bd =>
-          change Array.isEqv ad bd BEq.beq = true at h
-          have hData : ad = bd := by
-            apply Array.eq_of_isEqv
-            simpa using h
-          cases hData
-          rfl
-
-theorem bne_false_eq
-    (a b : Bytes)
-    (h : (a != b) = false) :
-    a = b := by
-  change (!(a == b)) = false at h
-  cases hEq : (a == b) with
-  | false =>
-      simp [hEq] at h
-  | true =>
-      exact bytes_beq_true_eq a b hEq
 
 theorem validateBlockBasic_parses
     (blockBytes : Bytes)
