@@ -1433,21 +1433,27 @@
     },
     {
       "section_key": "create_side_live_gate",
-      "section_heading": "## Create-Side Live Gate (Descriptor-Aware P2PK)",
+      "section_heading": "## Create-Side Live Gate (Top-Level Runtime P2PK Path)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_ok_constrained",
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite"
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_ok_iff",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_rejects_inactive_suite",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_eq_validateOutGenesis_of_not_p2pk",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_ok_iff",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_rejects_non_ml_dsa_87"
       ],
       "file": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
       "theorem_files": {
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_ok_constrained": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
-        "RubinFormal.CreateSideLiveGateBridge.validateP2PKCreateWithRotation_rejects_inactive_suite": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean"
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_ok_iff": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_some_p2pk_rejects_inactive_suite": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_eq_validateOutGenesis_of_not_p2pk": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_ok_iff": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean",
+        "RubinFormal.CreateSideLiveGateBridge.validateOutGenesisWithRotation_none_p2pk_rejects_non_ml_dsa_87": "rubin-formal/RubinFormal/CreateSideLiveGateBridge.lean"
       },
-      "notes": "Dedicated counted LIVE/BRIDGE row for the descriptor-aware post-rotation P2PK create branch only. The extracted branch `validateP2PKCreateWithRotation` mirrors the runtime ordering on that branch (value/length structural guards first, then create-suite gating), and `validateP2PKCreateWithRotation_ok_constrained` proves `.ok ()` iff the committed suite is active in `NativeCreateSuites(h,d)` under those same P2PK structural guards. The paired rejection theorem fixes the inactive-suite error as `TX_ERR_SIG_ALG_INVALID` on the descriptor-aware path. This row is intentionally separate from `spend_gate_bridge` and does not claim legacy pre-rotation fallback behavior.",
+      "notes": "Dedicated counted LIVE/BRIDGE row for the exact output-level runtime create validator `validateOutGenesisWithRotation`. The counted surface starts at the real top-level P2PK branch dispatch, not an extracted inner helper. `validateOutGenesisWithRotation_some_p2pk_ok_iff` proves that on the descriptor-aware branch `.ok ()` is equivalent to the full live P2PK prefix at that surface: `covenantType = CORE_P2PK`, `value ≠ 0`, `covenantData.size = 33`, and suite membership in `NativeCreateSuites(h,d)`. The paired rejection theorem fixes inactive-suite failure as `TX_ERR_SIG_ALG_INVALID` on that same top-level live path. `validateOutGenesisWithRotation_eq_validateOutGenesis_of_not_p2pk` proves zero blast radius outside the P2PK branch, and the `none` corollaries characterize the exact pre-rotation singleton fallback (`ML-DSA-87`) with the same top-level error ordering.",
       "limitations": [
-        "Scope: descriptor-aware post-rotation P2PK create-side gate only; legacy `validateOutGenesis` behavior and other create-time covenant branches stay in their dedicated rows.",
-        "The counted theorems start after P2PK branch selection and are constrained by the same live value/length guards enforced on that branch."
+        "Scope: exact output-level create validator only; tx-level nil-transaction handling and loop-over-outputs behavior from Go `ValidateTxCovenantsGenesis` remain outside this row.",
+        "Other create-time covenant semantics stay owned by their dedicated rows; this row closes the runtime P2PK branch and its delegation boundary, not the entire covenant registry theorem surface."
       ],
       "evidence_level": "machine_checked_universal"
     },
