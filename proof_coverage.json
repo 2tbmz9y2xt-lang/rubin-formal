@@ -1434,7 +1434,7 @@
       "notes": "Universal for the descriptor-aware suite gate in threshold-sig and stealth spend paths. LIVE bridge theorems prove that thresholdItemSuiteAllowed result determines the outcome of the actual per-item suite check (w.suiteId == SUITE_ID_ML_DSA_87) in validateThresholdSigSpendNoCrypto line 98 — same live-subexpression bridge pattern as spend_gate_bridge. Post-rotation BRIDGE theorems prove soundness/completeness against NativeSpendSuites for any RotationDeploymentDescriptor at any height. Covers MULTISIG (§14.2), VAULT (§24.1), and STEALTH suite gate abstraction. Closes rubin-formal#419.",
       "limitations": [
         "Per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
-        "Decision-level bridge: theorems prove the per-item suite comparison, not end-to-end validateThresholdSigSpendNoCrypto (same scope as spend_gate_bridge for P2PK).",
+        "Decision-level bridge: LIVE theorems prove the per-item suite comparison result (w.suiteId == SUITE_ID_ML_DSA_87), not end-to-end validateThresholdSigSpendNoCrypto behavior. Narrower scope than spend_gate_bridge which has function-level theorems.",
         "Stealth spend-side has no dedicated Lean model; this row covers the suite gate abstraction that stealth would share.",
         "G7 wire encoding residual: byte-level cross-language bridge not formalized."
       ],
