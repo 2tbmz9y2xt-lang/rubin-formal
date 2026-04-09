@@ -1417,9 +1417,15 @@
       "file": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
       "theorem_files": {
         "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_threshold_gate_eq_hardcoded": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_accept_implies_gate": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_reject_implies_gate": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_iff_model": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
         "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_soundness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_completeness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_reject_soundness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
         "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
-        "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_reject_iff": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
       },
       "notes": "Behavioral model for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Pre-rotation BRIDGE theorems prove equivalence with the hardcoded ML-DSA-87 check in live validateThresholdSigSpendNoCrypto. Post-rotation theorems are MODEL-level: they prove properties of the thresholdItemSuiteAllowed helper against NativeSpendSuites, modelling the future rotation-aware code. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
       "limitations": [
