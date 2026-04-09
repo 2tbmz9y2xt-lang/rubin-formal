@@ -5,7 +5,7 @@ Machine-checked formal proof surface for the RUBIN L1 blockchain protocol.
 ## Contents
 
 - Lean 4 package `RubinFormal`
-- `proof_coverage.json` — machine-readable coverage registry with 28 section entries
+- `proof_coverage.json` — machine-readable coverage registry with 27 section entries
 - Each registry entry carries explicit `evidence_level`, `notes`, and `limitations` so that public claims never outrun the actual proof boundary
 
 ## Claim boundary (critical)
@@ -44,8 +44,8 @@ Wire model notes:
 
 - This is **not** a freeze-ready package at the level of "universal byte-accurate wire + state transition model for all sections"
 - Consensus rules are not changed by this repository
-- The formal coverage registry currently contains 28 machine-checked section entries
-- Claim strength breakdown: 21 universal, 4 assumption-backed, 2 behavioral, 1 contract-level
+- The formal coverage registry currently contains 27 machine-checked section entries
+- Claim strength breakdown: 20 universal, 4 assumption-backed, 2 behavioral, 1 contract-level
 - A unified `proved` status in the registry does not imply uniform claim strength — the honest boundary is set by `evidence_level` and `limitations` in `proof_coverage.json`
 - Extra formal-only theorems are not counted as pinned-section claims unless registered in the machine-readable registry
 
