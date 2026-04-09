@@ -142,29 +142,9 @@ theorem sentinel_not_in_spend_suites
            d.newSuiteId ≠ RubinFormal.SUITE_ID_SENTINEL) :
     RubinFormal.SUITE_ID_SENTINEL ∉ NativeSpendSuites h d := by
   intro hmem
-  unfold NativeSpendSuites at hmem
-  split at hmem
-  · -- h < d.h1: suites = [d.oldSuiteId]
-    simp [List.mem_singleton] at hmem
-    exact hWf.1 hmem.symm
-  · -- h >= d.h1
-    split at hmem
-    · -- d.h4 = none: suites = [d.oldSuiteId, d.newSuiteId]
-      simp [List.mem_cons, List.mem_singleton] at hmem
-      cases hmem with
-      | inl h => exact hWf.1 h.symm
-      | inr h => exact hWf.2 h.symm
-    · -- d.h4 = some h4val
-      next _h4val =>
-      split at hmem
-      · -- h4val ≤ h: suites = [d.newSuiteId]
-        simp [List.mem_singleton] at hmem
-        exact hWf.2 hmem.symm
-      · -- h4val > h: suites = [d.oldSuiteId, d.newSuiteId]
-        simp [List.mem_cons, List.mem_singleton] at hmem
-        cases hmem with
-        | inl h => exact hWf.1 h.symm
-        | inr h => exact hWf.2 h.symm
+  cases NativeRegistryResolution.spend_suites_subset d h _ hmem with
+  | inl h => exact hWf.1 h.symm
+  | inr h => exact hWf.2 h.symm
 
 /-! ### MODEL theorems: constrained iff on helper
 
