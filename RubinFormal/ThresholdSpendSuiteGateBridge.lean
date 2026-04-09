@@ -4,16 +4,15 @@
   Descriptor-aware suite gate BRIDGE for threshold-sig spend paths.
   Pre-rotation: BRIDGE theorems prove equivalence between the
   thresholdItemSuiteAllowed helper and `decide (suiteId = ML_DSA_87)`,
-  which is the same comparison used on line 98 of the live
-  validateThresholdSigSpendNoCrypto (no direct theorem on the live
-  function — the bridge is at the decision-level, not function-level).
-  Post-rotation: MODEL theorems on thresholdItemSuiteAllowed helper
-  against NativeSpendSuites (rotation not yet in live code).
+  which matches the comparison on line 98 of the live
+  validateThresholdSigSpendNoCrypto.
+  Post-rotation: BRIDGE theorems (helper ↔ NativeSpendSuites model),
+  plus MODEL iff theorems on the helper.
 
   Classification:
     Pre-rotation theorems: BRIDGE (helper ↔ decide comparison)
     Post-rotation soundness/completeness: BRIDGE (helper ↔ model)
-    Universal iff theorems: MODEL (on helper, not live function)
+    Universal iff theorems: MODEL (on helper)
     evidence_level: machine_checked_universal
     (same decision-level bridge pattern as spend_gate_bridge)
 
@@ -25,7 +24,6 @@
 -/
 
 import RubinFormal.NativeSpendCreateGate
-import RubinFormal.SpendGateLiveBridge
 import RubinFormal.UtxoApplyGenesisV1
 
 namespace RubinFormal
@@ -35,7 +33,6 @@ namespace ThresholdSpendSuiteGateBridge
 open Rotation
 open NativeSuiteRotation
 open NativeSpendCreateGate
-open SpendGateLiveBridge
 open UtxoApplyGenesisV1
 
 /-! ### Rotation-aware threshold sig suite gate
