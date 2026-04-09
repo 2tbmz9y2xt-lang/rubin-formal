@@ -202,8 +202,9 @@ theorem live_threshold_suite_check_passes_on_gate_accept
   native_decide
 
 /-- LIVE bridge (reject direction): when the rotation-aware gate rejects
-    under pre-rotation, the live suite check evaluates to false, causing
-    validateThresholdSigSpendNoCrypto to throw TX_ERR_SIG_ALG_INVALID. -/
+    under pre-rotation, the live per-item suite comparison evaluates to false.
+    Note: this proves the comparison result only, not the full function
+    behavior (sentinel items take an earlier branch in the live code). -/
 theorem live_threshold_suite_check_rejects_on_gate_reject
     (w : UtxoBasicV1.WitnessItem) (h : Nat)
     (hGate : thresholdItemSuiteAllowed none h w = false) :
