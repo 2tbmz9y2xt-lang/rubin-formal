@@ -104,8 +104,8 @@ theorem post_rotation_gate_accept_completeness
     (w : UtxoBasicV1.WitnessItem)
     (hMem : w.suiteId ∈ NativeSpendSuites h d) :
     thresholdItemSuiteAllowed (some d) h w = true := by
-  rw [(post_rotation_gate_iff_model d h w).mpr]
-  exact (fi_rot_04_spend_gate_iff d h w.suiteId).mpr hMem
+  exact (post_rotation_gate_iff_model d h w).mpr
+    ((fi_rot_04_spend_gate_iff d h w.suiteId).mpr hMem)
 
 /-- Post-rotation: gate rejection → suite ∉ NativeSpendSuites. -/
 theorem post_rotation_gate_reject_soundness
@@ -124,9 +124,9 @@ theorem post_rotation_gate_reject_soundness
   of suite rotation and happens before the suite gate. This theorem
   confirms sentinels are still correctly handled. -/
 
-/-- Sentinel suite is never in NativeSpendSuites (well-formed descriptor).
-    This ensures the sentinel bypass in the threshold loop is orthogonal
-    to the rotation-aware suite gate. -/
+/-- Sentinel suite is never in NativeSpendSuites when both descriptor
+    suite IDs are non-sentinel. This ensures the sentinel bypass in the
+    threshold loop is orthogonal to the rotation-aware suite gate. -/
 theorem sentinel_not_in_spend_suites
     (d : RotationDeploymentDescriptor) (h : Nat)
     (hWf : d.oldSuiteId ≠ RubinFormal.SUITE_ID_SENTINEL ∧
@@ -164,26 +164,24 @@ theorem sentinel_not_in_spend_suites
   iff its suite is in NativeSpendSuites. This is the threshold-sig
   analogue of spend_gate_bridge's `gate_accept_is_spend_suite`. -/
 
-/-- Universal: ∀ well-formed descriptor, ∀ height, ∀ non-sentinel witness item,
+/-- Universal: ∀ well-formed descriptor, ∀ height, ∀ witness item,
     the threshold suite gate admits ↔ suite ∈ NativeSpendSuites(h, d).
-    This closes the formal gap for MULTISIG and VAULT spend-side suite
-    validation under rotation. -/
+    Note: this holds for ALL witness items including sentinels (stronger
+    than the live code needs, since sentinels are bypassed before the
+    suite gate in the threshold loop). -/
 theorem threshold_suite_gate_iff_spend_suites
     (d : RotationDeploymentDescriptor) (h : Nat)
-    (w : UtxoBasicV1.WitnessItem)
-    (_hNotSentinel : w.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL) :
+    (w : UtxoBasicV1.WitnessItem) :
     thresholdItemSuiteAllowed (some d) h w = true ↔
     w.suiteId ∈ NativeSpendSuites h d :=
   ⟨post_rotation_gate_accept_soundness d h w,
    post_rotation_gate_accept_completeness d h w⟩
 
-/-- Universal: ∀ well-formed descriptor, ∀ height, ∀ non-sentinel witness item,
-    threshold suite gate rejection ↔ suite ∉ NativeSpendSuites(h, d),
-    and the error is TX_ERR_SIG_ALG_INVALID (matching live behavior). -/
+/-- Universal: ∀ well-formed descriptor, ∀ height, ∀ witness item,
+    threshold suite gate rejection ↔ suite ∉ NativeSpendSuites(h, d). -/
 theorem threshold_suite_gate_reject_iff
     (d : RotationDeploymentDescriptor) (h : Nat)
-    (w : UtxoBasicV1.WitnessItem)
-    (_hNotSentinel : w.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL) :
+    (w : UtxoBasicV1.WitnessItem) :
     thresholdItemSuiteAllowed (some d) h w = false ↔
     w.suiteId ∉ NativeSpendSuites h d := by
   constructor
