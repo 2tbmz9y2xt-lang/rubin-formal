@@ -1421,13 +1421,14 @@
         "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
         "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
       },
-      "notes": "Universal for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Proves: pre-rotation equivalence with hardcoded ML-DSA-87 check, post-rotation soundness/completeness against NativeSpendSuites model, sentinel orthogonality, and bidirectional iff theorems. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
+      "notes": "Behavioral model for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Pre-rotation BRIDGE theorems prove equivalence with the hardcoded ML-DSA-87 check in live validateThresholdSigSpendNoCrypto. Post-rotation theorems are MODEL-level: they prove properties of the thresholdItemSuiteAllowed helper against NativeSpendSuites, modelling the future rotation-aware code. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
       "limitations": [
-        "Scope: per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
+        "Per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
+        "Post-rotation theorems are MODEL-level on thresholdItemSuiteAllowed helper, not LIVE on validateThresholdSigSpendNoCrypto. Live bridge exists only for pre-rotation (hardcoded ML-DSA-87 equivalence).",
         "Stealth spend-side has no dedicated Lean model; this row covers the suite gate abstraction that stealth would share.",
         "G7 wire encoding residual: byte-level cross-language bridge not formalized."
       ],
-      "evidence_level": "machine_checked_universal"
+      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "htlc_spend_side_structural",

@@ -1,11 +1,18 @@
 /-
   RubinFormal/ThresholdSpendSuiteGateBridge.lean
 
-  Descriptor-aware suite gate bridge for threshold-sig spend paths.
-  Proves: NativeSpendSuites(h) admission in validateThresholdSigSpend
-  matches the nativeSpendGate model from SpendGateLiveBridge, closing
-  the formal gap for MULTISIG and VAULT spend-side suite validation
-  under native crypto rotation.
+  Descriptor-aware suite gate BRIDGE for threshold-sig spend paths.
+  Pre-rotation: BRIDGE theorems prove equivalence between the
+  thresholdItemSuiteAllowed helper and the hardcoded ML-DSA-87
+  check in live validateThresholdSigSpendNoCrypto.
+  Post-rotation: MODEL theorems on thresholdItemSuiteAllowed helper
+  against NativeSpendSuites (rotation not yet in live code).
+
+  Classification:
+    Pre-rotation theorems: BRIDGE (helper ↔ live hardcoded check)
+    Post-rotation soundness/completeness: BRIDGE (helper ↔ model)
+    Universal iff theorems: MODEL (on helper, not live function)
+    evidence_level: machine_checked_behavioral
 
   Gap closed: rubin-formal#419
   Spec: CANONICAL §5.4 (witness suite gating), §14.2 (MULTISIG),
@@ -157,18 +164,17 @@ theorem sentinel_not_in_spend_suites
         | inl h => exact hWf.1 h.symm
         | inr h => exact hWf.2 h.symm
 
-/-! ### Constrained universal theorem
+/-! ### MODEL theorems: constrained iff on helper
 
-  The main theorem: for any well-formed descriptor, at any height,
-  every non-sentinel witness item in a threshold-sig spend is admitted
-  iff its suite is in NativeSpendSuites. This is the threshold-sig
-  analogue of spend_gate_bridge's `gate_accept_is_spend_suite`. -/
+  These operate on thresholdItemSuiteAllowed (helper), not on the
+  live validateThresholdSigSpendNoCrypto. They are MODEL-level:
+  useful for reasoning about rotation-aware behavior but not yet
+  bridged to the live threshold loop. -/
 
-/-- Universal: ∀ well-formed descriptor, ∀ height, ∀ witness item,
-    the threshold suite gate admits ↔ suite ∈ NativeSpendSuites(h, d).
-    Note: this holds for ALL witness items including sentinels (stronger
-    than the live code needs, since sentinels are bypassed before the
-    suite gate in the threshold loop). -/
+/-- MODEL: ∀ descriptor, ∀ height, ∀ witness item,
+    the threshold suite gate helper admits ↔ suite ∈ NativeSpendSuites(h, d).
+    Holds for ALL witness items including sentinels (stronger than live
+    code needs, since sentinels are bypassed before suite gate). -/
 theorem threshold_suite_gate_iff_spend_suites
     (d : RotationDeploymentDescriptor) (h : Nat)
     (w : UtxoBasicV1.WitnessItem) :
@@ -177,8 +183,8 @@ theorem threshold_suite_gate_iff_spend_suites
   ⟨post_rotation_gate_accept_soundness d h w,
    post_rotation_gate_accept_completeness d h w⟩
 
-/-- Universal: ∀ well-formed descriptor, ∀ height, ∀ witness item,
-    threshold suite gate rejection ↔ suite ∉ NativeSpendSuites(h, d). -/
+/-- MODEL: ∀ descriptor, ∀ height, ∀ witness item,
+    threshold suite gate helper rejection ↔ suite ∉ NativeSpendSuites(h, d). -/
 theorem threshold_suite_gate_reject_iff
     (d : RotationDeploymentDescriptor) (h : Nat)
     (w : UtxoBasicV1.WitnessItem) :
