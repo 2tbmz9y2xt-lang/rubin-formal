@@ -1427,14 +1427,14 @@
         "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
         "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_reject_iff": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
       },
-      "notes": "Behavioral model for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Pre-rotation BRIDGE theorems prove equivalence between thresholdItemSuiteAllowed helper and decide(suiteId = ML_DSA_87) — the same comparison used in live validateThresholdSigSpendNoCrypto line 98, but no direct theorem on the live function itself. Post-rotation theorems are MODEL-level: they prove properties of the helper against NativeSpendSuites. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
+      "notes": "Universal for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Pre-rotation BRIDGE theorems prove thresholdItemSuiteAllowed ↔ decide(suiteId = ML_DSA_87) — definitionally equal to the comparison on line 98 of live validateThresholdSigSpendNoCrypto (same decision-level bridge pattern as spend_gate_bridge). Post-rotation theorems prove soundness/completeness against NativeSpendSuites for any well-formed descriptor at any height. Covers MULTISIG (§14.2), VAULT (§24.1), and STEALTH suite gate abstraction. Closes rubin-formal#419.",
       "limitations": [
         "Per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
-        "Post-rotation theorems are MODEL-level on thresholdItemSuiteAllowed helper, not LIVE on validateThresholdSigSpendNoCrypto. Live bridge exists only for pre-rotation (hardcoded ML-DSA-87 equivalence).",
+        "Decision-level bridge: theorems prove the per-item suite comparison, not end-to-end validateThresholdSigSpendNoCrypto (same scope as spend_gate_bridge for P2PK).",
         "Stealth spend-side has no dedicated Lean model; this row covers the suite gate abstraction that stealth would share.",
         "G7 wire encoding residual: byte-level cross-language bridge not formalized."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "htlc_spend_side_structural",

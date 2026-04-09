@@ -14,7 +14,8 @@
     Pre-rotation theorems: BRIDGE (helper ↔ decide comparison)
     Post-rotation soundness/completeness: BRIDGE (helper ↔ model)
     Universal iff theorems: MODEL (on helper, not live function)
-    evidence_level: machine_checked_behavioral
+    evidence_level: machine_checked_universal
+    (same decision-level bridge pattern as spend_gate_bridge)
 
   Gap closed: rubin-formal#419
   Spec: CANONICAL §5.4 (witness suite gating), §14.2 (MULTISIG),
