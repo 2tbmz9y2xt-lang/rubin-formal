@@ -1399,6 +1399,37 @@
       "evidence_level": "machine_checked_universal"
     },
     {
+      "section_key": "threshold_stealth_spend_suite_gate",
+      "section_heading": "## Threshold/Stealth Spend Suite Gate Bridge",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_threshold_gate_eq_hardcoded",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_accept_implies_gate",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_reject_implies_gate",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_iff_model",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_soundness",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_completeness",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_reject_soundness",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_reject_iff"
+      ],
+      "file": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+      "theorem_files": {
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_threshold_gate_eq_hardcoded": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_soundness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
+      },
+      "notes": "Universal for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Proves: pre-rotation equivalence with hardcoded ML-DSA-87 check, post-rotation soundness/completeness against NativeSpendSuites model, sentinel orthogonality, and bidirectional iff theorems. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
+      "limitations": [
+        "Scope: per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
+        "Stealth spend-side has no dedicated Lean model; this row covers the suite gate abstraction that stealth would share.",
+        "G7 wire encoding residual: byte-level cross-language bridge not formalized."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
       "section_key": "htlc_spend_side_structural",
       "section_heading": "## HTLC Spend-Side Structural Live Bridge",
       "status": "proved",
