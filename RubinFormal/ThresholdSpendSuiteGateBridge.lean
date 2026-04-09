@@ -175,6 +175,47 @@ theorem threshold_suite_gate_reject_iff
     simp only [Bool.not_eq_false] at hNot
     exact hNotMem (post_rotation_gate_accept_soundness d h w hNot)
 
+/-! ### LIVE bridge to validateThresholdSigSpendNoCrypto
+
+  The theorems above prove properties of the thresholdItemSuiteAllowed
+  helper. These bridge theorems connect to the actual per-item suite
+  check in UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto (line 98):
+    `else if w.suiteId == SUITE_ID_ML_DSA_87 then`
+  This upgrades the row from model-only to live-bridged. -/
+
+/-- Cross-module constant grounding: the UtxoApplyGenesisV1 suite ID is
+    definitionally equal to the canonical RubinFormal.SUITE_ID_ML_DSA_87. -/
+private theorem utxo_suite_eq_canonical :
+    UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 = RubinFormal.SUITE_ID_ML_DSA_87 := by
+  native_decide
+
+/-- LIVE bridge (accept direction): when the rotation-aware gate accepts
+    under pre-rotation, the live suite check in validateThresholdSigSpendNoCrypto
+    line 98 evaluates to true (suite IS ML_DSA_87). -/
+theorem live_threshold_suite_check_passes_on_gate_accept
+    (w : UtxoBasicV1.WitnessItem) (h : Nat)
+    (hGate : thresholdItemSuiteAllowed none h w = true) :
+    (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = true := by
+  have hEq := (pre_rotation_threshold_gate_eq_hardcoded w h) ▸ hGate
+  simp only [decide_eq_true_eq] at hEq
+  rw [hEq, utxo_suite_eq_canonical]
+  native_decide
+
+/-- LIVE bridge (reject direction): when the rotation-aware gate rejects
+    under pre-rotation, the live suite check evaluates to false, causing
+    validateThresholdSigSpendNoCrypto to throw TX_ERR_SIG_ALG_INVALID. -/
+theorem live_threshold_suite_check_rejects_on_gate_reject
+    (w : UtxoBasicV1.WitnessItem) (h : Nat)
+    (hGate : thresholdItemSuiteAllowed none h w = false) :
+    (w.suiteId == UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) = false := by
+  have hNeq : w.suiteId ≠ SUITE_ID_ML_DSA_87 := by
+    rw [pre_rotation_threshold_gate_eq_hardcoded] at hGate
+    simpa [decide_eq_false_iff_not] using hGate
+  rw [utxo_suite_eq_canonical]
+  cases hbeq : (w.suiteId == SUITE_ID_ML_DSA_87)
+  · rfl
+  · exact absurd (eq_of_beq hbeq) hNeq
+
 end ThresholdSpendSuiteGateBridge
 
 end RubinFormal
