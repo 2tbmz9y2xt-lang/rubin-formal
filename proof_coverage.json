@@ -1427,7 +1427,7 @@
         "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
         "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_reject_iff": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
       },
-      "notes": "Behavioral model for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Pre-rotation BRIDGE theorems prove equivalence with the hardcoded ML-DSA-87 check in live validateThresholdSigSpendNoCrypto. Post-rotation theorems are MODEL-level: they prove properties of the thresholdItemSuiteAllowed helper against NativeSpendSuites, modelling the future rotation-aware code. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
+      "notes": "Behavioral model for the descriptor-aware suite gate in threshold-sig and stealth spend paths. Pre-rotation BRIDGE theorems prove equivalence between thresholdItemSuiteAllowed helper and decide(suiteId = ML_DSA_87) — the same comparison used in live validateThresholdSigSpendNoCrypto line 98, but no direct theorem on the live function itself. Post-rotation theorems are MODEL-level: they prove properties of the helper against NativeSpendSuites. Covers MULTISIG (§14.2) and VAULT (§24.1) threshold-sig loops plus STEALTH suite admission. Closes rubin-formal#419.",
       "limitations": [
         "Per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
         "Post-rotation theorems are MODEL-level on thresholdItemSuiteAllowed helper, not LIVE on validateThresholdSigSpendNoCrypto. Live bridge exists only for pre-rotation (hardcoded ML-DSA-87 equivalence).",
