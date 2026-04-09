@@ -19,8 +19,7 @@
   Gap closed: rubin-formal#419
   Spec: CANONICAL §5.4 (witness suite gating), §14.2 (MULTISIG),
         §24.1 (VAULT threshold sig), §23.2.1 (rotation phases).
-  Depends: NativeSpendCreateGate.lean, SpendGateLiveBridge.lean,
-           UtxoApplyGenesisV1.lean.
+  Depends: NativeSpendCreateGate.lean, UtxoApplyGenesisV1.lean.
 -/
 
 import RubinFormal.NativeSpendCreateGate
