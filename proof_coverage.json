@@ -1399,6 +1399,48 @@
       "evidence_level": "machine_checked_universal"
     },
     {
+      "section_key": "threshold_stealth_spend_suite_gate",
+      "section_heading": "## Threshold/Stealth Spend Suite Gate Bridge",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_threshold_gate_eq_hardcoded",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_accept_implies_gate",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_reject_implies_gate",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_iff_model",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_soundness",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_completeness",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_reject_soundness",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_reject_iff",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.live_threshold_suite_check_passes_on_gate_accept",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.live_threshold_suite_check_rejects_on_gate_reject"
+      ],
+      "file": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+      "theorem_files": {
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_threshold_gate_eq_hardcoded": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_accept_implies_gate": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.pre_rotation_hardcoded_reject_implies_gate": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_iff_model": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_soundness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_accept_completeness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.post_rotation_gate_reject_soundness": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.sentinel_not_in_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_iff_spend_suites": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.threshold_suite_gate_reject_iff": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.live_threshold_suite_check_passes_on_gate_accept": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean",
+        "RubinFormal.ThresholdSpendSuiteGateBridge.live_threshold_suite_check_rejects_on_gate_reject": "rubin-formal/RubinFormal/ThresholdSpendSuiteGateBridge.lean"
+      },
+      "notes": "Universal for the descriptor-aware suite gate in threshold-sig and stealth spend paths. LIVE bridge theorems prove that thresholdItemSuiteAllowed result determines the outcome of the actual per-item suite check (w.suiteId == SUITE_ID_ML_DSA_87) in validateThresholdSigSpendNoCrypto line 98 — same live-subexpression bridge pattern as spend_gate_bridge. Post-rotation BRIDGE theorems prove soundness/completeness against NativeSpendSuites for any RotationDeploymentDescriptor at any height. Covers MULTISIG (§14.2), VAULT (§24.1), and STEALTH suite gate abstraction. Closes rubin-formal#419.",
+      "limitations": [
+        "Per-item suite gate only; threshold counting semantics remain in transaction_structural_rules row.",
+        "Decision-level bridge: LIVE theorems prove the per-item suite comparison result (w.suiteId == SUITE_ID_ML_DSA_87), not end-to-end validateThresholdSigSpendNoCrypto behavior. Narrower scope than spend_gate_bridge which has function-level theorems.",
+        "Stealth spend-side has no dedicated Lean model; this row covers the suite gate abstraction that stealth would share.",
+        "G7 wire encoding residual: byte-level cross-language bridge not formalized."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
       "section_key": "htlc_spend_side_structural",
       "section_heading": "## HTLC Spend-Side Structural Live Bridge",
       "status": "proved",
