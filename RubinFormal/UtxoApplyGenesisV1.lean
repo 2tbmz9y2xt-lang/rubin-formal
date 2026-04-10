@@ -201,7 +201,8 @@ def validateThresholdSigSpendNoCrypto
        length checks that Wave A1 handled upstream).
 
     This matches the `Done = yes` spec from issue #426 literally:
-    *"живой по gate+registry"* = `gate ∧ registry.isSome`.
+    *"живой по gate+registry"* — a witness is admitted iff **both** the
+    spend gate and the registry lookup accept.
 
     In the pre-rotation era (`rotDesc? = none`, `reg = [ML_DSA_87_ENTRY]`),
     both checks collapse to `sid == SUITE_ID_ML_DSA_87`, and the function is
@@ -212,7 +213,9 @@ def validateThresholdSigSpendNoCrypto
     Behaviour:
     - `ws.length ≠ keys.length` → `TX_ERR_PARSE` (unchanged).
     - `SUITE_ID_SENTINEL` witnesses are keyless no-ops (counter unchanged).
-    - `gate ∧ registry.isSome` → SHA3-256 pubkey/key binding + counter `+1`.
+    - `liveSpendGateAllows rotDesc? blockHeight w.suiteId &&
+       (Rotation.registryLookup reg w.suiteId).isSome` → SHA3-256
+       pubkey/key binding + counter `+1`.
     - Otherwise (gate rejected OR unregistered) → `TX_ERR_SIG_ALG_INVALID`.
     - Final `valid < threshold` comparison preserved from legacy.
 
@@ -254,8 +257,10 @@ def validateThresholdSigSpendRegistry
 
     Name uses `_eq_` (not `_iff_`) because the statement is a **Bool
     equality** (`isSome-call = beq-call`), not a Prop `↔`. This form is
-    required for `simp only` rewriting inside `(gate && registry).isSome`
-    expressions in the main bridge proof. -/
+    required for `simp only` rewriting of the registry-check subexpression
+    in conjunctions such as
+    `NativeSpendCreateGate.liveSpendGateAllows ... && (Rotation.registryLookup ...).isSome`
+    in the main bridge proof. -/
 theorem registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87 (sid : Nat) :
     (Rotation.registryLookup Rotation.PRE_ROTATION_REGISTRY sid).isSome =
     (sid == RubinFormal.SUITE_ID_ML_DSA_87) := by
@@ -287,13 +292,16 @@ theorem registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87 (sid : Nat) :
     `NativeSpendCreateGate.lean:111`) already proves the Prop `↔` form:
     `liveSpendGateAllows none h sid = true ↔ sid = SUITE_ID_ML_DSA_87`.
     That form cannot be used as a rewrite rule inside `simp only` over a
-    Bool subexpression like `liveSpendGateAllows ... && registryLookup ...`
+    Bool subexpression like
+    `liveSpendGateAllows ... && (Rotation.registryLookup ...).isSome`
     because it rewrites a `Prop` (`_ = true`), not a `Bool`.
 
     This lemma provides the Bool-equality companion form
     `liveSpendGateAllows none h sid = (sid == SUITE_ID_ML_DSA_87)`
     required for the main bridge proof's `simp only` step over the
-    combined `gate && registry` admission check.
+    combined
+    `liveSpendGateAllows ... && (Rotation.registryLookup ...).isSome`
+    admission check.
 
     Name uses `_eq_` (not `_iff_`) for the same convention reason as
     `registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87` above. -/
@@ -329,7 +337,8 @@ theorem liveSpendGateAllows_none_eq_beq_ml_dsa_87 (h sid : Nat) :
     (length-check, `for ... let mut valid := 0` loop, final threshold
     compare). The only divergence is the per-element inner branch:
     legacy uses `if w.suiteId == ML_DSA_87 then <check> else throw`,
-    registry uses `if gate ∧ (lookup).isSome then <check> else throw`.
+    registry uses `if liveSpendGateAllows rotDesc? h w.suiteId &&
+    (registryLookup reg w.suiteId).isSome then <check> else throw`.
     On `PRE_ROTATION_REGISTRY` with `rotDesc? = none`:
     - `liveSpendGateAllows none h sid = (sid == ML_DSA_87)` by
       `liveSpendGateAllows_none_eq_beq_ml_dsa_87`
