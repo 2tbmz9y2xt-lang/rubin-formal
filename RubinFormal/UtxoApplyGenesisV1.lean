@@ -4,6 +4,7 @@ import RubinFormal.OutputDescriptorV2
 import RubinFormal.UtxoBasicV1
 import RubinFormal.CovenantGenesisV1
 import RubinFormal.NativeSpendCreateGate
+import RubinFormal.RotationPrelude
 
 namespace RubinFormal
 
@@ -68,7 +69,10 @@ def validateP2PKSpendPreSig
   pure ()
 
 /-- **Pre-rotation scope**: hardcoded ML-DSA-87 pubkey/sig bounds.
-    Post-rotation (Q-FORMAL-ROTATION-02): bounds from `Rotation.registryLookup`. -/
+    Post-rotation (Q-FORMAL-ROTATION-02): bounds from `Rotation.registryLookup`.
+    See `validateWitnessItemLengthsRegistry` + bridge theorem
+    `validateWitnessItemLengths_eq_registry_pre_rotation` below for the
+    suite-aware generalisation (Q-FORMAL-WAVE-A1). -/
 def validateWitnessItemLengths (w : WitnessItem) (_blockHeight : Nat) : Except String Unit := do
   if w.suiteId == RubinFormal.SUITE_ID_SENTINEL then
     if w.pubkey.size != 0 || w.signature.size != 0 then
@@ -80,6 +84,83 @@ def validateWitnessItemLengths (w : WitnessItem) (_blockHeight : Nat) : Except S
     pure ()
   else
     throw "TX_ERR_SIG_ALG_INVALID"
+
+/-- **Q-FORMAL-WAVE-A1**: Registry-aware witness item length validator.
+    Suite-agnostic version that looks up per-suite bounds from the supplied
+    `Rotation.SuiteRegistry`.
+
+    In the pre-rotation era (`reg = [ML_DSA_87_ENTRY]`), this is **provably
+    equivalent** to the legacy `validateWitnessItemLengths` — see bridge
+    theorem `validateWitnessItemLengths_eq_registry_pre_rotation` below.
+
+    Behaviour:
+    - `SUITE_ID_SENTINEL`: same empty-pubkey/sig requirement as legacy.
+    - Registered suite: bounds come from `registryLookup` entry
+      (`pubkeyBytes` exact match, `sigBytes + 1` tolerance, non-empty sig).
+    - Unregistered suite: `TX_ERR_SIG_ALG_INVALID`.
+
+    **Status:** LIVE-ready for post-rotation wiring. Integration with call-sites
+    (`validateHTLCSpendNoCrypto`, threshold loop) is handled in follow-up
+    Wave A issues (#426/#427/#430) — this PR only adds the helper + bridge. -/
+def validateWitnessItemLengthsRegistry
+    (reg : Rotation.SuiteRegistry) (w : WitnessItem) (_blockHeight : Nat) :
+    Except String Unit := do
+  if w.suiteId == RubinFormal.SUITE_ID_SENTINEL then
+    if w.pubkey.size != 0 || w.signature.size != 0 then
+      throw "TX_ERR_PARSE"
+    pure ()
+  else
+    match Rotation.registryLookup reg w.suiteId with
+    | none => throw "TX_ERR_SIG_ALG_INVALID"
+    | some entry =>
+      if w.pubkey.size != entry.pubkeyBytes
+         || w.signature.size = 0
+         || w.signature.size > entry.sigBytes + 1 then
+        throw "TX_ERR_SIG_NONCANONICAL"
+      pure ()
+
+/-- **Q-FORMAL-WAVE-A1 BRIDGE theorem** (class: BRIDGE per rubin-formal-executor).
+    In the pre-rotation era where the suite registry is exactly
+    `[ML_DSA_87_ENTRY]`, the legacy hardcoded `validateWitnessItemLengths`
+    returns identically to the registry-aware
+    `validateWitnessItemLengthsRegistry PRE_ROTATION_REGISTRY` on every input.
+
+    This means the ~49 existing theorems proved against
+    `validateWitnessItemLengths` in `ConsensusConstantsBehavioral.lean`,
+    `StructuralRulesBehavioral.lean`, `FormalGap03.lean`, and
+    `HtlcSpendStructuralLiveBridge.lean` all transfer verbatim to
+    `validateWitnessItemLengthsRegistry PRE_ROTATION_REGISTRY` via `rw`.
+
+    The registry-aware function can therefore be wired into post-rotation
+    code paths in follow-up PRs without invalidating any current behavioural
+    proof — they specialise under the bridge to the same theorem statement. -/
+theorem validateWitnessItemLengths_eq_registry_pre_rotation
+    (w : WitnessItem) (h : Nat) :
+    validateWitnessItemLengths w h =
+    validateWitnessItemLengthsRegistry Rotation.PRE_ROTATION_REGISTRY w h := by
+  unfold validateWitnessItemLengths validateWitnessItemLengthsRegistry
+  simp only [Rotation.PRE_ROTATION_REGISTRY, Rotation.registryLookup,
+             List.find?, Rotation.ML_DSA_87_ENTRY]
+  by_cases hs : w.suiteId = RubinFormal.SUITE_ID_SENTINEL
+  · simp [hs]
+  · simp [hs]
+    by_cases hm : w.suiteId = SUITE_ID_ML_DSA_87
+    · -- ML-DSA-87 branch: rewrite via hm, unfold suite id + bound constants
+      -- Then both LHS (hardcoded 2592/4627) and RHS (from ML_DSA_87_ENTRY) match.
+      rw [hm]
+      simp only [SUITE_ID_ML_DSA_87, CovenantGenesisV1.SUITE_ID_ML_DSA_87,
+                 ML_DSA_87_PUBKEY_BYTES, ML_DSA_87_SIG_BYTES]
+      rfl
+    · -- Unknown suite: neither sentinel nor ml-dsa-87 → registry lookup = none
+      have hne_def : w.suiteId ≠ SUITE_ID_ML_DSA_87 := hm
+      have hne_nat : w.suiteId ≠ 1 := fun heq => hne_def heq
+      have h_beq : (1 == w.suiteId) = false := by
+        cases hx : 1 == w.suiteId with
+        | false => rfl
+        | true =>
+          exfalso; apply hne_nat
+          exact (Nat.eq_of_beq_eq_true hx).symm
+      simp [hm, h_beq]
 
 /-- **Pre-rotation scope**: ML-DSA-87 is the only signing suite in threshold dispatch.
     Post-rotation (Q-FORMAL-ROTATION-04): `suite ∉ NATIVE_SPEND_SUITES(h) → reject`. -/
