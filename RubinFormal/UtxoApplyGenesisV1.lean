@@ -190,18 +190,30 @@ def validateThresholdSigSpendNoCrypto
   pure ()
 
 /-- **Q-FORMAL-WAVE-A2**: Registry-aware threshold signature spend validator.
-    Suite-agnostic generalisation of `validateThresholdSigSpendNoCrypto` that
-    looks up per-suite admission from the supplied `Rotation.SuiteRegistry`.
+    Suite-agnostic generalisation of `validateThresholdSigSpendNoCrypto`.
 
-    In the pre-rotation era (`reg = [ML_DSA_87_ENTRY]`), this is **provably
-    equivalent** to the legacy `validateThresholdSigSpendNoCrypto` — see
-    bridge theorem `validateThresholdSigSpend_eq_registry_pre_rotation` below.
+    Non-sentinel witnesses are admitted only when **both** of the following hold:
+    1. `NativeSpendCreateGate.liveSpendGateAllows rotDesc? blockHeight w.suiteId` —
+       the height-aware active spend gate (addresses the post-rotation case
+       where a registered suite may still be *inactive* for spending at `h`).
+    2. `(Rotation.registryLookup reg w.suiteId).isSome` — the suite exists in
+       the supplied registry (carries per-suite parameters for downstream
+       length checks that Wave A1 handled upstream).
+
+    This matches the `Done = yes` spec from issue #426 literally:
+    *"живой по gate+registry"* = `gate ∧ registry.isSome`.
+
+    In the pre-rotation era (`rotDesc? = none`, `reg = [ML_DSA_87_ENTRY]`),
+    both checks collapse to `sid == SUITE_ID_ML_DSA_87`, and the function is
+    **provably equivalent** to the legacy `validateThresholdSigSpendNoCrypto`
+    — see bridge theorem `validateThresholdSigSpend_eq_registry_pre_rotation`
+    below.
 
     Behaviour:
     - `ws.length ≠ keys.length` → `TX_ERR_PARSE` (unchanged).
     - `SUITE_ID_SENTINEL` witnesses are keyless no-ops (counter unchanged).
-    - Non-sentinel registered suite → pubkey/key hash binding + counter `+1`.
-    - Non-sentinel unregistered suite → `TX_ERR_SIG_ALG_INVALID`.
+    - `gate ∧ registry.isSome` → SHA3-256 pubkey/key binding + counter `+1`.
+    - Otherwise (gate rejected OR unregistered) → `TX_ERR_SIG_ALG_INVALID`.
     - Final `valid < threshold` comparison preserved from legacy.
 
     Structurally mirrors the legacy `for ... let mut` loop so bridge-level
@@ -215,15 +227,18 @@ def validateThresholdSigSpendRegistry
     (keys : List Bytes)
     (threshold : Nat)
     (ws : List WitnessItem)
-    (_blockHeight : Nat)
-    (_context : String) : Except String Unit := do
+    (blockHeight : Nat)
+    (_context : String)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none) :
+    Except String Unit := do
   if ws.length != keys.length then
     throw "TX_ERR_PARSE"
   let mut valid : Nat := 0
   for (w, key) in List.zip ws keys do
     if w.suiteId == RubinFormal.SUITE_ID_SENTINEL then
       pure ()
-    else if (Rotation.registryLookup reg w.suiteId).isSome then
+    else if NativeSpendCreateGate.liveSpendGateAllows rotDesc? blockHeight w.suiteId
+            && (Rotation.registryLookup reg w.suiteId).isSome then
       if SHA3.sha3_256 w.pubkey != key then
         throw "TX_ERR_SIG_INVALID"
       valid := valid + 1
@@ -235,15 +250,14 @@ def validateThresholdSigSpendRegistry
 
 /-- **Q-FORMAL-WAVE-A2** internal lemma: on `PRE_ROTATION_REGISTRY`, a
     non-sentinel suite is admitted by `registryLookup ... |>.isSome` iff
-    it equals `SUITE_ID_ML_DSA_87`. Used to bridge the legacy
-    `if sid == ML_DSA_87` branch with the registry-aware
-    `if (lookup).isSome` branch pointwise. -/
+    it equals the canonical `RubinFormal.SUITE_ID_ML_DSA_87`. The statement
+    uses the canonical form (same as `liveSpendGateAllows` internals) so
+    the main bridge theorem can `simp only` over both gates uniformly. -/
 theorem registryLookup_pre_rotation_isSome_iff_ml_dsa_87 (sid : Nat) :
     (Rotation.registryLookup Rotation.PRE_ROTATION_REGISTRY sid).isSome =
-    (sid == SUITE_ID_ML_DSA_87) := by
+    (sid == RubinFormal.SUITE_ID_ML_DSA_87) := by
   simp only [Rotation.PRE_ROTATION_REGISTRY, Rotation.registryLookup,
-             List.find?, Rotation.ML_DSA_87_ENTRY, SUITE_ID_ML_DSA_87,
-             CovenantGenesisV1.SUITE_ID_ML_DSA_87]
+             List.find?, Rotation.ML_DSA_87_ENTRY, RubinFormal.SUITE_ID_ML_DSA_87]
   cases hx : (1 == sid) with
   | true =>
     have hsid : sid = 1 := (Nat.eq_of_beq_eq_true hx).symm
@@ -255,45 +269,73 @@ theorem registryLookup_pre_rotation_isSome_iff_ml_dsa_87 (sid : Nat) :
       | false => rfl
       | true =>
         -- hy : sid == 1 = true → sid = 1, so 1 == sid = 1 == 1 = true,
-        -- contradicting hx : (1 == sid) = false. Explicitly derive `False`
-        -- via `exfalso` + `absurd` + `decide` to avoid relying on `simp`'s
-        -- implicit goal-closure side-effect on contradictory hypotheses.
+        -- contradicting hx : (1 == sid) = false. Explicit contradiction
+        -- via `exfalso` + `absurd` + `decide`.
         exfalso
         have hsid : sid = 1 := Nat.eq_of_beq_eq_true hy
         rw [hsid] at hx
         exact absurd hx (by decide)
     simp [h_sid_beq_one_false]
 
+/-- **Q-FORMAL-WAVE-A2** internal lemma: the pre-rotation fallback of
+    `liveSpendGateAllows` is definitionally equal to the hardcoded
+    `sid == SUITE_ID_ML_DSA_87` check. Reduces the spend gate back to the
+    legacy admission predicate on `rotDesc? = none`. -/
+theorem liveSpendGateAllows_none_eq_beq_ml_dsa_87 (h sid : Nat) :
+    NativeSpendCreateGate.liveSpendGateAllows none h sid =
+    (sid == RubinFormal.SUITE_ID_ML_DSA_87) := by
+  unfold NativeSpendCreateGate.liveSpendGateAllows
+  cases hc : sid == RubinFormal.SUITE_ID_ML_DSA_87 with
+  | true =>
+    have hsid : sid = RubinFormal.SUITE_ID_ML_DSA_87 := Nat.eq_of_beq_eq_true hc
+    simp [hsid]
+  | false =>
+    have hne : sid ≠ RubinFormal.SUITE_ID_ML_DSA_87 := by
+      intro heq
+      rw [heq] at hc
+      exact absurd hc (by decide)
+    simp [hne]
+
 /-- **Q-FORMAL-WAVE-A2 BRIDGE theorem** (class: BRIDGE per rubin-formal-executor).
-    In the pre-rotation era where the suite registry is exactly
-    `[ML_DSA_87_ENTRY]`, the legacy hardcoded `validateThresholdSigSpendNoCrypto`
-    returns identically to the registry-aware
-    `validateThresholdSigSpendRegistry PRE_ROTATION_REGISTRY` on every input.
+    In the pre-rotation era where `rotDesc? = none` and the suite registry
+    is exactly `[ML_DSA_87_ENTRY]`, the legacy hardcoded
+    `validateThresholdSigSpendNoCrypto` returns identically to the
+    registry-aware `validateThresholdSigSpendRegistry PRE_ROTATION_REGISTRY`
+    on every input.
 
     The registry-aware function can therefore be wired into post-rotation
     threshold-dispatch call sites in follow-up PRs (Wave A3 / #427) without
     invalidating any current behavioural proof that references the legacy
-    `validateThresholdSigSpendNoCrypto` — they specialise under the bridge to
-    the same theorem statement.
+    `validateThresholdSigSpendNoCrypto` — they specialise under the bridge
+    to the same theorem statement.
 
     **Proof strategy:** both functions share identical outer structure
     (length-check, `for ... let mut valid := 0` loop, final threshold
     compare). The only divergence is the per-element inner branch:
     legacy uses `if w.suiteId == ML_DSA_87 then <check> else throw`,
-    registry uses `if (registryLookup reg w.suiteId).isSome then <check> else throw`.
-    On `PRE_ROTATION_REGISTRY`, helper lemma
-    `registryLookup_pre_rotation_isSome_iff_ml_dsa_87` reduces the registry
-    gate back to the legacy one, making both bodies structurally identical. -/
+    registry uses `if gate ∧ (lookup).isSome then <check> else throw`.
+    On `PRE_ROTATION_REGISTRY` with `rotDesc? = none`:
+    - `liveSpendGateAllows none h sid = (sid == ML_DSA_87)` by
+      `liveSpendGateAllows_none_eq_beq_ml_dsa_87`
+    - `(registryLookup PRE_ROT sid).isSome = (sid == ML_DSA_87)` by
+      `registryLookup_pre_rotation_isSome_iff_ml_dsa_87`
+    - Combined: `(sid == ML_DSA_87) && (sid == ML_DSA_87) = (sid == ML_DSA_87)`
+    - Matches legacy pointwise. -/
 theorem validateThresholdSigSpend_eq_registry_pre_rotation
     (keys : List Bytes) (threshold : Nat) (ws : List WitnessItem)
     (h : Nat) (ctx : String) :
     validateThresholdSigSpendNoCrypto keys threshold ws h ctx =
     validateThresholdSigSpendRegistry Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx := by
   unfold validateThresholdSigSpendNoCrypto validateThresholdSigSpendRegistry
-  -- Rewrite the registry `isSome` gate back to the legacy `sid == ML_DSA_87`
-  -- gate on PRE_ROTATION_REGISTRY. After this rewrite both functions share
-  -- structurally identical per-element bodies.
-  simp only [registryLookup_pre_rotation_isSome_iff_ml_dsa_87]
+  -- Reduce the spend gate and the registry lookup to `sid == ML_DSA_87`
+  -- in canonical form, then collapse `(x && x) = x` by Bool idempotence.
+  -- Additionally unfold the local `SUITE_ID_ML_DSA_87` alias so the legacy
+  -- branch uses the same canonical `RubinFormal.SUITE_ID_ML_DSA_87`.
+  simp only [liveSpendGateAllows_none_eq_beq_ml_dsa_87,
+             registryLookup_pre_rotation_isSome_iff_ml_dsa_87,
+             Bool.and_self, SUITE_ID_ML_DSA_87,
+             CovenantGenesisV1.SUITE_ID_ML_DSA_87,
+             RubinFormal.SUITE_ID_ML_DSA_87]
 
 def validateHTLCSpendNoCrypto
     (c : CovenantGenesisV1.HtlcCovenant)
