@@ -255,10 +255,13 @@ theorem registryLookup_pre_rotation_isSome_iff_ml_dsa_87 (sid : Nat) :
       | false => rfl
       | true =>
         -- hy : sid == 1 = true → sid = 1, so 1 == sid = 1 == 1 = true,
-        -- contradicting hx : (1 == sid) = false.
-        have : sid = 1 := Nat.eq_of_beq_eq_true hy
-        rw [this] at hx
-        simp at hx
+        -- contradicting hx : (1 == sid) = false. Explicitly derive `False`
+        -- via `exfalso` + `absurd` + `decide` to avoid relying on `simp`'s
+        -- implicit goal-closure side-effect on contradictory hypotheses.
+        exfalso
+        have hsid : sid = 1 := Nat.eq_of_beq_eq_true hy
+        rw [hsid] at hx
+        exact absurd hx (by decide)
     simp [h_sid_beq_one_false]
 
 /-- **Q-FORMAL-WAVE-A2 BRIDGE theorem** (class: BRIDGE per rubin-formal-executor).
