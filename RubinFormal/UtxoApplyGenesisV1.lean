@@ -250,10 +250,13 @@ def validateThresholdSigSpendRegistry
 
 /-- **Q-FORMAL-WAVE-A2** internal lemma: on `PRE_ROTATION_REGISTRY`, a
     non-sentinel suite is admitted by `registryLookup ... |>.isSome` iff
-    it equals the canonical `RubinFormal.SUITE_ID_ML_DSA_87`. The statement
-    uses the canonical form (same as `liveSpendGateAllows` internals) so
-    the main bridge theorem can `simp only` over both gates uniformly. -/
-theorem registryLookup_pre_rotation_isSome_iff_ml_dsa_87 (sid : Nat) :
+    it equals the canonical `RubinFormal.SUITE_ID_ML_DSA_87`.
+
+    Name uses `_eq_` (not `_iff_`) because the statement is a **Bool
+    equality** (`isSome-call = beq-call`), not a Prop `↔`. This form is
+    required for `simp only` rewriting inside `(gate && registry).isSome`
+    expressions in the main bridge proof. -/
+theorem registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87 (sid : Nat) :
     (Rotation.registryLookup Rotation.PRE_ROTATION_REGISTRY sid).isSome =
     (sid == RubinFormal.SUITE_ID_ML_DSA_87) := by
   simp only [Rotation.PRE_ROTATION_REGISTRY, Rotation.registryLookup,
@@ -277,10 +280,23 @@ theorem registryLookup_pre_rotation_isSome_iff_ml_dsa_87 (sid : Nat) :
         exact absurd hx (by decide)
     simp [h_sid_beq_one_false]
 
-/-- **Q-FORMAL-WAVE-A2** internal lemma: the pre-rotation fallback of
-    `liveSpendGateAllows` is definitionally equal to the hardcoded
-    `sid == SUITE_ID_ML_DSA_87` check. Reduces the spend gate back to the
-    legacy admission predicate on `rotDesc? = none`. -/
+/-- **Q-FORMAL-WAVE-A2** internal lemma: Bool-equality form of the
+    pre-rotation fallback of `liveSpendGateAllows`.
+
+    `NativeSpendCreateGate.liveSpendGateAllows_none_iff` (in
+    `NativeSpendCreateGate.lean:111`) already proves the Prop `↔` form:
+    `liveSpendGateAllows none h sid = true ↔ sid = SUITE_ID_ML_DSA_87`.
+    That form cannot be used as a rewrite rule inside `simp only` over a
+    Bool subexpression like `liveSpendGateAllows ... && registryLookup ...`
+    because it rewrites a `Prop` (`_ = true`), not a `Bool`.
+
+    This lemma provides the Bool-equality companion form
+    `liveSpendGateAllows none h sid = (sid == SUITE_ID_ML_DSA_87)`
+    required for the main bridge proof's `simp only` step over the
+    combined `gate && registry` admission check.
+
+    Name uses `_eq_` (not `_iff_`) for the same convention reason as
+    `registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87` above. -/
 theorem liveSpendGateAllows_none_eq_beq_ml_dsa_87 (h sid : Nat) :
     NativeSpendCreateGate.liveSpendGateAllows none h sid =
     (sid == RubinFormal.SUITE_ID_ML_DSA_87) := by
@@ -318,7 +334,7 @@ theorem liveSpendGateAllows_none_eq_beq_ml_dsa_87 (h sid : Nat) :
     - `liveSpendGateAllows none h sid = (sid == ML_DSA_87)` by
       `liveSpendGateAllows_none_eq_beq_ml_dsa_87`
     - `(registryLookup PRE_ROT sid).isSome = (sid == ML_DSA_87)` by
-      `registryLookup_pre_rotation_isSome_iff_ml_dsa_87`
+      `registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87`
     - Combined: `(sid == ML_DSA_87) && (sid == ML_DSA_87) = (sid == ML_DSA_87)`
     - Matches legacy pointwise. -/
 theorem validateThresholdSigSpend_eq_registry_pre_rotation
@@ -332,7 +348,7 @@ theorem validateThresholdSigSpend_eq_registry_pre_rotation
   -- Additionally unfold the local `SUITE_ID_ML_DSA_87` alias so the legacy
   -- branch uses the same canonical `RubinFormal.SUITE_ID_ML_DSA_87`.
   simp only [liveSpendGateAllows_none_eq_beq_ml_dsa_87,
-             registryLookup_pre_rotation_isSome_iff_ml_dsa_87,
+             registryLookup_pre_rotation_isSome_eq_beq_ml_dsa_87,
              Bool.and_self, SUITE_ID_ML_DSA_87,
              CovenantGenesisV1.SUITE_ID_ML_DSA_87,
              RubinFormal.SUITE_ID_ML_DSA_87]
