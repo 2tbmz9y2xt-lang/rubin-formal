@@ -37,9 +37,10 @@
         "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
         "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
       },
-      "notes": "Behavioral ceiling for finite Section 4 constants. LIVE theorems in ConsensusConstantsBehavioral close the validateWitnessItemLengths witness-validation surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and exhaustive constrained outcome partition. Dedicated pinned theorem entries separately cover subsidy U128 safety and HTLC timelock semantics. Other Section 4 constants intentionally remain owned by their own dedicated rows such as weight accounting and DA integrity rather than being overclaimed here as a single section-wide universal theorem.",
+      "notes": "Behavioral ceiling for the finite Section 4 witness-length subset. The counted LIVE theorems in ConsensusConstantsBehavioral still close only the default pre-rotation `validateWitnessItemLengths` branch surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and the constrained outcome partition for that live validator. Dedicated pinned theorem entries separately cover subsidy U128 safety and HTLC timelock semantics. This row does not uplift the newer registry-aware parser model in `TxParseV2.parseWitnessItemWithRegistry`, nor does it claim post-rotation registered-suite witness canonicalization parity. Other Section 4 constants intentionally remain owned by their own dedicated rows such as weight accounting and DA integrity rather than being overclaimed here as a single section-wide universal theorem.",
       "limitations": [
-        "Finite pinned constants are not a meaningful section-wide universal target here. This row aggregates the live witness-validation subset plus dedicated subsidy/HTLC constant theorems, while other Section 4 literals remain claimed by their own dedicated rows."
+        "Finite pinned constants are not a meaningful section-wide universal target here. This row aggregates the pre-rotation live `validateWitnessItemLengths` subset plus dedicated subsidy/HTLC constant theorems, while other Section 4 literals remain claimed by their own dedicated rows.",
+        "Registry-aware parse-stage witness classification and registered-suite canonicalization belong to the Wave B parser/model lane and are not counted by this row yet."
       ],
       "evidence_level": "machine_checked_behavioral"
     },
@@ -753,9 +754,10 @@
         "RubinFormal.vault_threshold_below_required_count_rejected_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.vault_threshold_required_count_accepts_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
       },
-      "notes": "Section 16 claim is carried by concrete regression theorems plus registry-aware companion theorems on validateWitnessItemLengthsRegistry, validateThresholdSigSpendRegistry, and validateVaultSpendRegistry specialized to PRE_ROTATION_REGISTRY. The counted helper-layer theorems cover R1-R14, including outer vault propagation, and are derived through the A1/A2/A3 bridge chain without depending on fixture replay. Legacy hardcoded live theorems are retained in code as explicit pre-rotation support lemmas and are no longer counted in this row.",
+      "notes": "Section 16 claim is carried by concrete regression theorems plus registry-aware companion theorems on validateWitnessItemLengthsRegistry, validateThresholdSigSpendRegistry, and validateVaultSpendRegistry specialized to PRE_ROTATION_REGISTRY. The counted helper-layer theorems cover R1-R14, including outer vault propagation, and are derived through the A1/A2/A3 bridge chain without depending on fixture replay. This row closes the spend-side helper/live bridge for the pre-rotation registry specialization only; it does not claim parser-stage witness canonicalization theorems for `TxParseV2.parseWitnessItemWithRegistry`, and it does not treat activation-stage suite gating as part of the witness-length theorem surface. Legacy hardcoded live theorems are retained in code as explicit pre-rotation support lemmas and are no longer counted in this row.",
       "limitations": [
-        "Registry-aware coverage is specialized to PRE_ROTATION_REGISTRY; post-rotation registries with additional suites remain future scope."
+        "Registry-aware coverage is specialized to PRE_ROTATION_REGISTRY; post-rotation registries with additional suites remain future scope.",
+        "The parse-time structural validity / registry validity / activation validity split introduced for the witness parser model is not itself counted in this Section 16 row."
       ],
       "evidence_level": "machine_checked_universal"
     },
