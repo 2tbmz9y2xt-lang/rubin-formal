@@ -42,7 +42,7 @@ def cvExtVectorBundleContract : Bool :=
   cvExtVectors.all familyTagMatchesId &&
   hasFamilies cvExtVectors ["ENV", "ACT", "PRE", "ENF", "PAY", "ERR", "DUP", "GEN", "PAR"]
 
-private def parseEnvelopeHex? (hex : String) : Option ParsedEnvelope := do
+def parseEnvelopeHex? (hex : String) : Option ParsedEnvelope := do
   let raw <- RubinFormal.decodeHex? hex
   parseEnvelope? raw
 
@@ -61,9 +61,9 @@ inductive CVExtReplayOutcome
 deriving Repr, DecidableEq
 
 /-- The current shipped fixture lane still treats `suite_id = 0` as an admitted
-    enforcement input. This function is intentionally fixture-anchored and must
-    not be read as a live consensus theorem; separate spend-side theorem files
-    continue to own the live sentinel boundary. -/
+    enforcement input. This is intentionally fixture-anchored and more
+    permissive than the live sentinel rule proved elsewhere; separate
+    spend-side theorem files continue to own the live consensus boundary. -/
 def fixtureSuiteAdmitted (suiteId : Nat) (allowedSuites : List Nat) : Bool :=
   suiteId == RubinFormal.SUITE_ID_SENTINEL || allowedSuites.contains suiteId
 
