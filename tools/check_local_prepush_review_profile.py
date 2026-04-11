@@ -169,7 +169,7 @@ def write_fullscan(
         "Changed files in scope:",
     ]
     if changed:
-        lines.extend(f"- {path}" for path in sorted(changed))
+        lines.extend(f"- {changed_path}" for changed_path in sorted(changed))
     else:
         lines.append("- none")
     lines.extend(
@@ -229,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
 
     profile_payload = {
         "profile": profile.name,
-        "check_type": "formal_repo_review",
+        "check_type": profile.name,
         "why": "Formal repo requires hostile theorem/metadata review with read-only repo context.",
         "model": profile.model,
         "model_reasoning_effort": profile.model_reasoning_effort,

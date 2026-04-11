@@ -96,6 +96,14 @@ class FormalReviewProfileTests(unittest.TestCase):
             self.assertEqual(payload["check_type"], "formal_repo_review")
             self.assertIn("doc-verification", payload["active_lenses"])
 
+    def test_write_fullscan_keeps_path_parameter_as_path(self) -> None:
+        with TemporaryDirectory() as td:
+            output = Path(td) / "fullscan.txt"
+            profile = m.load_profile()
+            m.write_fullscan(output, {"RubinFormal/Foo.lean"}, profile, ["code-review"])
+            self.assertTrue(output.exists())
+            self.assertIn("RubinFormal/Foo.lean", output.read_text(encoding="utf-8"))
+
     def test_main_rejects_unknown_conditional_lens_in_contract(self) -> None:
         with TemporaryDirectory() as td:
             td_path = Path(td)

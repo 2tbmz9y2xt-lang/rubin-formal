@@ -159,6 +159,33 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
         )
         self.assertTrue(any("status not allowed" in err for err in errors))
 
+    def test_validate_contract_rejects_duplicate_active_lenses(self) -> None:
+        summary = (
+            "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review,code-review|"
+            "LENSES_COVERED=code-review:ok|NO_FINDINGS=true|RATIONALE=code-review ok"
+        )
+        errors = m.validate_contract(
+            summary=summary,
+            findings=[],
+            expected_check_type="formal_repo_review",
+            expected_active_lenses=["code-review"],
+        )
+        self.assertTrue(any("duplicate entry" in err for err in errors))
+
+    def test_validate_contract_rejects_empty_active_lens_entries(self) -> None:
+        summary = (
+            "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review,,formal-proof-soundness|"
+            "LENSES_COVERED=code-review:ok;formal-proof-soundness:ok|"
+            "NO_FINDINGS=true|RATIONALE=code-review ok; formal-proof-soundness ok"
+        )
+        errors = m.validate_contract(
+            summary=summary,
+            findings=[],
+            expected_check_type="formal_repo_review",
+            expected_active_lenses=["code-review", "formal-proof-soundness"],
+        )
+        self.assertTrue(any("empty entry" in err for err in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

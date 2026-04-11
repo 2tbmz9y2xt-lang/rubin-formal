@@ -198,7 +198,14 @@ def validate_active_lenses(
     fields: dict[str, str],
     expected_active_lenses: list[str],
 ) -> tuple[list[str], list[str]]:
-    summary_active_lenses = parse_unique_csv(fields["ACTIVE_LENSES"])
+    try:
+        summary_active_lenses = parse_unique_csv(
+            fields["ACTIVE_LENSES"],
+            reject_empty=True,
+            reject_duplicates=True,
+        )
+    except ValueError as exc:
+        return [], [str(exc)]
     summary_active_set = set(summary_active_lenses)
     expected_active_set = set(expected_active_lenses)
     if summary_active_set == expected_active_set:
@@ -336,11 +343,20 @@ def main(argv: list[str] | None = None) -> int:
     if payload_errors:
         return print_fail(payload_errors)
 
+    try:
+        expected_active_lenses = parse_unique_csv(
+            args.active_lenses,
+            reject_empty=True,
+            reject_duplicates=True,
+        )
+    except ValueError as exc:
+        return print_fail([str(exc)])
+
     errors = validate_contract(
         summary=summary,
         findings=findings,
         expected_check_type=args.expected_check_type.strip(),
-        expected_active_lenses=parse_unique_csv(args.active_lenses),
+        expected_active_lenses=expected_active_lenses,
     )
     if errors:
         return print_fail(errors)

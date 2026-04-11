@@ -4,14 +4,26 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def parse_unique_csv(raw: str) -> list[str]:
+def parse_unique_csv(
+    raw: str,
+    *,
+    reject_empty: bool = False,
+    reject_duplicates: bool = False,
+) -> list[str]:
     if not raw or raw.strip().lower() == "none":
         return []
     values: list[str] = []
-    for item in raw.split(","):
+    for position, item in enumerate(raw.split(","), start=1):
         value = item.strip()
-        if value and value not in values:
-            values.append(value)
+        if not value:
+            if reject_empty:
+                raise ValueError(f"CSV contains empty entry at position {position}")
+            continue
+        if value in values:
+            if reject_duplicates:
+                raise ValueError(f"CSV contains duplicate entry: {value!r}")
+            continue
+        values.append(value)
     return values
 
 

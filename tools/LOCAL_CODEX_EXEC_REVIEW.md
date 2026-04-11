@@ -37,6 +37,14 @@ This path is intentionally repo-aware. The reviewer may inspect the repository
 for coupled context, but findings must stay grounded in the changed claim
 surface and point to exact file+line locations.
 
+## Local verification
+
+The Python contract tests for this push path live under the repo-level `tests/`
+directory, not `tools/tests/`.
+
+- `python3 -m unittest discover -s tests -p 'test_*.py'`
+- `python3 -m unittest tests.test_check_local_prepush_review_profile tests.test_prepush_prompt_pack tests.test_validate_prepush_summary_contract`
+
 ## Hostile review themes
 
 - vacuous or too-weak theorem statements
