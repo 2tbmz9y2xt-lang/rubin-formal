@@ -126,16 +126,15 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             )
             self.assertEqual(rc, 2)
 
-    def test_parse_lenses_covered_accepts_allowed_statuses(self) -> None:
+    def test_parse_lenses_covered_accepts_ok_status(self) -> None:
         result = m.parse_lenses_covered(
-            "code-review:ok;diff-scan:skip;formal-proof-soundness:na",
+            "code-review:ok;formal-proof-soundness:ok",
         )
         self.assertEqual(
             result,
             {
                 "code-review": "ok",
-                "diff-scan": "skip",
-                "formal-proof-soundness": "na",
+                "formal-proof-soundness": "ok",
             },
         )
 
@@ -146,6 +145,19 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
     def test_parse_lenses_covered_rejects_invalid_status(self) -> None:
         with self.assertRaisesRegex(ValueError, "status not allowed"):
             m.parse_lenses_covered("code-review:passed")
+
+    def test_validate_contract_rejects_non_ok_lens_status(self) -> None:
+        summary = (
+            "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review|"
+            "LENSES_COVERED=code-review:skip|NO_FINDINGS=true|RATIONALE=code-review ok"
+        )
+        errors = m.validate_contract(
+            summary=summary,
+            findings=[],
+            expected_check_type="formal_repo_review",
+            expected_active_lenses=["code-review"],
+        )
+        self.assertTrue(any("status not allowed" in err for err in errors))
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ REQUIRED_FINDING_KEYS = (
     "details",
     "suggestion",
 )
-ALLOWED_LENS_STATUSES = {"ok", "skip", "na"}
+ALLOWED_LENS_STATUSES = {"ok"}
 ALLOWED_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "PERF", "STYLE"}
 
 

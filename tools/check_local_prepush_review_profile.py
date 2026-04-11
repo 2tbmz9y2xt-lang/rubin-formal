@@ -80,12 +80,20 @@ def parse_changed_files(path: Path) -> set[str]:
     return {part.strip() for part in parts if part.strip()}
 
 
-def load_profile(path: Path = CONTRACT_PATH) -> ReviewProfile:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+def load_profile(
+    requested_check_type: str = "auto",
+    path: Path | None = None,
+) -> ReviewProfile:
+    contract_path = CONTRACT_PATH if path is None else path
+    payload = json.loads(contract_path.read_text(encoding="utf-8"))
+    default_profile = str(payload["default_profile"])
     profiles = payload["profiles"]
-    data = profiles["formal_repo_review"]
+    profile_name = default_profile if requested_check_type == "auto" else requested_check_type
+    if profile_name not in profiles:
+        raise ValueError(f"unknown review profile: {profile_name!r}")
+    data = profiles[profile_name]
     return ReviewProfile(
-        name="formal_repo_review",
+        name=profile_name,
         model=str(data["model"]),
         model_reasoning_effort=str(data["model_reasoning_effort"]).lower(),
         stall_seconds=int(data["stall_seconds"]),
@@ -101,9 +109,17 @@ def active_lenses_for(changed: set[str], profile: ReviewProfile) -> list[str]:
         "doc-verification": has_doc_scope,
         "trace-consistency": has_trace_scope,
     }
+    unknown_lenses = sorted(
+        lens for lens in profile.conditional_lenses if lens not in conditional_rules
+    )
+    if unknown_lenses:
+        joined = ", ".join(unknown_lenses)
+        raise ValueError(
+            f"unknown conditional lens(es) in review profile {profile.name}: {joined}"
+        )
     for lens in profile.conditional_lenses:
-        predicate = conditional_rules.get(lens)
-        if predicate is not None and predicate(changed) and lens not in active:
+        predicate = conditional_rules[lens]
+        if predicate(changed) and lens not in active:
             active.append(lens)
     return active
 
@@ -186,8 +202,11 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"unsupported check_type {requested!r}; expected one of: {allowed}")
 
     changed = parse_changed_files(Path(args.changed_files))
-    profile = load_profile()
-    active_lenses = active_lenses_for(changed, profile)
+    try:
+        profile = load_profile(requested)
+        active_lenses = active_lenses_for(changed, profile)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
     focus_lines = focus_lines_for(changed)
 
     Path(args.focus_output).write_text("\n".join(focus_lines) + "\n", encoding="utf-8")
