@@ -58,6 +58,9 @@ def parse_summary(summary: str) -> dict[str, str]:
     missing = [key for key in REQUIRED_KEYS if key not in fields]
     if missing:
         raise ValueError(f"summary missing required keys: {', '.join(missing)}")
+    extra = sorted(key for key in fields if key not in REQUIRED_KEYS)
+    if extra:
+        raise ValueError(f"summary contains unsupported keys: {', '.join(extra)}")
     return fields
 
 

@@ -186,6 +186,20 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
         )
         self.assertTrue(any("empty entry" in err for err in errors))
 
+    def test_validate_contract_rejects_extra_summary_key(self) -> None:
+        summary = (
+            "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review|"
+            "LENSES_COVERED=code-review:ok|NO_FINDINGS=true|RATIONALE=code-review ok|"
+            "EXTRA=spoof"
+        )
+        errors = m.validate_contract(
+            summary=summary,
+            findings=[],
+            expected_check_type="formal_repo_review",
+            expected_active_lenses=["code-review"],
+        )
+        self.assertTrue(any("unsupported keys" in err for err in errors))
+
 
 if __name__ == "__main__":
     unittest.main()
