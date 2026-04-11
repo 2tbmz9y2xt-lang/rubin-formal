@@ -27,7 +27,7 @@
 - `spec-model`: модель уже явно отражает ключевые определения из CANONICAL (ещё не bit‑exact wire).
 - `byte-model`: доказательства привязаны к byte‑accurate wire/serialization формулам.
 - `refinement`: есть слой уточнения “модель → исполняемая семантика”.
-  В текущем `rubin-formal` это op-scoped bridge map из `refinement_bridge.json`:
+  В текущем `rubin-formal` это op-scoped bridge map из `rubin-formal/refinement_bridge.json`:
   часть ops закрыта Go-trace / CV replay, часть — LIVE/BRIDGE theorem surface
   на Lean transcription с explicit parity boundary к Go/Rust. Это **не**
   uniform machine-checked equivalence между Lean и Go/Rust по всему critical-op
