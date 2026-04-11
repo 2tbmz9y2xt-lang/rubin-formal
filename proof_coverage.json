@@ -99,7 +99,7 @@
         "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via triple-segment content hash (~192-bit collision resistance).",
         "Cross-language Lean→Go/Rust byte-level equivalence relies on human-reviewed parity, not machine-checked bridge. The universal roundtrip is proved within Lean only."
       ],
-      "notes": "Full transaction parse-serialize roundtrip universally proved: ∀ tx, txStructurallyWellFormed tx → parseTx (serializeTx tx) = Except.ok tx (PR #351/#353). Covers all 14 structural well-formedness fields, all 3 txKind variants (0x00, 0x01, 0x02), and the complete serialize→parse chain including header (version + txKind + nonce) and body (inputs, outputs, locktime, daCore, witness, daPayload). Also includes machine-checked Go-trace contract for parse_tx (16/16 CV-PARSE vectors, payload-pinned drift exception for PARSE-16). parseTx_result_integrity proves ok/err/txid/wtxid consistency (#337).",
+      "notes": "Universal theorem lane: full transaction parse-serialize roundtrip, `parseTx_result_integrity`, and the complete serialize→parse chain over all 14 structural well-formedness fields and all 3 txKind variants (0x00, 0x01, 0x02). Separate fixture/contract lane: CV-PARSE, CV-COMPACT, and the machine-checked Go-trace contract for parse_tx over pinned vectors, including the payload-pinned PARSE-16 drift exception. Those replay/trace artifacts remain complementary executable evidence and do not replace the universal theorem lane.",
       "evidence_level": "machine_checked_universal"
     },
     {
@@ -124,7 +124,7 @@
         "The non-fixture theorem surface now proves the structural preimage boundary for canonical serializer outputs, including the witness-empty lane, but concluding digest inequality / identifier uniqueness from those distinct preimages still relies on explicit SHA3-256 collision and second-preimage resistance assumptions.",
         "CV-PARSE and CV-SIG replay remain the executable evidence that the current parser emits the pinned txid/wtxid bytes on shipped fixtures; the theorem surface does not replace fixture replay for concrete digest values."
       ],
-      "notes": "Section §8 is now honest assumption-backed evidence: `transaction_identifiers_proved` lifts the section statement onto the live canonical serializer boundary (`serializeTxCore` vs `serializeTx`), `txid_wtxid_witness_empty_serialization_shape` closes the witness-empty lane explicitly via the retained `CompactSize(0)` marker, and `txid_wtxid_identifier_domain_contract` keeps the Merkle leaf domains disjoint. CV-PARSE and CV-SIG replay remain the executable evidence for concrete emitted txid/wtxid values."
+      "notes": "Assumption-backed theorem lane: `transaction_identifiers_proved` lifts the section statement onto the live canonical serializer boundary (`serializeTxCore` vs `serializeTx`), `txid_wtxid_witness_empty_serialization_shape` closes the witness-empty lane explicitly via the retained `CompactSize(0)` marker, and `txid_wtxid_identifier_domain_contract` keeps the Merkle leaf domains disjoint. Separate fixture lane: CV-PARSE and CV-SIG replay for concrete emitted txid/wtxid bytes on the shipped vectors. That executable lane is complementary evidence only and does not replace the assumption-backed theorem surface."
     },
     {
       "section_key": "weight_accounting",
@@ -192,7 +192,7 @@
         "RubinFormal.finalizeTxWeight_weight_pos": "rubin-formal/RubinFormal/TxWeightBehavioral.lean",
         "RubinFormal.txWeightAndStats_weight_pos": "rubin-formal/RubinFormal/TxWeightBehavioral.lean"
       },
-      "notes": "Universal closure of S9 weight formula. Full Except-chain proof: txWeightAndStats_ok_weight_eq_constrained records the successful parseTxHeader + parseTxBody + finalizeTxWeight chain and proves the resulting .ok stats weight matches computeWeight on parse-derived witnesses. 29 theorems total.",
+      "notes": "Universal theorem lane: full Except-chain weight closure, where `txWeightAndStats_ok_weight_eq_constrained` records the successful parseTxHeader + parseTxBody + finalizeTxWeight chain and proves the resulting `.ok` stats weight matches `computeWeight` on parse-derived witnesses. Separate fixture lane: CV-WEIGHT replay on the shipped vectors. That executable lane is complementary regression evidence only and is not the basis for the universal ceiling. Section inventory still contains 29 counted theorem refs across both lanes.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -277,7 +277,7 @@
         "RubinFormal.validateTxContextSighashWitness_disallowed_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
         "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean"
       },
-      "notes": "Counted core now combines the existing CV-SIGHASH replay + live selection theorems with the live TXCTX `allowed_sighash_set` gate/witness bridge and an explicit reduction theorem: equal live `digestV1` outputs on distinct executable preimages imply a SHA3-256 collision obligation. This is the honest assumption-backed ceiling for §12 without overclaiming arbitrary raw-tx equivalence.",
+      "notes": "Assumption-backed theorem lane: live selection theorems, the live TXCTX `allowed_sighash_set` gate/witness bridge, and an explicit reduction theorem showing that equal live `digestV1` outputs on distinct executable preimages imply a SHA3-256 collision obligation. Separate fixture lane: CV-SIGHASH replay for the shipped digest vectors. That executable lane is complementary evidence only and does not replace the assumption-backed theorem lane. This remains the honest ceiling for §12 without overclaiming arbitrary raw-tx equivalence.",
       "limitations": [
         "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
         "The digest theorem is a reduction theorem: when two live digestV1 executions succeed with equal outputs and their executable preimages are distinct, SHA3-256 would have to collide. The proof does not itself claim cryptographic impossibility.",
@@ -557,7 +557,7 @@
         "RubinFormal.ptpi_outputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.ptpi_locktime_fail": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Block-level: all 6 stages on live validateBlockBasic with direct error propagation. TARGET ambiguity is formally resolved via target_error_disambiguated (powCheck=ok implies stage 3). Tx parse: all 9 enum stages are bridged to live functions — ptfc_header_version_fail / ptfc_header_txkind_fail (HeaderRead), validateTxKind (TxKind), validateInputCountMin (InputCountMin), ptfc_inputs_fail (InputParse), validateOutputCountMin (OutputCountMin), ptpi_outputs_fail (OutputParse), ptpi_locktime_fail (Locktime), applyWitnessChecks (WitnessChecks), applyDaLenChecks (DaLenChecks). Tx semantic: all 8 enum stages are now live-bridged — EmptyInputs, Nonce, OutputCovenants, InputStructural, UtxoLookup, CovenantDispatch, WitnessCursor, and ValueConservation. `dispatchCovenantValidation` is called directly from the live `applyNonCoinbaseTxBasicNoCrypto` per-input loop before branch-specific checks/state updates, so the covenant-dispatch / TXCTX sub-ordering is now claimed on the direct live call path rather than through a parallel-model helper caveat. Contract composition: consensus_error_ordering_contract (totality + parse/pow dominance + full 6-stage success chain), tx_parse_pipeline_deterministic (strict + injective, 9/9 bridged), tx_semantic_pipeline_deterministic (strict + injective on the full live semantic stage set), ext_error_pipeline_deterministic (strict ordering + commutativity on the modeled ext-error surface).",
+      "notes": "Universal theorem lane: block-level 6-stage live error propagation on `validateBlockBasic`, the direct live tx-parse and tx-semantic stage bridges, and the strict ordering/injectivity contracts (`consensus_error_ordering_contract`, `tx_parse_pipeline_deterministic`, `tx_semantic_pipeline_deterministic`, `ext_error_pipeline_deterministic`). TARGET ambiguity is formally resolved via `target_error_disambiguated`, and `dispatchCovenantValidation` is claimed on the direct live per-input path rather than through a parallel-model helper caveat. Separate fixture lane: CV-VALIDATION-ORDER replay on pinned ordering vectors. That executable lane is complementary regression evidence only and does not replace the live stage-order theorem surface.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -605,7 +605,7 @@
       "limitations": [
         "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here; they belong to dedicated per-covenant and sighash rows."
       ],
-      "notes": "Universal for §14 validateOutGenesis / covenant registry genesis surface. validateOutGenesis_ok_constrained decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses. Sub-parsers (vault/multisig/htlc) existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics. CV-COVENANT-GENESIS replay remains complementary executable evidence."
+      "notes": "Universal theorem lane for the §14 `validateOutGenesis` / covenant-registry genesis surface. `validateOutGenesis_ok_constrained` decomposes `.ok` into at least one of 6 per-type disjuncts with value/payload/parser witnesses, and the sub-parsers (vault/multisig/htlc) remain existentially witness-bound. Separate fixture lane: CV-COVENANT-GENESIS replay on the shipped genesis vectors. That executable lane remains complementary evidence and does not replace the universal theorem lane. No claim about HTLC spend-side preimage / crypto semantics is made here."
     },
     {
       "section_key": "difficulty_update",
@@ -696,7 +696,7 @@
         "RubinFormal.cwsInnerGen_nonempty": "rubin-formal/RubinFormal/RetargetBehavioral.lean",
         "RubinFormal.clampWindowTimestamps_ok": "rubin-formal/RubinFormal/RetargetBehavioral.lean"
       },
-      "notes": "Universal closure of §15 retarget formula. 6 constant pins, identity/zero cases, lo≤hi under valid preconditions, strengthened clamped range [lo,hi], candidate monotonicity (both tActual and targetOldNat), 4x stability boundary, timestamp clamping bounds, max retarget ratio. 4 LIVE theorems on retargetV1 monadic function (parse/validation error paths + pattern=None success). CV-POW conformance replay on real vectors. Helper nat_div_le_div_right proved from Nat.div_add_mod.",
+      "notes": "Universal theorem lane: §15 retarget formula closure with 6 constant pins, identity/zero cases, lo≤hi under valid preconditions, strengthened clamped range `[lo, hi]`, candidate monotonicity (both `tActual` and `targetOldNat`), 4x stability boundary, timestamp clamping bounds, max retarget ratio, and 4 LIVE theorems on the `retargetV1` monadic function (parse/validation error paths + `pattern=None` success). Separate fixture lane: CV-POW conformance replay on shipped vectors. That executable lane is complementary evidence only and does not replace the universal theorem lane. Helper `nat_div_le_div_right` is proved from `Nat.div_add_mod`.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -787,7 +787,7 @@
       },
       "evidence_level": "machine_checked_universal",
       "limitations": [],
-      "notes": "Section §1 now reaches universal level on the exact live duplicate-replay path: `ReplayDomainBehavioral.lean` keeps the parseTx nonce-determinism / duplicate-nonce bridge, while `ReplayDomainUniversal.lean` proves the executable `anyDuplicate` helper is extensionally equivalent to the abstract `nonceReplayFree` invariant and that the live `nonceReplayCheck` accepts exactly replay-free nonce lists and rejects duplicate-bearing nonce lists. CV-REPLAY remains the executable vector lane for shipped fixtures and block-basic replay examples; broader chain-wide/state-threaded replay semantics stay outside this section's own statement rather than as a residual limitation of the row."
+      "notes": "Universal theorem lane: the exact live duplicate-replay path, where `ReplayDomainBehavioral.lean` keeps the parseTx nonce-determinism / duplicate-nonce bridge and `ReplayDomainUniversal.lean` proves the executable `anyDuplicate` helper is extensionally equivalent to the abstract `nonceReplayFree` invariant and that the live `nonceReplayCheck` accepts exactly replay-free nonce lists and rejects duplicate-bearing nonce lists. Separate fixture lane: CV-REPLAY on shipped fixtures and block-basic replay examples. That executable lane remains complementary evidence only and does not replace the universal theorem lane. Broader chain-wide/state-threaded replay semantics stay outside this section's own statement rather than as a residual limitation of the row."
     },
     {
       "section_key": "utxo_state_model",
@@ -946,6 +946,7 @@
         "RubinFormal.blockSubsidy_in_u64": "rubin-formal/RubinFormal/ArithmeticSafety.lean",
         "RubinFormal.subsidy_accumulation_in_u128": "rubin-formal/RubinFormal/ArithmeticSafety.lean"
       },
+      "notes": "Universal theorem lane: subsidy arithmetic and coinbase block-connection closure via `subsidy_u128_safety_proved`, `SubsidyV1.connectBlock_end_to_end_proved`, `blockSubsidy_bounded`, `blockSubsidy_in_u64`, and `subsidy_accumulation_in_u128`. Separate fixture lane: CV-SUBSIDY replay on the shipped subsidy vectors. That executable lane is complementary regression evidence only and does not replace the universal theorem lane.",
       "evidence_level": "machine_checked_universal"
     },
     {
@@ -967,7 +968,7 @@
         "RubinFormal.value_conservation_block_txs": "rubin-formal/RubinFormal/ValueConservationBehavioral.lean",
         "RubinFormal.utxo_apply_basic_universal_refinement": "rubin-formal/RubinFormal/RefinementBridgeV1.lean"
       },
-      "notes": "Value conservation proved at single-tx level (sum_in = sum_out + fee via scanInputs/sumOutputs) and block level (connectBlockTxs preserves conservation across all txs). Real UTXO-map model, not abstract.",
+      "notes": "Universal theorem lane: value conservation at single-tx level (`sum_in = sum_out + fee` via `scanInputs` / `sumOutputs`) and block level (`connectBlockTxs` preserves conservation across all txs), backed by the current `utxo_apply_basic_universal_refinement` bridge on the real UTXO-map model rather than an abstract ledger. Separate fixture lane: CV-UTXO-BASIC and CV-SUBSIDY replay on the shipped vectors. Those executable lanes are complementary regression evidence only and do not replace the universal theorem lane.",
       "evidence_level": "machine_checked_universal"
     },
     {
@@ -1123,7 +1124,7 @@
         "RubinFormal.da_integrity_empty_all_stages": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean",
         "RubinFormal.validateDASetIntegrity_ok_constrained": "rubin-formal/RubinFormal/DaIntegrityBehavioral.lean"
       },
-      "notes": "Universal closure of S21 DA set integrity. validateDASetIntegrity_ok_constrained decomposes .ok into all 4 parse-derived stages: accumulateDATxs, batch count bound, orphan check, verify integrity. 72 theorems total.",
+      "notes": "Universal theorem lane: S21 DA set integrity closure, where `validateDASetIntegrity_ok_constrained` decomposes `.ok` into all 4 parse-derived stages (`accumulateDATxs`, batch count bound, orphan check, verify integrity). Separate fixture lane: CV-DA-INTEGRITY replay on the shipped vectors. That executable lane is complementary regression evidence only and does not replace the universal theorem lane. Section inventory still contains 72 counted theorem refs across both lanes.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -1150,7 +1151,7 @@
         "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean"
       },
-      "notes": "Current entry combines executable replay for timestamp-bounds and block-basic timestamp vectors with universal theorems for the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied.",
+      "notes": "Mixed behavioral row with an explicit lane split: the theorem lane covers the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied, while the fixture lane replays the current timestamp-bounds and block-basic timestamp vectors. Honest ceiling remains behavioral because the list-to-MTP extraction path is still evidenced by replay rather than a standalone theorem.",
       "limitations": [
         "The universal theorem layer is over `timestampBounds` given an already-derived median-time-past value; the list-to-MTP extraction path remains evidenced by executable replay rather than a standalone theorem.",
         "No chain-wide timestamp monotonicity claim beyond the covered `timestampBounds` gate and current replayed integration path is asserted here."
@@ -1196,7 +1197,7 @@
         "RubinFormal.forkSelect_equal_chains": "rubin-formal/RubinFormal/ForkChoiceSelect.lean",
         "RubinFormal.forkSelect_exhaustive": "rubin-formal/RubinFormal/ForkChoiceSelect.lean"
       },
-      "notes": "Fork-choice selector with universal exhaustive determinism proof. forkSelect_exhaustive is the master theorem: for ALL 32-byte hash inputs, forkSelect yields consistent cross-node agreement — zero axioms, zero semantic premises. forkSelect_equal_chains covers identical-chain trivial case. forkSelect_total_det covers all distinguishable pairs. bytesLT_antisym + bytesLT_total_of_ne provide tie-break properties. fork_choice_select_cv_contract_proved adds concrete evidence: all 16 CV-FORK-CHOICE fork_choice_select vectors (12 positive + 4 negative) machine-checked via native_decide, including edge cases: identical chains, all-zero vs all-0xFF tiebreak, single chain, max-difficulty, off-by-one work, last-byte tiebreak. The block_hash_collision_resistance axiom has been removed; all determinism proofs are now fully axiom-free.",
+      "notes": "Universal theorem lane: fork-choice exhaustive determinism proof. `forkSelect_exhaustive` is the master theorem: for ALL 32-byte hash inputs, `forkSelect` yields consistent cross-node agreement with zero axioms and zero semantic premises. `forkSelect_equal_chains` covers the identical-chain trivial case, `forkSelect_total_det` covers all distinguishable pairs, and `bytesLT_antisym` plus `bytesLT_total_of_ne` provide the tie-break properties. Separate fixture lane: CV-FORK-CHOICE vector replay through `fork_choice_select_cv_contract_proved`, which machine-checks the 16 shipped fork-choice vectors (12 positive + 4 negative) including identical chains, all-zero vs all-0xFF tiebreak, single chain, max-difficulty, off-by-one work, and last-byte tiebreak. That contract lane is complementary concrete evidence only and does not replace the universal theorem lane. The old `block_hash_collision_resistance` axiom has been removed; the determinism proofs are fully axiom-free.",
       "limitations": [
         "forkSelect models the runtime fork_choice_select. Go/Rust code follows identical if/else chain. Structural equivalence evident from inspection but not proved via rfl (Go/Rust not importable to Lean).",
         "The 32-byte hash length premise (hL/hR) is a protocol type invariant (SHA3-256 output), not a semantic precondition. Runtime block hashes are always 32 bytes by construction."
