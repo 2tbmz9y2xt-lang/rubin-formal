@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "note": "rubin-formal local pre-push codex review contract",
+  "default_profile": "formal_repo_review",
+  "profiles": {
+    "formal_repo_review": {
+      "combine_review_units_when_at_most": 1,
+      "model": "gpt-5.4-mini",
+      "model_reasoning_effort": "xhigh",
+      "required_lenses": [
+        "code-review",
+        "diff-scan",
+        "formal-proof-soundness",
+        "theorem-classification",
+        "bridge-consistency",
+        "repo-read"
+      ],
+      "conditional_lenses": [
+        "doc-verification",
+        "trace-consistency"
+      ],
+      "stall_seconds": 240
+    }
+  }
+}
