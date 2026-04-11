@@ -109,15 +109,24 @@ theorem txid_wtxid_identifier_domain_contract
   · exact Merkle.merkle_tag_equivalence_leaf_domains_disjoint
       (serializeTxCore tx) (serializeTx tx)
 
+/-- Canonical txid digest emitted from the stripped serializer boundary. -/
+def canonicalTxidDigest (tx : Tx) : Bytes :=
+  SHA3.sha3_256 (serializeTxCore tx)
+
+/-- Canonical wtxid digest emitted from the full serializer boundary. -/
+def canonicalWtxidDigest (tx : Tx) : Bytes :=
+  SHA3.sha3_256 (serializeTx tx)
+
 /-- Honest crypto-boundary reduction for txid/wtxid uniqueness:
     if the live txid and wtxid digests for the same serialized transaction are
     equal, then SHA3-256 collides on distinct executable preimages. This is a
     reduction theorem, not an axiom-free impossibility proof. -/
 theorem txid_wtxid_digest_collision_reduces_to_sha3_collision
     (tx : Tx)
-    (hEq : SHA3.sha3_256 (serializeTxCore tx) = SHA3.sha3_256 (serializeTx tx)) :
+    (hEq : canonicalTxidDigest tx = canonicalWtxidDigest tx) :
     SHA3.sha3_256 (serializeTxCore tx) = SHA3.sha3_256 (serializeTx tx) ∧
     serializeTxCore tx ≠ serializeTx tx := by
-  exact ⟨hEq, txid_wtxid_payloads_distinct tx⟩
+  refine ⟨?_, txid_wtxid_payloads_distinct tx⟩
+  simpa [canonicalTxidDigest, canonicalWtxidDigest] using hEq
 
 end RubinFormal
