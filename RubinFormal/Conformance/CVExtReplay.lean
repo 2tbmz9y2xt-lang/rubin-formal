@@ -101,7 +101,7 @@ private def replayOutcomeVerdict (outcome : CVExtReplayOutcome) : Bool × Option
   | .suiteReject =>
       (false, some "TX_ERR_SIG_ALG_INVALID")
   | .bindingReject =>
-      (false, some "TX_ERR_SIG_INVALID")
+      (false, some "TX_ERR_SIG_ALG_INVALID")
   | .permissiveAccept | .activeProfileAccept | .verifyReachable =>
       (true, none)
 
