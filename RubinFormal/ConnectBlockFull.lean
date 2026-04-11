@@ -208,6 +208,48 @@ theorem connectBlockFullComputed_txcontext_correct
             · rename_i heq; omega
             · exact ⟨_, rfl, rfl, rfl, rfl⟩
 
+/-- Computed TxContext preserves the live continuing bundle data from the same
+    validated txcontext input surface. -/
+theorem connectBlockFullComputed_txcontext_continuing_data
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes) (utxos : Std.RBMap Outpoint UtxoEntry cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData)
+    (hIds : d.activeExtIds.length > 0)
+    (result : ConnectBlockResult) (bundle : TxContextBundle)
+    (hOk : connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) = .ok result)
+    (hBundle : result.txContext = some bundle) :
+    bundle.continuingByExt = d.continuingData := by
+  simp only [connectBlockFullComputed] at hOk
+  match hT : connectBlockTxs nctxs utxos h bt cid with
+  | .error _ => simp [hT] at hOk
+  | .ok (sf, ptx) =>
+    simp [hT] at hOk
+    match hB : validateCoinbaseValueBound couts sub sf with
+    | .error _ => simp [hB] at hOk
+    | .ok () =>
+      simp [hB] at hOk
+      match hV : validateCoinbaseApplyOutputs couts with
+      | .error _ => simp [hV] at hOk
+      | .ok () =>
+        simp [hV] at hOk
+        match hCounts : validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) with
+        | .error _ => simp [hCounts] at hOk
+        | .ok () =>
+          simp [hCounts] at hOk
+          match hSighash : validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness with
+          | .error _ => simp [hSighash] at hOk
+          | .ok () =>
+            simp [hSighash] at hOk
+            cases hOk
+            have hBuild :
+                buildTxContext d.activeExtIds
+                  (sumInputValues d.inputValues)
+                  (sumOutputValues d.outputValues)
+                  h d.continuingData = some bundle := by
+              simpa [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues] using hBundle
+            exact buildTxContext_continuing_data
+              d.activeExtIds hIds _ _ _ d.continuingData bundle hBuild
+
 /-- Success on the computed parallel block-connection path implies that the
     live TxContext input bundle passed both computed-path gates. This exposes
     the exact shared validated surface on which

@@ -7,6 +7,7 @@
 -/
 import RubinFormal.CoreExtInvariants
 import RubinFormal.CriticalInvariants
+import RubinFormal.ConnectBlockFull
 
 namespace RubinFormal.CoreExtRefinement
 
@@ -404,6 +405,11 @@ def verifySigExtErrCode : VerifySigExtVerdict → Option String
   | .sigInvalid => some "TX_ERR_SIG_INVALID"
   | .sigNoncanonical => some "TX_ERR_SIG_NONCANONICAL"
 
+/-- Boolean view of whether the live TxContext bundle carries any continuing
+    output data for the txcontext-enabled `CORE_EXT` path. -/
+def bundleContinuingPresent (bundle : TxContextBundle) : Bool :=
+  !bundle.continuingByExt.isEmpty
+
 theorem verify_sig_ext_suite_gate_rejects_before_path
     (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = false) :
@@ -538,5 +544,113 @@ theorem verify_sig_ext_ext_callback_false_maps_sig_invalid :
     verifySigExtErrCode (verifySigExtVerdict .extVerify false false) =
       some "TX_ERR_SIG_INVALID" := by
   native_decide
+
+-- ============================================================================
+-- Section 8: Live TxContext-to-CORE_EXT Bridge (D4)
+-- ============================================================================
+
+theorem connectBlockFullComputed_ok_bridges_txcontext_verify_route
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes)
+    (utxos : Std.RBMap UtxoBasicV1.Outpoint UtxoBasicV1.UtxoEntry UtxoBasicV1.cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData)
+    (suiteId : Nat) (allowedSuites : List Nat)
+    (result : ConnectBlockResult) (bundle : TxContextBundle)
+    (hIds : d.activeExtIds.length > 0)
+    (hContinuing : d.continuingData ≠ [])
+    (hOk : connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) = .ok result)
+    (hBundle : result.txContext = some bundle)
+    (hSuite : suiteAllowed suiteId allowedSuites = true) :
+    validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) = .ok () ∧
+    validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness = .ok () ∧
+    verifySigExtRoute
+      { suiteId := suiteId
+      , allowedSuites := allowedSuites
+      , nativeRegistered := false
+      , nativeSpendPermitted := false
+      , nativeWitnessCanonical := false
+      , txContextEnabled := true
+      , verifySigExtSupported := true
+      , txContextPresent := result.txContext.isSome
+      , txContextContinuingPresent := bundleContinuingPresent bundle
+      } = .txContextVerify := by
+  have ⟨hCounts, hSighash⟩ :=
+    connectBlockFullComputed_ok_implies_txctx_gates
+      nctxs couts ctxid utxos h bt cid sub d result hOk
+  have hPresent : result.txContext.isSome = true := by
+    simp [hBundle]
+  have hCd :=
+    connectBlockFullComputed_txcontext_continuing_data
+      nctxs couts ctxid utxos h bt cid sub d hIds result bundle hOk hBundle
+  have hContinuingPresent : bundleContinuingPresent bundle = true := by
+    rw [bundleContinuingPresent, hCd]
+    cases hList : d.continuingData with
+    | nil => cases (hContinuing hList)
+    | cons head tail => simp
+  refine ⟨hCounts, hSighash, ?_⟩
+  simpa using
+    verify_sig_ext_txcontext_ready_reaches_verify
+      { suiteId := suiteId
+      , allowedSuites := allowedSuites
+      , nativeRegistered := false
+      , nativeSpendPermitted := false
+      , nativeWitnessCanonical := false
+      , txContextEnabled := true
+      , verifySigExtSupported := true
+      , txContextPresent := result.txContext.isSome
+      , txContextContinuingPresent := bundleContinuingPresent bundle
+      }
+      hSuite rfl rfl rfl rfl hPresent hContinuingPresent
+
+theorem connectBlockFullComputed_ok_bridges_txcontext_continuing_reject_route
+    (nctxs : List Bytes) (couts : List CovenantGenesisV1.TxOut)
+    (ctxid : Bytes)
+    (utxos : Std.RBMap UtxoBasicV1.Outpoint UtxoBasicV1.UtxoEntry UtxoBasicV1.cmpOutpoint)
+    (h bt : Nat) (cid : Bytes) (sub : Nat) (d : TxContextInputData)
+    (suiteId : Nat) (allowedSuites : List Nat)
+    (result : ConnectBlockResult) (bundle : TxContextBundle)
+    (hIds : d.activeExtIds.length > 0)
+    (hEmpty : d.continuingData = [])
+    (hOk : connectBlockFullComputed nctxs couts ctxid utxos h bt cid sub (some d) = .ok result)
+    (hBundle : result.txContext = some bundle)
+    (hSuite : suiteAllowed suiteId allowedSuites = true) :
+    validateTxContextContinuingCounts (continuingCountsFromData d.continuingData) = .ok () ∧
+    validateTxContextSighashWitness d.allowedSighashSet d.sighashWitness = .ok () ∧
+    verifySigExtRoute
+      { suiteId := suiteId
+      , allowedSuites := allowedSuites
+      , nativeRegistered := false
+      , nativeSpendPermitted := false
+      , nativeWitnessCanonical := false
+      , txContextEnabled := true
+      , verifySigExtSupported := true
+      , txContextPresent := result.txContext.isSome
+      , txContextContinuingPresent := bundleContinuingPresent bundle
+      } = .txContextContinuingReject := by
+  have ⟨hCounts, hSighash⟩ :=
+    connectBlockFullComputed_ok_implies_txctx_gates
+      nctxs couts ctxid utxos h bt cid sub d result hOk
+  have hPresent : result.txContext.isSome = true := by
+    simp [hBundle]
+  have hCd :=
+    connectBlockFullComputed_txcontext_continuing_data
+      nctxs couts ctxid utxos h bt cid sub d hIds result bundle hOk hBundle
+  have hContinuingPresent : bundleContinuingPresent bundle = false := by
+    rw [bundleContinuingPresent, hCd, hEmpty]
+    simp
+  refine ⟨hCounts, hSighash, ?_⟩
+  simpa using
+    verify_sig_ext_txcontext_missing_continuing_rejects
+      { suiteId := suiteId
+      , allowedSuites := allowedSuites
+      , nativeRegistered := false
+      , nativeSpendPermitted := false
+      , nativeWitnessCanonical := false
+      , txContextEnabled := true
+      , verifySigExtSupported := true
+      , txContextPresent := result.txContext.isSome
+      , txContextContinuingPresent := bundleContinuingPresent bundle
+      }
+      hSuite rfl rfl rfl rfl hPresent hContinuingPresent
 
 end RubinFormal.CoreExtRefinement
