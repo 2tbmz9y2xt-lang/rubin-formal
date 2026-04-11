@@ -2,6 +2,7 @@ import Std
 import RubinFormal.SHA3_256
 import RubinFormal.ByteWireV2
 import RubinFormal.DaCoreV1
+import RubinFormal.RotationPrelude
 
 namespace RubinFormal
 
@@ -18,14 +19,34 @@ def MAX_WITNESS_BYTES_PER_TX : Nat := 100000
 -- Wire-level hard cap (CANONICAL §5.3).
 def MAX_COVENANT_DATA_PER_OUTPUT : Nat := 65536
 
-/- Pre-rotation suite constants.  Post-rotation (Q-FORMAL-ROTATION-02/03):
-   replace with registry lookup via `Rotation.SuiteRegistry`. -/
-def SUITE_ID_ML_DSA_87 : Nat := 0x01
-
-def ML_DSA_87_PUBKEY_BYTES : Nat := 2592
-def ML_DSA_87_SIG_BYTES : Nat := 4627
-
 def MAX_HTLC_PREIMAGE_BYTES : Nat := 256
+
+/-- Parse-stage witness suite classification depends only on the registry.
+    Suite activation remains a spend/create-gate concern and is intentionally
+    not consulted by witness parsing. -/
+inductive WitnessSuiteClass where
+  | sentinel
+  | registered (entry : Rotation.SuiteEntry)
+  | unknown
+  deriving Repr, DecidableEq
+
+/-- Classify a witness suite ID at parse stage: SENTINEL is structural,
+    registered native suites inherit bounds from the registry, and unknown
+    suite IDs stay parse-invalid. Activation is handled later by the live
+    spend/create gates. -/
+def classifyWitnessSuite (reg : Rotation.SuiteRegistry) (suiteID : Nat) : WitnessSuiteClass :=
+  if suiteID == RubinFormal.SUITE_ID_SENTINEL then
+    .sentinel
+  else
+    match Rotation.registryLookup reg suiteID with
+    | some entry => .registered entry
+    | none => .unknown
+
+/-- Registered native suites share the same parse-stage length discipline:
+    exact pubkey bytes, non-empty signatures, and a sighash-suffixed signature
+    upper bound derived from the registry entry. -/
+def registeredWitnessLengthsOk (entry : Rotation.SuiteEntry) (pubLen sigLen : Nat) : Bool :=
+  pubLen == entry.pubkeyBytes && sigLen > 0 && sigLen <= entry.sigBytes + 1
 
 @[inline] def fail (e : TxErr) : ParseResult :=
   { ok := false, err := some e, txid := none, wtxid := none }
@@ -65,10 +86,13 @@ def parseOutputs (c : Cursor) (n : Nat) : Option Cursor := do
     cur := cur4
   pure cur
 
-/-- **Pre-rotation scope**: witness-item canonicalization assumes only SENTINEL + ML-DSA-87.
-    Post-rotation (Q-FORMAL-ROTATION-02): dispatch via `Rotation.registryLookup` for
-    pubkey/sig bounds per registered suite. -/
-def parseWitnessItem (c : Cursor) : Option (Cursor × Option TxErr) := do
+/-- Registry-aware witness-item parser model.
+
+    Sentinel remains a structural parse special case. Registered native suites
+    inherit pubkey/sig bounds from the registry. Unknown suites fail with
+    `sigAlgInvalid`. Activation is intentionally left to spend/create gates,
+    so a registered-but-inactive suite can still be parse-valid here. -/
+def parseWitnessItemWithRegistry (reg : Rotation.SuiteRegistry) (c : Cursor) : Option (Cursor × Option TxErr) := do
   let (suite, c1) ← c.getU8?
   let suiteID := suite.toNat
   let (pubLen, c2, minimal1) ← c1.getCompactSize?
@@ -79,35 +103,42 @@ def parseWitnessItem (c : Cursor) : Option (Cursor × Option TxErr) := do
   let (sig, c5) ← c4.getBytes? sigLen
 
   -- Canonicalization rules (CANONICAL §5.4).
-  if suiteID == RubinFormal.SUITE_ID_SENTINEL then
-    if pubLen == 0 && sigLen == 0 then
-      pure (c5, none)
-    else if pubLen == 32 then
-      if sigLen == 1 then
-        if sig.size == 1 && sig.get! 0 == 0x01 then
-          pure (c5, none)
-        else
-          none
-      else if sigLen >= 3 then
-        if sig.size >= 3 && sig.get! 0 == 0x00 then
-          let preLen := Wire.u16le? (sig.get! 1) (sig.get! 2)
-          if preLen >= 1 && preLen <= MAX_HTLC_PREIMAGE_BYTES && sigLen == 3 + preLen then
+  match classifyWitnessSuite reg suiteID with
+  | .sentinel =>
+      if pubLen == 0 && sigLen == 0 then
+        pure (c5, none)
+      else if pubLen == 32 then
+        if sigLen == 1 then
+          if sig.size == 1 && sig.get! 0 == 0x01 then
             pure (c5, none)
+          else
+            none
+        else if sigLen >= 3 then
+          if sig.size >= 3 && sig.get! 0 == 0x00 then
+            let preLen := Wire.u16le? (sig.get! 1) (sig.get! 2)
+            if preLen >= 1 && preLen <= MAX_HTLC_PREIMAGE_BYTES && sigLen == 3 + preLen then
+              pure (c5, none)
+            else
+              none
           else
             none
         else
           none
       else
         none
-    else
-      none
-  else if suiteID == SUITE_ID_ML_DSA_87 then
-    if pubLen == ML_DSA_87_PUBKEY_BYTES && sigLen > 0 && sigLen <= ML_DSA_87_SIG_BYTES + 1 then
-      pure (c5, none)
-    else
-      pure (c5, some .sigNoncanonical)
-  else
-    pure (c5, some .sigAlgInvalid)
+  | .registered entry =>
+      if registeredWitnessLengthsOk entry pubLen sigLen then
+        pure (c5, none)
+      else
+        pure (c5, some .sigNoncanonical)
+  | .unknown =>
+      pure (c5, some .sigAlgInvalid)
+
+/-- Live pre-rotation specialization: witness parsing uses the
+    `PRE_ROTATION_REGISTRY` for registry-derived bounds while leaving suite
+    activation to the spend/create gates. -/
+def parseWitnessItem (c : Cursor) : Option (Cursor × Option TxErr) :=
+  parseWitnessItemWithRegistry Rotation.PRE_ROTATION_REGISTRY c
 
 /-- v2 (F-06 fix): Return `Option TxErr` instead of abusing `TxErr.parse` as success sentinel.
     `none` = no signature errors; `some e` = an error was found during witness parsing. -/

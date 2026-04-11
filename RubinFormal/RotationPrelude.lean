@@ -81,9 +81,11 @@ def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
 /-! ### Inventory of hardcoded assumptions (from Q-FORMAL-ROTATION-00 audit)
 
   #### TxParseV2.lean
-  - `parseWitnessItem`: branches on `suiteID == SUITE_ID_ML_DSA_87`
-    with hardcoded `ML_DSA_87_PUBKEY_BYTES` / `ML_DSA_87_SIG_BYTES`.
-    **Action for ROT-03**: generalise to registry lookup for pubkey/sig bounds.
+  - `parseWitnessItem`: now factors through `parseWitnessItemWithRegistry`
+    with registry-derived pubkey/sig bounds for registered suites, separating
+    unknown-suite parse rejection from registered-suite bad-bounds rejection.
+    The live parser still specializes to `PRE_ROTATION_REGISTRY`, while suite
+    activation remains enforced by spend/create gates rather than parse stage.
 
   #### TxWeightV2.lean
   - `parseWitnessItemForCounts`: same two-branch suite dispatch.
