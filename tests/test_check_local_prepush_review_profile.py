@@ -138,6 +138,24 @@ class FormalReviewProfileTests(unittest.TestCase):
             self.assertTrue(output.exists())
             self.assertIn("RubinFormal/Foo.lean", output.read_text(encoding="utf-8"))
 
+    def test_write_fullscan_uses_profile_required_lenses(self) -> None:
+        with TemporaryDirectory() as td:
+            output = Path(td) / "fullscan.txt"
+            profile = m.ReviewProfile(
+                name="future_profile",
+                model="gpt-5.4-mini",
+                model_reasoning_effort="high",
+                stall_seconds=120,
+                combine_review_units_when_at_most=2,
+                required_lenses=("code-review", "diff-scan"),
+                conditional_lenses=(),
+            )
+            m.write_fullscan(output, {"RubinFormal/Foo.lean"}, profile, ["code-review"])
+            text = output.read_text(encoding="utf-8")
+            self.assertIn("- code-review: baseline correctness/regression pass", text)
+            self.assertIn("- diff-scan: strict diff-grounded pass", text)
+            self.assertNotIn("formal-proof-soundness", text)
+
     def test_main_rejects_unknown_conditional_lens_in_contract(self) -> None:
         with TemporaryDirectory() as td:
             td_path = Path(td)

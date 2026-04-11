@@ -10,6 +10,23 @@ from tools import validate_prepush_summary_contract as m
 
 
 class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
+    def test_validate_contract_accepts_future_contract_profile(self) -> None:
+        original = m.allowed_formal_check_types
+        m.allowed_formal_check_types = lambda: {"auto", "future_profile"}
+        try:
+            errors = m.validate_contract(
+                summary=(
+                    "CHECK_TYPE=future_profile|ACTIVE_LENSES=code-review|"
+                    "LENSES_COVERED=code-review:ok|NO_FINDINGS=true|RATIONALE=code-review ok"
+                ),
+                findings=[],
+                expected_check_type="future_profile",
+                expected_active_lenses=["code-review"],
+            )
+        finally:
+            m.allowed_formal_check_types = original
+        self.assertEqual(errors, [])
+
     def test_validate_contract_passes_for_valid_summary(self) -> None:
         summary = (
             "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review,formal-proof-soundness|"

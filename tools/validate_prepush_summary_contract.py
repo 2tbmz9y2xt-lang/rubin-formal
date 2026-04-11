@@ -8,12 +8,11 @@ import sys
 from pathlib import Path
 
 try:
-    from tools.prepush_review_common import parse_unique_csv
+    from tools.prepush_review_common import allowed_formal_check_types, parse_unique_csv
 except ImportError:
-    from prepush_review_common import parse_unique_csv
+    from prepush_review_common import allowed_formal_check_types, parse_unique_csv
 
 REQUIRED_KEYS = ("CHECK_TYPE", "ACTIVE_LENSES", "LENSES_COVERED", "NO_FINDINGS", "RATIONALE")
-ALLOWED_CHECK_TYPES = {"formal_repo_review"}
 REQUIRED_FINDING_KEYS = (
     "severity",
     "file",
@@ -254,7 +253,7 @@ def validate_contract(
     expected_check_type: str,
     expected_active_lenses: list[str],
 ) -> list[str]:
-    if expected_check_type not in ALLOWED_CHECK_TYPES:
+    if expected_check_type not in allowed_formal_check_types():
         return [f"unsupported expected_check_type: {expected_check_type!r}"]
 
     try:

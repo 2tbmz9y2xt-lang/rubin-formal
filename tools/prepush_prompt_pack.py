@@ -6,18 +6,18 @@ from pathlib import Path
 
 try:
     from tools.prepush_review_common import (
+        allowed_formal_check_types,
         parse_unique_csv,
         read_nonempty_lines,
         read_required_text,
     )
 except ImportError:
     from prepush_review_common import (
+        allowed_formal_check_types,
         parse_unique_csv,
         read_nonempty_lines,
         read_required_text,
     )
-
-ALLOWED_CHECK_TYPES = {"formal_repo_review"}
 
 BASE_PROMPT = """You are RUBIN formal pre-push reviewer operating in FAIL-CLOSED mode.
 
@@ -81,7 +81,7 @@ def compose_prompt(
     focus_lines: list[str],
     bundle_text: str,
 ) -> str:
-    if check_type not in ALLOWED_CHECK_TYPES:
+    if check_type not in allowed_formal_check_types():
         raise ValueError(f"unsupported check_type {check_type!r}")
     if not bundle_text.strip():
         raise ValueError("diff bundle is empty")

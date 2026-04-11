@@ -1,7 +1,22 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+FORMAL_REVIEW_CONTRACT_PATH = Path(__file__).resolve().with_name(
+    "prepush_review_contract.json"
+)
+FORMAL_LENS_DESCRIPTIONS = {
+    "code-review": "baseline correctness/regression pass over the changed claim surface.",
+    "diff-scan": "strict diff-grounded pass; do not invent hidden changes.",
+    "formal-proof-soundness": "look for vacuity, too-weak theorem statements, and proof gaps.",
+    "theorem-classification": "check LIVE/BRIDGE/MODEL/WRAPPER classification against real proof semantics.",
+    "bridge-consistency": "check proof_coverage/refinement/docs/bridge metadata drift.",
+    "repo-read": "use read-only repo access for coupled context before concluding findings=[].",
+    "doc-verification": "changed docs/coverage metadata must not overclaim proof state.",
+    "trace-consistency": "changed traces/replay artifacts must stay fresh and coupled to current inputs.",
+}
 
 
 def parse_unique_csv(
@@ -25,6 +40,41 @@ def parse_unique_csv(
             continue
         values.append(value)
     return values
+
+
+def load_formal_review_contract(path: Path | None = None) -> dict[str, object]:
+    contract_path = FORMAL_REVIEW_CONTRACT_PATH if path is None else path
+    try:
+        raw = contract_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"unable to read review contract: {exc}") from exc
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid review contract JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("review contract must be a JSON object")
+    return payload
+
+
+def allowed_formal_check_types(path: Path | None = None) -> set[str]:
+    payload = load_formal_review_contract(path)
+    profiles = payload.get("profiles")
+    if not isinstance(profiles, dict) or not profiles:
+        raise ValueError("review contract missing non-empty object profiles")
+    names = set()
+    for profile_name in profiles:
+        if not isinstance(profile_name, str) or not profile_name.strip():
+            raise ValueError("review contract contains empty profile name")
+        names.add(profile_name)
+    return {"auto", *names}
+
+
+def describe_formal_lens(lens_name: str) -> str:
+    try:
+        return FORMAL_LENS_DESCRIPTIONS[lens_name]
+    except KeyError as exc:
+        raise ValueError(f"missing formal lens description for {lens_name!r}") from exc
 
 
 def read_required_text(path: Path, label: str) -> str:

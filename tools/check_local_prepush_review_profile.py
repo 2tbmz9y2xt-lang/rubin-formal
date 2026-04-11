@@ -7,7 +7,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-CONTRACT_PATH = Path(__file__).resolve().with_name("prepush_review_contract.json")
+try:
+    from tools.prepush_review_common import (
+        describe_formal_lens,
+        FORMAL_REVIEW_CONTRACT_PATH,
+        load_formal_review_contract,
+    )
+except ImportError:
+    from prepush_review_common import (
+        describe_formal_lens,
+        FORMAL_REVIEW_CONTRACT_PATH,
+        load_formal_review_contract,
+    )
+
+CONTRACT_PATH = FORMAL_REVIEW_CONTRACT_PATH
 ChangedPredicate = Callable[[set[str]], bool]
 
 
@@ -24,16 +37,7 @@ class ReviewProfile:
 
 def load_contract_payload(path: Path | None = None) -> dict[str, object]:
     contract_path = CONTRACT_PATH if path is None else path
-    try:
-        raw = contract_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise ValueError(f"unable to read review contract: {exc}") from exc
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"invalid review contract JSON: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("review contract must be a JSON object")
+    payload = load_formal_review_contract(contract_path)
 
     default_profile = payload.get("default_profile")
     if not isinstance(default_profile, str) or not default_profile.strip():
@@ -86,7 +90,8 @@ def load_contract_payload(path: Path | None = None) -> dict[str, object]:
 
 
 def allowed_check_types(path: Path | None = None) -> set[str]:
-    payload = load_contract_payload(path)
+    contract_path = CONTRACT_PATH if path is None else path
+    payload = load_contract_payload(contract_path)
     profiles = payload["profiles"]
     assert isinstance(profiles, dict)
     return {"auto", *(str(name) for name in profiles)}
@@ -245,24 +250,14 @@ def write_fullscan(
         [
             "",
             "PROFILE-REQUIRED review lenses:",
-            "- code-review: baseline correctness/regression pass over the changed claim surface.",
-            "- diff-scan: strict diff-grounded pass; do not invent hidden changes.",
-            "- formal-proof-soundness: look for vacuity, too-weak theorem statements, and proof gaps.",
-            "- theorem-classification: check LIVE/BRIDGE/MODEL/WRAPPER classification against real proof semantics.",
-            "- bridge-consistency: check proof_coverage/refinement/docs/bridge metadata drift.",
-            "- repo-read: use read-only repo access for coupled context before concluding findings=[].",
         ]
     )
+    for lens_name in profile.required_lenses:
+        lines.append(f"- {lens_name}: {describe_formal_lens(lens_name)}")
     if "doc-verification" in active_lenses:
-        lines.append(
-            "- doc-verification: changed docs/coverage metadata "
-            "must not overclaim proof state."
-        )
+        lines.append(f"- doc-verification: {describe_formal_lens('doc-verification')}")
     if "trace-consistency" in active_lenses:
-        lines.append(
-            "- trace-consistency: changed traces/replay artifacts "
-            "must stay fresh and coupled to current inputs."
-        )
+        lines.append(f"- trace-consistency: {describe_formal_lens('trace-consistency')}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -291,12 +286,12 @@ def main(argv: list[str] | None = None) -> int:
         changed = parse_changed_files(Path(args.changed_files))
         profile = load_profile(requested)
         active_lenses = active_lenses_for(changed, profile)
+        write_fullscan(Path(args.fullscan_output), changed, profile, active_lenses)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
     focus_lines = focus_lines_for(changed)
 
     Path(args.focus_output).write_text("\n".join(focus_lines) + "\n", encoding="utf-8")
-    write_fullscan(Path(args.fullscan_output), changed, profile, active_lenses)
 
     profile_payload = {
         "profile": profile.name,

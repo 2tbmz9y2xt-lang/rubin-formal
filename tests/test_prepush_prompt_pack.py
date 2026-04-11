@@ -41,6 +41,21 @@ class FormalPromptPackTests(unittest.TestCase):
                 bundle_text="=== PUSH TARGET ===\n...",
             )
 
+    def test_compose_prompt_accepts_future_contract_profile(self) -> None:
+        original = m.allowed_formal_check_types
+        m.allowed_formal_check_types = lambda: {"auto", "future_profile"}
+        try:
+            prompt = m.compose_prompt(
+                check_type="future_profile",
+                active_lenses=["code-review"],
+                fullscan_text="fullscan",
+                focus_lines=["focus"],
+                bundle_text="=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n",
+            )
+        finally:
+            m.allowed_formal_check_types = original
+        self.assertIn("CHECK_TYPE=future_profile", prompt)
+
     def test_missing_bundle_raises(self) -> None:
         with TemporaryDirectory() as td:
             td_path = Path(td)
