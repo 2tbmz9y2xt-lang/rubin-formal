@@ -23,12 +23,15 @@ class ReviewProfile:
     conditional_lenses: tuple[str, ...]
 
 
+def changed_contains_suffix(changed: set[str], suffix: str) -> bool:
+    return any(path.endswith(suffix) for path in changed)
+
+
 def has_doc_scope(changed: set[str]) -> bool:
-    return any(
-        path.endswith(".md")
-        or path.endswith("proof_coverage.json")
-        or path.endswith("refinement_bridge.json")
-        for path in changed
+    return (
+        any(path.endswith(".md") for path in changed)
+        or changed_contains_suffix(changed, "proof_coverage.json")
+        or changed_contains_suffix(changed, "refinement_bridge.json")
     )
 
 
@@ -49,11 +52,12 @@ FOCUS_RULES: tuple[tuple[ChangedPredicate, str], ...] = (
         "Check LIVE/BRIDGE/MODEL/WRAPPER classification against what the theorem actually proves.",
     ),
     (
-        lambda changed: "proof_coverage.json" in changed or "PROOF_COVERAGE.md" in changed,
+        lambda changed: changed_contains_suffix(changed, "proof_coverage.json")
+        or changed_contains_suffix(changed, "PROOF_COVERAGE.md"),
         "Check proof coverage labels and evidence taxonomy against actual theorem state.",
     ),
     (
-        lambda changed: "refinement_bridge.json" in changed
+        lambda changed: changed_contains_suffix(changed, "refinement_bridge.json")
         or any(path.startswith("RubinFormal/Refinement/") for path in changed),
         "Check refinement bridge claims against executable/runtime binding and trace assumptions.",
     ),
@@ -93,10 +97,14 @@ def load_profile(path: Path = CONTRACT_PATH) -> ReviewProfile:
 
 def active_lenses_for(changed: set[str], profile: ReviewProfile) -> list[str]:
     active = list(profile.required_lenses)
-    if has_doc_scope(changed):
-        active.append("doc-verification")
-    if has_trace_scope(changed):
-        active.append("trace-consistency")
+    conditional_rules: dict[str, ChangedPredicate] = {
+        "doc-verification": has_doc_scope,
+        "trace-consistency": has_trace_scope,
+    }
+    for lens in profile.conditional_lenses:
+        predicate = conditional_rules.get(lens)
+        if predicate is not None and predicate(changed) and lens not in active:
+            active.append(lens)
     return active
 
 

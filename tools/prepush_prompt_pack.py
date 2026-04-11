@@ -11,7 +11,7 @@ try:
         read_required_text,
     )
 except ImportError:
-    from prepush_review_common import (  # type: ignore[no-redef]
+    from prepush_review_common import (
         parse_unique_csv,
         read_nonempty_lines,
         read_required_text,
@@ -111,7 +111,7 @@ def compose_prompt(
     return "\n".join(lines)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build rubin-formal pre-push prompt pack.")
     parser.add_argument("--check-type", required=True)
     parser.add_argument("--active-lenses", required=True)
@@ -119,7 +119,7 @@ def main() -> int:
     parser.add_argument("--focus-path", required=True)
     parser.add_argument("--bundle-path", required=True)
     parser.add_argument("--output", required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     prompt = compose_prompt(
         check_type=args.check_type.strip(),

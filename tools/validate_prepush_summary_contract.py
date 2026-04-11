@@ -10,10 +10,20 @@ from pathlib import Path
 try:
     from tools.prepush_review_common import parse_unique_csv
 except ImportError:
-    from prepush_review_common import parse_unique_csv  # type: ignore[no-redef]
+    from prepush_review_common import parse_unique_csv
 
 REQUIRED_KEYS = ("CHECK_TYPE", "ACTIVE_LENSES", "LENSES_COVERED", "NO_FINDINGS", "RATIONALE")
 ALLOWED_CHECK_TYPES = {"formal_repo_review"}
+REQUIRED_FINDING_KEYS = (
+    "severity",
+    "file",
+    "line",
+    "title",
+    "details",
+    "suggestion",
+)
+ALLOWED_LENS_STATUSES = {"ok", "skip", "na"}
+ALLOWED_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "PERF", "STYLE"}
 
 
 def parse_summary(summary: str) -> dict[str, str]:
@@ -38,9 +48,6 @@ def parse_summary(summary: str) -> dict[str, str]:
     return fields
 
 
-ALLOWED_LENS_STATUSES = {"ok", "skip", "na"}
-
-
 def parse_lenses_covered(raw: str) -> dict[str, str]:
     covered: dict[str, str] = {}
     for item in raw.split(";"):
@@ -62,6 +69,45 @@ def parse_lenses_covered(raw: str) -> dict[str, str]:
             )
         covered[lens_name] = status_val
     return covered
+
+
+def validate_model(model: object) -> list[str]:
+    if not isinstance(model, str) or not model.strip():
+        return ["result payload missing model field or model is not a non-empty string"]
+    return []
+
+
+def validate_findings_payload(findings: list[object]) -> list[str]:
+    errors: list[str] = []
+    for index, finding in enumerate(findings):
+        prefix = f"findings[{index}]"
+        if not isinstance(finding, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        missing = [key for key in REQUIRED_FINDING_KEYS if key not in finding]
+        if missing:
+            errors.append(f"{prefix} missing required keys: {', '.join(missing)}")
+            continue
+
+        severity = finding["severity"]
+        if not isinstance(severity, str) or severity not in ALLOWED_SEVERITIES:
+            errors.append(
+                f"{prefix}.severity must be one of: {', '.join(sorted(ALLOWED_SEVERITIES))}"
+            )
+
+        file_path = finding["file"]
+        if not isinstance(file_path, str) or not file_path.strip():
+            errors.append(f"{prefix}.file must be a non-empty string")
+
+        line = finding["line"]
+        if not isinstance(line, int) or isinstance(line, bool) or line < 1:
+            errors.append(f"{prefix}.line must be a positive integer")
+
+        for field_name in ("title", "details", "suggestion"):
+            value = finding[field_name]
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"{prefix}.{field_name} must be a non-empty string")
+    return errors
 
 
 def validate_findings_flag(
@@ -126,8 +172,9 @@ def validate_contract(
             f"expected={expected_check_type} actual={fields['CHECK_TYPE']}"
         )
     summary_active_lenses = parse_unique_csv(fields["ACTIVE_LENSES"])
-    missing_active_lenses = sorted(set(expected_active_lenses) - set(summary_active_lenses))
-    if missing_active_lenses:
+    summary_active_set = set(summary_active_lenses)
+    expected_active_set = set(expected_active_lenses)
+    if summary_active_set != expected_active_set:
         errors.append(
             "ACTIVE_LENSES mismatch: expected="
             f"{','.join(expected_active_lenses)} actual={','.join(summary_active_lenses)}"
@@ -138,7 +185,14 @@ def validate_contract(
         errors.append(str(exc))
         covered = {}
 
-    for lens in expected_active_lenses:
+    extra_covered_lenses = sorted(set(covered) - summary_active_set)
+    if extra_covered_lenses:
+        errors.append(
+            "LENSES_COVERED includes lenses outside ACTIVE_LENSES: "
+            f"{','.join(extra_covered_lenses)}"
+        )
+
+    for lens in summary_active_lenses:
         if covered.get(lens) != "ok":
             errors.append(f"LENSES_COVERED missing ok status for lens={lens!r}")
 
@@ -150,32 +204,52 @@ def validate_contract(
     errors.extend(
         validate_rationale_mentions(
             rationale=fields["RATIONALE"],
-            active_lenses=expected_active_lenses,
+            active_lenses=summary_active_lenses,
             no_findings=no_findings,
         )
     )
     return errors
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate rubin-formal local pre-push summary contract.")
     parser.add_argument("--result-json", required=True)
     parser.add_argument("--expected-check-type", required=True)
     parser.add_argument("--active-lenses", required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
-        result = json.loads(Path(args.result_json).read_text(encoding="utf-8"))
-    except OSError as exc:
-        print(f"summary-contract: cannot read result file: {exc}", file=sys.stderr)
+        raw_text = Path(args.result_json).read_text(encoding="utf-8")
+        result = json.loads(raw_text)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"summary-contract: unable to read result-json: {exc}", file=sys.stderr)
         return 2
-    except json.JSONDecodeError as exc:
-        print(f"summary-contract: result file is not valid JSON: {exc}", file=sys.stderr)
+    if not isinstance(result, dict):
+        print("summary-contract: result payload must be a JSON object", file=sys.stderr)
         return 2
-    findings = result.get("findings", [])
+
+    payload_errors: list[str] = []
+    payload_errors.extend(validate_model(result.get("model")))
+    if "summary" not in result or not isinstance(result.get("summary"), str):
+        payload_errors.append("result payload missing summary field or summary is not a string")
+
+    if "findings" not in result:
+        payload_errors.append("result payload missing findings field")
+        findings: object = []
+    else:
+        findings = result["findings"]
+
     if not isinstance(findings, list):
-        print("summary-contract: findings must be a list", file=sys.stderr)
+        payload_errors.append("findings must be a list")
+    else:
+        payload_errors.extend(validate_findings_payload(findings))
+
+    if payload_errors:
+        print("summary-contract: FAIL", file=sys.stderr)
+        for err in payload_errors:
+            print(f"- {err}", file=sys.stderr)
         return 2
+
     errors = validate_contract(
         summary=result.get("summary", ""),
         findings=findings,

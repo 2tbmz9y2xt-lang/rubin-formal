@@ -1,26 +1,35 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import tempfile
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from tools import prepush_prompt_pack as m
 
 
-class FormalPrepushPromptPackTests(unittest.TestCase):
-    def test_compose_prompt_includes_formal_contract(self) -> None:
+class FormalPromptPackTests(unittest.TestCase):
+    def test_compose_prompt_mentions_all_active_lenses(self) -> None:
         prompt = m.compose_prompt(
             check_type="formal_repo_review",
-            active_lenses=["code-review", "formal-proof-soundness"],
-            fullscan_text="Skill-backed full-scan supplement:",
-            focus_lines=["Focus A"],
-            bundle_text="=== PUSH TARGET ===\n...",
+            active_lenses=[
+                "code-review",
+                "formal-proof-soundness",
+                "doc-verification",
+            ],
+            fullscan_text=(
+                "Skill-backed full-scan supplement:\n"
+                "- ACTIVE_LENSES=code-review,formal-proof-soundness,doc-verification\n"
+            ),
+            focus_lines=["Attack theorem statement strength."],
+            bundle_text="=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n",
         )
-        self.assertIn("RUBIN formal pre-push reviewer", prompt)
         self.assertIn("Prompt Pack: formal-prepush-v1", prompt)
-        self.assertIn("ACTIVE_LENSES=code-review,formal-proof-soundness", prompt)
-        self.assertIn("Attack this diff like a hostile formal reviewer", prompt)
+        self.assertIn("CHECK_TYPE=formal_repo_review", prompt)
+        self.assertIn(
+            "ACTIVE_LENSES=code-review,formal-proof-soundness,doc-verification",
+            prompt,
+        )
 
     def test_compose_prompt_rejects_unknown_check_type(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported check_type"):
@@ -32,11 +41,30 @@ class FormalPrepushPromptPackTests(unittest.TestCase):
                 bundle_text="=== PUSH TARGET ===\n...",
             )
 
-    def test_read_required_text_fails_closed_when_missing(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            missing = Path(td) / "missing.txt"
-            with self.assertRaisesRegex(FileNotFoundError, "fullscan file is missing"):
-                m.read_required_text(missing, "fullscan")
+    def test_missing_bundle_raises(self) -> None:
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            focus = td_path / "focus.txt"
+            focus.write_text("x\n", encoding="utf-8")
+            fullscan = td_path / "fullscan.txt"
+            fullscan.write_text("y\n", encoding="utf-8")
+            with self.assertRaises(FileNotFoundError):
+                m.main(
+                    [
+                        "--check-type",
+                        "formal_repo_review",
+                        "--active-lenses",
+                        "code-review",
+                        "--fullscan-path",
+                        str(fullscan),
+                        "--focus-path",
+                        str(focus),
+                        "--bundle-path",
+                        str(td_path / "missing.txt"),
+                        "--output",
+                        str(td_path / "out.txt"),
+                    ]
+                )
 
 
 if __name__ == "__main__":
