@@ -177,7 +177,7 @@ theorem threshold_wrong_count_rejected_pre_rotation
     has unknown suite, the hardcoded live path rejects with
     TX_ERR_SIG_ALG_INVALID — regardless of list length, key content,
     threshold, or block height. -/
-theorem threshold_unknown_suite_head_rejected
+theorem threshold_unknown_suite_head_rejected_pre_rotation
     (k : Bytes) (krest : List Bytes) (w : WitnessItem) (wrest : List WitnessItem)
     (h : Nat) (ctx : String) (threshold : Nat)
     (hLen : (w :: wrest).length = (k :: krest).length)
@@ -465,7 +465,7 @@ theorem threshold_unknown_suite_anywhere_rejected_pre_rotation
     anywhere in the threshold witness/key zip causes the hardcoded live
     threshold dispatch to reject with TX_ERR_SIG_INVALID. Earlier safe prefix
     items may yield, but they cannot suppress the first mismatch error. -/
-theorem threshold_hash_mismatch_anywhere_rejected
+theorem threshold_hash_mismatch_anywhere_rejected_pre_rotation
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
     (safe : List (WitnessItem × Bytes))
@@ -517,7 +517,7 @@ theorem threshold_hash_mismatch_anywhere_rejected
     structurally safe but the accumulated number of ML-DSA-87 matches stays
     below `threshold`, the hardcoded live validator rejects with
     `TX_ERR_SIG_INVALID`. -/
-theorem threshold_below_required_count_rejected
+theorem threshold_below_required_count_rejected_pre_rotation
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
     (hLen : ws.length = keys.length)
@@ -565,7 +565,7 @@ theorem threshold_below_required_count_rejected
 /-- **R11 (legacy pre-rotation):** If every threshold witness/key pair is
     structurally safe and the accumulated number of ML-DSA-87 matches reaches
     `threshold`, the hardcoded live validator accepts. -/
-theorem threshold_required_count_accepts
+theorem threshold_required_count_accepts_pre_rotation
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
     (hLen : ws.length = keys.length)
@@ -615,7 +615,7 @@ theorem threshold_required_count_accepts
 /-- **R12 (legacy pre-rotation):** When vault sponsor checks pass, any
     threshold hash mismatch anywhere propagates through the hardcoded live
     `validateVaultSpend` path as `TX_ERR_SIG_INVALID`. -/
-theorem vault_threshold_hash_mismatch_anywhere_rejected
+theorem vault_threshold_hash_mismatch_anywhere_rejected_pre_rotation
     (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
     (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
@@ -633,7 +633,7 @@ theorem vault_threshold_hash_mismatch_anywhere_rejected
   have hSig :
       UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
         .error "TX_ERR_SIG_INVALID" := by
-    exact threshold_hash_mismatch_anywhere_rejected
+    exact threshold_hash_mismatch_anywhere_rejected_pre_rotation
       vKeys vThr vWit h "CORE_VAULT" safe bad rest hLen hZip hSafe hBad
   simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
 
@@ -641,7 +641,7 @@ theorem vault_threshold_hash_mismatch_anywhere_rejected
     zipped threshold witness/key loop stays structurally safe but below
     threshold, the hardcoded live `validateVaultSpend` path rejects with
     `TX_ERR_SIG_INVALID`. -/
-theorem vault_threshold_below_required_count_rejected
+theorem vault_threshold_below_required_count_rejected_pre_rotation
     (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
     (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
@@ -655,14 +655,15 @@ theorem vault_threshold_below_required_count_rejected
   have hSig :
       UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
         .error "TX_ERR_SIG_INVALID" := by
-    exact threshold_below_required_count_rejected vKeys vThr vWit h "CORE_VAULT" hLen hSafe hBelow
+    exact threshold_below_required_count_rejected_pre_rotation
+      vKeys vThr vWit h "CORE_VAULT" hLen hSafe hBelow
   simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
 
 /-- **R14 (legacy pre-rotation):** When vault sponsor checks pass, the
     threshold witness/key loop is structurally safe, enough ML-DSA-87 items
     match, and the whitelist passes, the hardcoded live `validateVaultSpend`
     path accepts. -/
-theorem vault_threshold_required_count_accepts
+theorem vault_threshold_required_count_accepts_pre_rotation
     (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
     (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
@@ -677,7 +678,8 @@ theorem vault_threshold_required_count_accepts
   have hSig :
       UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto vKeys vThr vWit h "CORE_VAULT" =
         .ok () := by
-    exact threshold_required_count_accepts vKeys vThr vWit h "CORE_VAULT" hLen hSafe hEnough
+    exact threshold_required_count_accepts_pre_rotation
+      vKeys vThr vWit h "CORE_VAULT" hLen hSafe hEnough
   exact UtxoApplyGenesisV1.vault_all_pass lids covs vOwnLid vKeys vThr vWit h outs wl
     hSponsorOk hSig hWL
 
@@ -829,7 +831,8 @@ theorem threshold_unknown_suite_head_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY (k :: krest) threshold (w :: wrest) h ctx =
       .error "TX_ERR_SIG_ALG_INVALID" := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
-  exact threshold_unknown_suite_head_rejected k krest w wrest h ctx threshold hLen hNotS hNotM
+  exact threshold_unknown_suite_head_rejected_pre_rotation
+    k krest w wrest h ctx threshold hLen hNotS hNotM
 
 /-- **R8b registry companion:** Any unknown suite appearing anywhere in the
     threshold witness/key zip causes the universal registry helper to reject
@@ -868,7 +871,7 @@ theorem threshold_hash_mismatch_anywhere_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
       .error "TX_ERR_SIG_INVALID" := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
-  exact threshold_hash_mismatch_anywhere_rejected
+  exact threshold_hash_mismatch_anywhere_rejected_pre_rotation
     keys threshold ws h ctx safe bad rest hLen hZip hSafe hBad
 
 /-- **R10 registry companion:** If every threshold pair is structurally safe
@@ -884,7 +887,8 @@ theorem threshold_below_required_count_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
       .error "TX_ERR_SIG_INVALID" := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
-  exact threshold_below_required_count_rejected keys threshold ws h ctx hLen hSafe hBelow
+  exact threshold_below_required_count_rejected_pre_rotation
+    keys threshold ws h ctx hLen hSafe hBelow
 
 /-- **R11 registry companion:** If every threshold pair is structurally safe
     and the ML-DSA-87 match count reaches `threshold`, the universal registry
@@ -899,7 +903,8 @@ theorem threshold_required_count_accepts_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
       .ok () := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
-  exact threshold_required_count_accepts keys threshold ws h ctx hLen hSafe hEnough
+  exact threshold_required_count_accepts_pre_rotation
+    keys threshold ws h ctx hLen hSafe hEnough
 
 /-! ### R12-R14 Outer vault propagation — registry companions -/
 
