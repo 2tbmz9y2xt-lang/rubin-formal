@@ -19,7 +19,8 @@ The sanctioned local push path for `rubin-formal` on this machine is:
 - That private path owns the review contract JSON, prompt builder, profile
   planner, and summary validator.
 - `rubin-formal` keeps only this README as the public repo-facing pointer for
-  the local push contract.
+  this local push contract; unrelated repository tooling remains outside this
+  contract boundary.
 - A clone without the private orchestration layer is intentionally unsupported
   for the sanctioned local push path and must fail closed before any network
   push.
