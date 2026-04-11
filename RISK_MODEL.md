@@ -64,10 +64,10 @@
 
 На текущем refinement-срезе registry содержит:
 
-- `18` universal entries;
-- `3` assumption-backed entries;
-- `2` behavioral entries;
-- `1` contract-level entry;
+- `21` universal entries;
+- `4` assumption-backed entries;
+- `3` behavioral entries;
+- `0` contract-level entries;
 - `0` stated rows;
 - `0` deferred rows.
 
