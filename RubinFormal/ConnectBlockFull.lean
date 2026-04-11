@@ -241,7 +241,14 @@ theorem connectBlockFullComputed_txcontext_continuing_data
           | .ok () =>
             simp [hSighash] at hOk
             cases hOk
-            exact buildTxContext_continuing_data d.activeExtIds hIds _ _ _ d.continuingData bundle hBundle
+            have hBuild :
+                buildTxContext d.activeExtIds
+                  (sumInputValues d.inputValues)
+                  (sumOutputValues d.outputValues)
+                  h d.continuingData = some bundle := by
+              simpa [buildTxContextLive, buildTxContext, sumInputValues, sumOutputValues] using hBundle
+            exact buildTxContext_continuing_data
+              d.activeExtIds hIds _ _ _ d.continuingData bundle hBuild
 
 /-- Success on the computed parallel block-connection path implies that the
     live TxContext input bundle passed both computed-path gates. This exposes
