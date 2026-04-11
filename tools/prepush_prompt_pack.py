@@ -30,7 +30,8 @@ INPUT BOUNDARY (HARD):
 - Do NOT invent spec rules, theorem obligations, or hidden repo state.
 - This run reviews a single shard. Default to the diff bundle only.
 - If extra context is required, use at most 3 targeted repo reads/grep commands total.
-- Do NOT open `AGENTS.md`, any `SKILL.md`, `~/.agents`, `~/.codex`, or files outside the current repo.
+- You may open the current repo's `AGENTS.md` for repo-specific review rules.
+- Do NOT open any `SKILL.md`, `~/.agents`, `~/.codex`, or files outside the current repo.
 - Lens names are review dimensions, not file paths to inspect.
 - Valid repo-root metadata companions are exactly:
   `proof_coverage.json`, `refinement_bridge.json`,

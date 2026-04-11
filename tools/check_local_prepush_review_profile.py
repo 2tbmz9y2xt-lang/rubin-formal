@@ -42,23 +42,41 @@ def has_trace_scope(changed: set[str]) -> bool:
     )
 
 
+def has_lean_scope(changed: set[str]) -> bool:
+    return any(path.endswith(".lean") for path in changed)
+
+
+def has_proof_coverage_scope(changed: set[str]) -> bool:
+    return changed_contains_suffix(changed, "proof_coverage.json") or changed_contains_suffix(
+        changed, "PROOF_COVERAGE.md"
+    )
+
+
+def has_refinement_scope(changed: set[str]) -> bool:
+    return changed_contains_suffix(changed, "refinement_bridge.json") or any(
+        path.startswith("RubinFormal/Refinement/") for path in changed
+    )
+
+
+def has_markdown_scope(changed: set[str]) -> bool:
+    return any(path.endswith(".md") for path in changed)
+
+
 FOCUS_RULES: tuple[tuple[ChangedPredicate, str], ...] = (
     (
-        lambda changed: any(path.endswith(".lean") for path in changed),
+        has_lean_scope,
         "Attack theorem statement strength, vacuity, and hidden assumptions.",
     ),
     (
-        lambda changed: any(path.endswith(".lean") for path in changed),
+        has_lean_scope,
         "Check LIVE/BRIDGE/MODEL/WRAPPER classification against what the theorem actually proves.",
     ),
     (
-        lambda changed: changed_contains_suffix(changed, "proof_coverage.json")
-        or changed_contains_suffix(changed, "PROOF_COVERAGE.md"),
+        has_proof_coverage_scope,
         "Check proof coverage labels and evidence taxonomy against actual theorem state.",
     ),
     (
-        lambda changed: changed_contains_suffix(changed, "refinement_bridge.json")
-        or any(path.startswith("RubinFormal/Refinement/") for path in changed),
+        has_refinement_scope,
         "Check refinement bridge claims against executable/runtime binding and trace assumptions.",
     ),
     (
@@ -66,7 +84,7 @@ FOCUS_RULES: tuple[tuple[ChangedPredicate, str], ...] = (
         "Check trace freshness, fixture digest, and replay assumptions.",
     ),
     (
-        lambda changed: any(path.endswith(".md") for path in changed),
+        has_markdown_scope,
         "Block docs that overclaim machine-checked status, coverage, or parser/live binding.",
     ),
 )
@@ -143,12 +161,9 @@ def write_fullscan(
     lines = [
         "Skill-backed full-scan supplement:",
         "- This is a local formal pre-push review plan for rubin-formal.",
-        "- The reviewer may inspect the repository read-only for context, "
-        "but findings must stay grounded in the changed claim surface.",
+        "- The reviewer may inspect the repository read-only for context, but findings must stay grounded in the changed claim surface.",
         f"- Selected review profile: {profile.name}.",
-        "- Model route: "
-        f"{profile.model} ({profile.model_reasoning_effort}), "
-        f"combine-if-paths<={profile.combine_review_units_when_at_most}.",
+        f"- Model route: {profile.model} ({profile.model_reasoning_effort}), combine-if-paths<={profile.combine_review_units_when_at_most}.",
         f"- ACTIVE_LENSES: {','.join(active_lenses)}",
         "",
         "Changed files in scope:",
@@ -206,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         profile = load_profile(requested)
         active_lenses = active_lenses_for(changed, profile)
     except ValueError as exc:
-        raise SystemExit(str(exc))
+        raise SystemExit(str(exc)) from exc
     focus_lines = focus_lines_for(changed)
 
     Path(args.focus_output).write_text("\n".join(focus_lines) + "\n", encoding="utf-8")
