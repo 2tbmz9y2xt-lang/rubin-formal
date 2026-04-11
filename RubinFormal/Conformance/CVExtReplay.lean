@@ -54,7 +54,6 @@ inductive CVExtReplayOutcome
   | fixtureMetadataReject
   | duplicateProfileReject
   | permissiveAccept
-  | activeProfileAccept
   | suiteReject
   | bindingReject
   | verifyReachable
@@ -112,7 +111,7 @@ private def replayOutcomeVerdict (outcome : CVExtReplayOutcome) : Bool × Option
       (false, some "TX_ERR_SIG_ALG_INVALID")
   | .bindingReject =>
       (false, some "TX_ERR_SIG_ALG_INVALID")
-  | .permissiveAccept | .activeProfileAccept | .verifyReachable =>
+  | .permissiveAccept | .verifyReachable =>
       (true, none)
 
 def checkExtVector (v : CVExtVector) : Bool :=
