@@ -15,12 +15,14 @@ The sanctioned local push path for `rubin-formal` on this machine is:
 - Hook: `$(git rev-parse --git-path hooks-disabled/pre-push)`
 - Public repo contract stops at this README.
 - The actual machine-local runtime assets live in the private orchestration
-  repository:
-  `/Users/gpt/Documents/rubin-orchestration-private/inbox/operational/local_push_gate/formal/`
+  repository under `inbox/operational/local_push_gate/formal/`.
 - That private path owns the review contract JSON, prompt builder, profile
   planner, and summary validator.
 - `rubin-formal` keeps only this README as the public repo-facing pointer for
   the local push contract.
+- A clone without the private orchestration layer is intentionally unsupported
+  for the sanctioned local push path and must fail closed before any network
+  push.
 
 ## Model/profile
 
