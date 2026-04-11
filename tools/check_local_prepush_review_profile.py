@@ -252,11 +252,12 @@ def write_fullscan(
             "PROFILE-REQUIRED review lenses:",
         ]
     )
+    required_lens_set = set(profile.required_lenses)
     for lens_name in profile.required_lenses:
         lines.append(f"- {lens_name}: {describe_formal_lens(lens_name)}")
-    if "doc-verification" in active_lenses:
+    if "doc-verification" in active_lenses and "doc-verification" not in required_lens_set:
         lines.append(f"- doc-verification: {describe_formal_lens('doc-verification')}")
-    if "trace-consistency" in active_lenses:
+    if "trace-consistency" in active_lenses and "trace-consistency" not in required_lens_set:
         lines.append(f"- trace-consistency: {describe_formal_lens('trace-consistency')}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

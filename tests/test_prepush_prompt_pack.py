@@ -90,7 +90,7 @@ class FormalPromptPackTests(unittest.TestCase):
             fullscan.write_text("y\n", encoding="utf-8")
             bundle = td_path / "bundle.txt"
             bundle.write_text("=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "duplicate entry"):
+            with self.assertRaisesRegex(SystemExit, "duplicate entry"):
                 m.main(
                     [
                         "--check-type",
@@ -107,6 +107,40 @@ class FormalPromptPackTests(unittest.TestCase):
                         str(td_path / "out.txt"),
                     ]
                 )
+
+    def test_main_reports_invalid_contract_cleanly(self) -> None:
+        original = m.allowed_formal_check_types
+        m.allowed_formal_check_types = lambda: (_ for _ in ()).throw(
+            ValueError("invalid review contract JSON")
+        )
+        try:
+            with TemporaryDirectory() as td:
+                td_path = Path(td)
+                focus = td_path / "focus.txt"
+                focus.write_text("x\n", encoding="utf-8")
+                fullscan = td_path / "fullscan.txt"
+                fullscan.write_text("y\n", encoding="utf-8")
+                bundle = td_path / "bundle.txt"
+                bundle.write_text("=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n", encoding="utf-8")
+                with self.assertRaisesRegex(SystemExit, "invalid review contract JSON"):
+                    m.main(
+                        [
+                            "--check-type",
+                            "formal_repo_review",
+                            "--active-lenses",
+                            "code-review",
+                            "--fullscan-path",
+                            str(fullscan),
+                            "--focus-path",
+                            str(focus),
+                            "--bundle-path",
+                            str(bundle),
+                            "--output",
+                            str(td_path / "out.txt"),
+                        ]
+                    )
+        finally:
+            m.allowed_formal_check_types = original
 
 
 if __name__ == "__main__":

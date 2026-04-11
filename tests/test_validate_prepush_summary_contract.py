@@ -27,6 +27,25 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             m.allowed_formal_check_types = original
         self.assertEqual(errors, [])
 
+    def test_validate_contract_reports_invalid_contract_helper_cleanly(self) -> None:
+        original = m.allowed_formal_check_types
+        m.allowed_formal_check_types = lambda: (_ for _ in ()).throw(
+            ValueError("invalid review contract JSON")
+        )
+        try:
+            errors = m.validate_contract(
+                summary=(
+                    "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review|"
+                    "LENSES_COVERED=code-review:ok|NO_FINDINGS=true|RATIONALE=code-review ok"
+                ),
+                findings=[],
+                expected_check_type="formal_repo_review",
+                expected_active_lenses=["code-review"],
+            )
+        finally:
+            m.allowed_formal_check_types = original
+        self.assertTrue(any("invalid review contract JSON" in err for err in errors))
+
     def test_validate_contract_passes_for_valid_summary(self) -> None:
         summary = (
             "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review,formal-proof-soundness|"

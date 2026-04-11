@@ -81,7 +81,11 @@ def compose_prompt(
     focus_lines: list[str],
     bundle_text: str,
 ) -> str:
-    if check_type not in allowed_formal_check_types():
+    try:
+        allowed = allowed_formal_check_types()
+    except ValueError as exc:
+        raise ValueError(str(exc)) from exc
+    if check_type not in allowed:
         raise ValueError(f"unsupported check_type {check_type!r}")
     if not bundle_text.strip():
         raise ValueError("diff bundle is empty")
@@ -122,17 +126,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True)
     args = parser.parse_args(argv)
 
-    prompt = compose_prompt(
-        check_type=args.check_type.strip(),
-        active_lenses=parse_unique_csv(
-            args.active_lenses,
-            reject_empty=True,
-            reject_duplicates=True,
-        ),
-        fullscan_text=read_required_text(Path(args.fullscan_path), "fullscan"),
-        focus_lines=read_nonempty_lines(Path(args.focus_path), "focus"),
-        bundle_text=read_required_text(Path(args.bundle_path), "bundle"),
-    )
+    try:
+        prompt = compose_prompt(
+            check_type=args.check_type.strip(),
+            active_lenses=parse_unique_csv(
+                args.active_lenses,
+                reject_empty=True,
+                reject_duplicates=True,
+            ),
+            fullscan_text=read_required_text(Path(args.fullscan_path), "fullscan"),
+            focus_lines=read_nonempty_lines(Path(args.focus_path), "focus"),
+            bundle_text=read_required_text(Path(args.bundle_path), "bundle"),
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     Path(args.output).write_text(prompt, encoding="utf-8")
     return 0
 

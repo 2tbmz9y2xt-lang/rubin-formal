@@ -253,7 +253,11 @@ def validate_contract(
     expected_check_type: str,
     expected_active_lenses: list[str],
 ) -> list[str]:
-    if expected_check_type not in allowed_formal_check_types():
+    try:
+        allowed = allowed_formal_check_types()
+    except ValueError as exc:
+        return [str(exc)]
+    if expected_check_type not in allowed:
         return [f"unsupported expected_check_type: {expected_check_type!r}"]
 
     try:

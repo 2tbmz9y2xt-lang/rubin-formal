@@ -156,6 +156,22 @@ class FormalReviewProfileTests(unittest.TestCase):
             self.assertIn("- diff-scan: strict diff-grounded pass", text)
             self.assertNotIn("formal-proof-soundness", text)
 
+    def test_write_fullscan_does_not_duplicate_required_optional_lenses(self) -> None:
+        with TemporaryDirectory() as td:
+            output = Path(td) / "fullscan.txt"
+            profile = m.ReviewProfile(
+                name="future_profile",
+                model="gpt-5.4-mini",
+                model_reasoning_effort="high",
+                stall_seconds=120,
+                combine_review_units_when_at_most=2,
+                required_lenses=("code-review", "doc-verification"),
+                conditional_lenses=(),
+            )
+            m.write_fullscan(output, {"notes.md"}, profile, ["code-review", "doc-verification"])
+            text = output.read_text(encoding="utf-8")
+            self.assertEqual(text.count("doc-verification:"), 1)
+
     def test_main_rejects_unknown_conditional_lens_in_contract(self) -> None:
         with TemporaryDirectory() as td:
             td_path = Path(td)
