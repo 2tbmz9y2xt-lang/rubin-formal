@@ -78,10 +78,10 @@ def validate_lens_status(lens_name: str, status_val: str) -> None:
 
 def parse_lenses_covered(raw: str) -> dict[str, str]:
     covered: dict[str, str] = {}
-    for item in raw.split(";"):
+    for position, item in enumerate(raw.split(";"), start=1):
         pair = item.strip()
         if not pair:
-            continue
+            raise ValueError(f"LENSES_COVERED contains empty entry at position {position}")
         lens, sep, status = pair.partition(":")
         if not sep:
             raise ValueError(f"LENSES_COVERED item missing ':': {pair!r}")
@@ -128,6 +128,9 @@ def validate_finding_entry(index: int, finding: object) -> list[str]:
     missing = [key for key in REQUIRED_FINDING_KEYS if key not in finding]
     if missing:
         return [f"{prefix} missing required keys: {', '.join(missing)}"]
+    extra = sorted(key for key in finding if key not in REQUIRED_FINDING_KEYS)
+    if extra:
+        return [f"{prefix} contains unsupported keys: {', '.join(extra)}"]
 
     errors: list[str] = []
     errors.extend(validate_severity(prefix, finding["severity"]))

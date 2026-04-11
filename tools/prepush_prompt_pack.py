@@ -124,7 +124,11 @@ def main(argv: list[str] | None = None) -> int:
 
     prompt = compose_prompt(
         check_type=args.check_type.strip(),
-        active_lenses=parse_unique_csv(args.active_lenses),
+        active_lenses=parse_unique_csv(
+            args.active_lenses,
+            reject_empty=True,
+            reject_duplicates=True,
+        ),
         fullscan_text=read_required_text(Path(args.fullscan_path), "fullscan"),
         focus_lines=read_nonempty_lines(Path(args.focus_path), "focus"),
         bundle_text=read_required_text(Path(args.bundle_path), "bundle"),

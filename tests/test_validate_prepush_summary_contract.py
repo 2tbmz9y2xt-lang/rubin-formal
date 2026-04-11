@@ -146,6 +146,10 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "status not allowed"):
             m.parse_lenses_covered("code-review:passed")
 
+    def test_parse_lenses_covered_rejects_empty_entries(self) -> None:
+        with self.assertRaisesRegex(ValueError, "empty entry"):
+            m.parse_lenses_covered("code-review:ok;;formal-proof-soundness:ok")
+
     def test_validate_contract_rejects_non_ok_lens_status(self) -> None:
         summary = (
             "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review|"
@@ -199,6 +203,45 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             expected_active_lenses=["code-review"],
         )
         self.assertTrue(any("unsupported keys" in err for err in errors))
+
+    def test_main_rejects_finding_with_extra_key(self) -> None:
+        with TemporaryDirectory() as td:
+            result = Path(td) / "result.json"
+            result.write_text(
+                dumps(
+                    {
+                        "model": "gpt-5.4-mini",
+                        "summary": (
+                            "CHECK_TYPE=formal_repo_review|ACTIVE_LENSES=code-review|"
+                            "LENSES_COVERED=code-review:ok|NO_FINDINGS=false|"
+                            "RATIONALE=code-review found issue"
+                        ),
+                        "findings": [
+                            {
+                                "severity": "LOW",
+                                "file": "RubinFormal/Foo.lean",
+                                "line": 1,
+                                "title": "x",
+                                "details": "y",
+                                "suggestion": "z",
+                                "extra": "oops",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            rc = m.main(
+                [
+                    "--result-json",
+                    str(result),
+                    "--expected-check-type",
+                    "formal_repo_review",
+                    "--active-lenses",
+                    "code-review",
+                ]
+            )
+            self.assertEqual(rc, 2)
 
 
 if __name__ == "__main__":

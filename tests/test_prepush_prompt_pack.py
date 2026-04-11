@@ -66,6 +66,33 @@ class FormalPromptPackTests(unittest.TestCase):
                     ]
                 )
 
+    def test_main_rejects_duplicate_active_lenses(self) -> None:
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            focus = td_path / "focus.txt"
+            focus.write_text("x\n", encoding="utf-8")
+            fullscan = td_path / "fullscan.txt"
+            fullscan.write_text("y\n", encoding="utf-8")
+            bundle = td_path / "bundle.txt"
+            bundle.write_text("=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "duplicate entry"):
+                m.main(
+                    [
+                        "--check-type",
+                        "formal_repo_review",
+                        "--active-lenses",
+                        "code-review,code-review",
+                        "--fullscan-path",
+                        str(fullscan),
+                        "--focus-path",
+                        str(focus),
+                        "--bundle-path",
+                        str(bundle),
+                        "--output",
+                        str(td_path / "out.txt"),
+                    ]
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

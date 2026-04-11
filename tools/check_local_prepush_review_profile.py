@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Callable
 
 CONTRACT_PATH = Path(__file__).resolve().with_name("prepush_review_contract.json")
-ALLOWED_CHECK_TYPES = {"auto", "formal_repo_review"}
 ChangedPredicate = Callable[[set[str]], bool]
 
 
@@ -21,6 +20,76 @@ class ReviewProfile:
     combine_review_units_when_at_most: int
     required_lenses: tuple[str, ...]
     conditional_lenses: tuple[str, ...]
+
+
+def load_contract_payload(path: Path | None = None) -> dict[str, object]:
+    contract_path = CONTRACT_PATH if path is None else path
+    try:
+        raw = contract_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"unable to read review contract: {exc}") from exc
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid review contract JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("review contract must be a JSON object")
+
+    default_profile = payload.get("default_profile")
+    if not isinstance(default_profile, str) or not default_profile.strip():
+        raise ValueError("review contract missing non-empty string default_profile")
+
+    profiles = payload.get("profiles")
+    if not isinstance(profiles, dict) or not profiles:
+        raise ValueError("review contract missing non-empty object profiles")
+
+    required_fields = (
+        "model",
+        "model_reasoning_effort",
+        "stall_seconds",
+        "combine_review_units_when_at_most",
+        "required_lenses",
+        "conditional_lenses",
+    )
+    for profile_name, profile_data in profiles.items():
+        if not isinstance(profile_name, str) or not profile_name.strip():
+            raise ValueError("review contract contains empty profile name")
+        if not isinstance(profile_data, dict):
+            raise ValueError(f"review contract profile {profile_name!r} must be an object")
+        missing = [field for field in required_fields if field not in profile_data]
+        if missing:
+            raise ValueError(
+                f"review contract profile {profile_name!r} missing fields: {', '.join(missing)}"
+            )
+        for field_name in ("model", "model_reasoning_effort"):
+            value = profile_data[field_name]
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(
+                    f"review contract profile {profile_name!r} field {field_name!r} must be a non-empty string"
+                )
+        for field_name in ("stall_seconds", "combine_review_units_when_at_most"):
+            value = profile_data[field_name]
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(
+                    f"review contract profile {profile_name!r} field {field_name!r} must be an integer"
+                )
+        for field_name in ("required_lenses", "conditional_lenses"):
+            value = profile_data[field_name]
+            if not isinstance(value, list) or any(
+                not isinstance(item, str) or not item.strip() for item in value
+            ):
+                raise ValueError(
+                    f"review contract profile {profile_name!r} field {field_name!r} must be a list of non-empty strings"
+                )
+
+    return payload
+
+
+def allowed_check_types(path: Path | None = None) -> set[str]:
+    payload = load_contract_payload(path)
+    profiles = payload["profiles"]
+    assert isinstance(profiles, dict)
+    return {"auto", *(str(name) for name in profiles)}
 
 
 def changed_contains_suffix(changed: set[str], suffix: str) -> bool:
@@ -102,10 +171,10 @@ def load_profile(
     requested_check_type: str = "auto",
     path: Path | None = None,
 ) -> ReviewProfile:
-    contract_path = CONTRACT_PATH if path is None else path
-    payload = json.loads(contract_path.read_text(encoding="utf-8"))
+    payload = load_contract_payload(path)
     default_profile = str(payload["default_profile"])
     profiles = payload["profiles"]
+    assert isinstance(profiles, dict)
     profile_name = default_profile if requested_check_type == "auto" else requested_check_type
     if profile_name not in profiles:
         raise ValueError(f"unknown review profile: {profile_name!r}")
@@ -211,13 +280,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--profile-output", required=True)
     args = parser.parse_args(argv)
 
-    requested = args.check_type.strip()
-    if requested not in ALLOWED_CHECK_TYPES:
-        allowed = ", ".join(sorted(ALLOWED_CHECK_TYPES))
-        raise SystemExit(f"unsupported check_type {requested!r}; expected one of: {allowed}")
-
-    changed = parse_changed_files(Path(args.changed_files))
     try:
+        requested = args.check_type.strip()
+        allowed = allowed_check_types()
+        if requested not in allowed:
+            allowed_joined = ", ".join(sorted(allowed))
+            raise SystemExit(
+                f"unsupported check_type {requested!r}; expected one of: {allowed_joined}"
+            )
+        changed = parse_changed_files(Path(args.changed_files))
         profile = load_profile(requested)
         active_lenses = active_lenses_for(changed, profile)
     except ValueError as exc:
