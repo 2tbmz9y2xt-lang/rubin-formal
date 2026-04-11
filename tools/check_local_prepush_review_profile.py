@@ -5,9 +5,11 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 CONTRACT_PATH = Path(__file__).resolve().with_name("prepush_review_contract.json")
 ALLOWED_CHECK_TYPES = {"auto", "formal_repo_review"}
+ChangedPredicate = Callable[[set[str]], bool]
 
 
 @dataclass(frozen=True)
@@ -19,6 +21,51 @@ class ReviewProfile:
     combine_review_units_when_at_most: int
     required_lenses: tuple[str, ...]
     conditional_lenses: tuple[str, ...]
+
+
+def has_doc_scope(changed: set[str]) -> bool:
+    return any(
+        path.endswith(".md")
+        or path.endswith("proof_coverage.json")
+        or path.endswith("refinement_bridge.json")
+        for path in changed
+    )
+
+
+def has_trace_scope(changed: set[str]) -> bool:
+    return any(
+        path.startswith("traces/") or path.endswith(".jsonl")
+        for path in changed
+    )
+
+
+FOCUS_RULES: tuple[tuple[ChangedPredicate, str], ...] = (
+    (
+        lambda changed: any(path.endswith(".lean") for path in changed),
+        "Attack theorem statement strength, vacuity, and hidden assumptions.",
+    ),
+    (
+        lambda changed: any(path.endswith(".lean") for path in changed),
+        "Check LIVE/BRIDGE/MODEL/WRAPPER classification against what the theorem actually proves.",
+    ),
+    (
+        lambda changed: "proof_coverage.json" in changed or "PROOF_COVERAGE.md" in changed,
+        "Check proof coverage labels and evidence taxonomy against actual theorem state.",
+    ),
+    (
+        lambda changed: "refinement_bridge.json" in changed
+        or any(path.startswith("RubinFormal/Refinement/") for path in changed),
+        "Check refinement bridge claims against executable/runtime binding and trace assumptions.",
+    ),
+    (
+        has_trace_scope,
+        "Check trace freshness, fixture digest, and replay assumptions.",
+    ),
+    (
+        lambda changed: any(path.endswith(".md") for path in changed),
+        "Block docs that overclaim machine-checked status, coverage, or parser/live binding.",
+    ),
+)
 
 
 def parse_changed_files(path: Path) -> set[str]:
@@ -46,38 +93,38 @@ def load_profile(path: Path = CONTRACT_PATH) -> ReviewProfile:
 
 def active_lenses_for(changed: set[str], profile: ReviewProfile) -> list[str]:
     active = list(profile.required_lenses)
-    if any(path.endswith(".md") or path.endswith("proof_coverage.json") or path.endswith("refinement_bridge.json") for path in changed):
+    if has_doc_scope(changed):
         active.append("doc-verification")
-    if any(path.startswith("traces/") or path.endswith(".jsonl") for path in changed):
+    if has_trace_scope(changed):
         active.append("trace-consistency")
     return active
 
 
 def focus_lines_for(changed: set[str]) -> list[str]:
-    focus: list[str] = []
-    if any(path.endswith(".lean") for path in changed):
-        focus.append("Attack theorem statement strength, vacuity, and hidden assumptions.")
-        focus.append("Check LIVE/BRIDGE/MODEL/WRAPPER classification against what the theorem actually proves.")
-    if "proof_coverage.json" in changed or "PROOF_COVERAGE.md" in changed:
-        focus.append("Check proof coverage labels and evidence taxonomy against actual theorem state.")
-    if "refinement_bridge.json" in changed or any(path.startswith("RubinFormal/Refinement/") for path in changed):
-        focus.append("Check refinement bridge claims against executable/runtime binding and trace assumptions.")
-    if any(path.startswith("traces/") or path.endswith(".jsonl") for path in changed):
-        focus.append("Check trace freshness, fixture digest, and replay assumptions.")
-    if any(path.endswith(".md") for path in changed):
-        focus.append("Block docs that overclaim machine-checked status, coverage, or parser/live binding.")
+    focus = [message for predicate, message in FOCUS_RULES if predicate(changed)]
     if not focus:
-        focus.append("Perform hostile formal review over the changed claim surface and directly coupled repo files.")
+        focus.append(
+            "Perform hostile formal review over the changed claim surface "
+            "and directly coupled repo files."
+        )
     return focus
 
 
-def write_fullscan(path: Path, changed: set[str], profile: ReviewProfile, active_lenses: list[str]) -> None:
+def write_fullscan(
+    path: Path,
+    changed: set[str],
+    profile: ReviewProfile,
+    active_lenses: list[str],
+) -> None:
     lines = [
         "Skill-backed full-scan supplement:",
         "- This is a local formal pre-push review plan for rubin-formal.",
-        "- The reviewer may inspect the repository read-only for context, but findings must stay grounded in the changed claim surface.",
+        "- The reviewer may inspect the repository read-only for context, "
+        "but findings must stay grounded in the changed claim surface.",
         f"- Selected review profile: {profile.name}.",
-        f"- Model route: {profile.model} ({profile.model_reasoning_effort}), combine-if-paths<={profile.combine_review_units_when_at_most}.",
+        "- Model route: "
+        f"{profile.model} ({profile.model_reasoning_effort}), "
+        f"combine-if-paths<={profile.combine_review_units_when_at_most}.",
         f"- ACTIVE_LENSES: {','.join(active_lenses)}",
         "",
         "Changed files in scope:",
@@ -99,14 +146,25 @@ def write_fullscan(path: Path, changed: set[str], profile: ReviewProfile, active
         ]
     )
     if "doc-verification" in active_lenses:
-        lines.append("- doc-verification: changed docs/coverage metadata must not overclaim proof state.")
+        lines.append(
+            "- doc-verification: changed docs/coverage metadata "
+            "must not overclaim proof state."
+        )
     if "trace-consistency" in active_lenses:
-        lines.append("- trace-consistency: changed traces/replay artifacts must stay fresh and coupled to current inputs.")
+        lines.append(
+            "- trace-consistency: changed traces/replay artifacts "
+            "must stay fresh and coupled to current inputs."
+        )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Select rubin-formal local pre-push review profile and write prompt supplements.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Select rubin-formal local pre-push review profile "
+            "and write prompt supplements."
+        )
+    )
     parser.add_argument("--changed-files", required=True)
     parser.add_argument("--focus-output", required=True)
     parser.add_argument("--fullscan-output", required=True)

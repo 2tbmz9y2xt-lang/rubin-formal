@@ -7,19 +7,10 @@ import re
 import sys
 from pathlib import Path
 
+from prepush_review_common import parse_unique_csv
+
 REQUIRED_KEYS = ("CHECK_TYPE", "ACTIVE_LENSES", "LENSES_COVERED", "NO_FINDINGS", "RATIONALE")
 ALLOWED_CHECK_TYPES = {"formal_repo_review"}
-
-
-def parse_csv(raw: str) -> list[str]:
-    if raw.strip().lower() == "none":
-        return []
-    values: list[str] = []
-    for item in raw.split(","):
-        value = item.strip()
-        if value and value not in values:
-            values.append(value)
-    return values
 
 
 def parse_summary(summary: str) -> dict[str, str]:
@@ -60,7 +51,52 @@ def parse_lenses_covered(raw: str) -> dict[str, str]:
     return covered
 
 
-def validate_contract(*, summary: str, findings: list[object], expected_check_type: str, expected_active_lenses: list[str]) -> list[str]:
+def validate_findings_flag(
+    *,
+    no_findings_raw: str,
+    findings_empty: bool,
+) -> tuple[bool, list[str]]:
+    errors: list[str] = []
+    if no_findings_raw not in {"true", "false"}:
+        errors.append(f"NO_FINDINGS must be true|false, got {no_findings_raw!r}")
+        return False, errors
+    no_findings = no_findings_raw == "true"
+    if no_findings != findings_empty:
+        errors.append(
+            "NO_FINDINGS mismatch with findings payload: "
+            f"no_findings={no_findings} findings_empty={findings_empty}"
+        )
+    return no_findings, errors
+
+
+def validate_rationale_mentions(
+    *,
+    rationale: str,
+    active_lenses: list[str],
+    no_findings: bool,
+) -> list[str]:
+    errors: list[str] = []
+    if not rationale:
+        return ["RATIONALE must be non-empty"]
+    if not no_findings:
+        return errors
+    rationale_lc = rationale.lower()
+    for lens in active_lenses:
+        if lens.lower() not in rationale_lc:
+            errors.append(
+                "RATIONALE must mention active lens when "
+                f"NO_FINDINGS=true: {lens!r}"
+            )
+    return errors
+
+
+def validate_contract(
+    *,
+    summary: str,
+    findings: list[object],
+    expected_check_type: str,
+    expected_active_lenses: list[str],
+) -> list[str]:
     errors: list[str] = []
     if expected_check_type not in ALLOWED_CHECK_TYPES:
         errors.append(f"unsupported expected_check_type: {expected_check_type!r}")
@@ -72,8 +108,11 @@ def validate_contract(*, summary: str, findings: list[object], expected_check_ty
         return errors
 
     if fields["CHECK_TYPE"] != expected_check_type:
-        errors.append(f"CHECK_TYPE mismatch: expected={expected_check_type} actual={fields['CHECK_TYPE']}")
-    summary_active_lenses = parse_csv(fields["ACTIVE_LENSES"])
+        errors.append(
+            "CHECK_TYPE mismatch: "
+            f"expected={expected_check_type} actual={fields['CHECK_TYPE']}"
+        )
+    summary_active_lenses = parse_unique_csv(fields["ACTIVE_LENSES"])
     missing_active_lenses = sorted(set(expected_active_lenses) - set(summary_active_lenses))
     if missing_active_lenses:
         errors.append(
@@ -90,24 +129,18 @@ def validate_contract(*, summary: str, findings: list[object], expected_check_ty
         if covered.get(lens) != "ok":
             errors.append(f"LENSES_COVERED missing ok status for lens={lens!r}")
 
-    no_findings_raw = fields["NO_FINDINGS"].lower()
-    if no_findings_raw not in {"true", "false"}:
-        errors.append(f"NO_FINDINGS must be true|false, got {fields['NO_FINDINGS']!r}")
-        no_findings = False
-    else:
-        no_findings = no_findings_raw == "true"
-    findings_empty = len(findings) == 0
-    if no_findings != findings_empty:
-        errors.append(f"NO_FINDINGS mismatch with findings payload: no_findings={no_findings} findings_empty={findings_empty}")
-
-    rationale = fields["RATIONALE"]
-    if not rationale:
-        errors.append("RATIONALE must be non-empty")
-    if no_findings:
-        rationale_lc = rationale.lower()
-        for lens in expected_active_lenses:
-            if lens.lower() not in rationale_lc:
-                errors.append(f"RATIONALE must mention active lens when NO_FINDINGS=true: {lens!r}")
+    no_findings, no_findings_errors = validate_findings_flag(
+        no_findings_raw=fields["NO_FINDINGS"].lower(),
+        findings_empty=len(findings) == 0,
+    )
+    errors.extend(no_findings_errors)
+    errors.extend(
+        validate_rationale_mentions(
+            rationale=fields["RATIONALE"],
+            active_lenses=expected_active_lenses,
+            no_findings=no_findings,
+        )
+    )
     return errors
 
 
@@ -127,7 +160,7 @@ def main() -> int:
         summary=result.get("summary", ""),
         findings=findings,
         expected_check_type=args.expected_check_type.strip(),
-        expected_active_lenses=parse_csv(args.active_lenses),
+        expected_active_lenses=parse_unique_csv(args.active_lenses),
     )
     if errors:
         print("summary-contract: FAIL", file=sys.stderr)
