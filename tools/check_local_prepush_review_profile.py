@@ -77,6 +77,10 @@ def load_contract_payload(path: Path | None = None) -> dict[str, object]:
                 raise ValueError(
                     f"review contract profile {profile_name!r} field {field_name!r} must be an integer"
                 )
+            if value < 1:
+                raise ValueError(
+                    f"review contract profile {profile_name!r} field {field_name!r} must be an integer >= 1"
+                )
         for field_name in ("required_lenses", "conditional_lenses"):
             value = profile_data[field_name]
             if not isinstance(value, list) or any(
@@ -255,10 +259,9 @@ def write_fullscan(
     required_lens_set = set(profile.required_lenses)
     for lens_name in profile.required_lenses:
         lines.append(f"- {lens_name}: {describe_formal_lens(lens_name)}")
-    if "doc-verification" in active_lenses and "doc-verification" not in required_lens_set:
-        lines.append(f"- doc-verification: {describe_formal_lens('doc-verification')}")
-    if "trace-consistency" in active_lenses and "trace-consistency" not in required_lens_set:
-        lines.append(f"- trace-consistency: {describe_formal_lens('trace-consistency')}")
+    for lens_name in active_lenses:
+        if lens_name not in required_lens_set:
+            lines.append(f"- {lens_name}: {describe_formal_lens(lens_name)}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

@@ -7,6 +7,7 @@ from pathlib import Path
 FORMAL_REVIEW_CONTRACT_PATH = Path(__file__).resolve().with_name(
     "prepush_review_contract.json"
 )
+FORMAL_REVIEW_CONTRACT_SCHEMA_VERSION = 1
 FORMAL_LENS_DESCRIPTIONS = {
     "code-review": "baseline correctness/regression pass over the changed claim surface.",
     "diff-scan": "strict diff-grounded pass; do not invent hidden changes.",
@@ -54,6 +55,12 @@ def load_formal_review_contract(path: Path | None = None) -> dict[str, object]:
         raise ValueError(f"invalid review contract JSON: {exc}") from exc
     if not isinstance(payload, dict):
         raise ValueError("review contract must be a JSON object")
+    schema_version = payload.get("schema_version")
+    if schema_version != FORMAL_REVIEW_CONTRACT_SCHEMA_VERSION:
+        raise ValueError(
+            "unsupported review contract schema_version: "
+            f"expected {FORMAL_REVIEW_CONTRACT_SCHEMA_VERSION}, got {schema_version!r}"
+        )
     return payload
 
 

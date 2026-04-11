@@ -66,6 +66,7 @@ class FormalReviewProfileTests(unittest.TestCase):
             contract.write_text(
                 json.dumps(
                     {
+                        "schema_version": 1,
                         "default_profile": "formal_repo_review",
                         "profiles": {
                             "formal_repo_review": {
@@ -93,6 +94,56 @@ class FormalReviewProfileTests(unittest.TestCase):
                 m.allowed_check_types(contract),
                 {"auto", "formal_repo_review", "future_profile"},
             )
+
+    def test_allowed_check_types_rejects_unsupported_schema_version(self) -> None:
+        with TemporaryDirectory() as td:
+            contract = Path(td) / "prepush_review_contract.json"
+            contract.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "default_profile": "formal_repo_review",
+                        "profiles": {
+                            "formal_repo_review": {
+                                "model": "gpt-5.4-mini",
+                                "model_reasoning_effort": "xhigh",
+                                "stall_seconds": 240,
+                                "combine_review_units_when_at_most": 1,
+                                "required_lenses": ["code-review"],
+                                "conditional_lenses": [],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "unsupported review contract schema_version"):
+                m.allowed_check_types(contract)
+
+    def test_load_contract_payload_rejects_non_positive_integer_fields(self) -> None:
+        with TemporaryDirectory() as td:
+            contract = Path(td) / "prepush_review_contract.json"
+            contract.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "default_profile": "formal_repo_review",
+                        "profiles": {
+                            "formal_repo_review": {
+                                "model": "gpt-5.4-mini",
+                                "model_reasoning_effort": "xhigh",
+                                "stall_seconds": 0,
+                                "combine_review_units_when_at_most": -1,
+                                "required_lenses": ["code-review"],
+                                "conditional_lenses": [],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "must be an integer >= 1"):
+                m.load_contract_payload(contract)
 
     def test_focus_lines_use_suffix_match_for_metadata_files(self) -> None:
         focus = m.focus_lines_for(
@@ -156,6 +207,33 @@ class FormalReviewProfileTests(unittest.TestCase):
             self.assertIn("- diff-scan: strict diff-grounded pass", text)
             self.assertNotIn("formal-proof-soundness", text)
 
+    def test_write_fullscan_lists_all_non_required_active_lenses(self) -> None:
+        with TemporaryDirectory() as td:
+            output = Path(td) / "fullscan.txt"
+            profile = m.ReviewProfile(
+                name="future_profile",
+                model="gpt-5.4-mini",
+                model_reasoning_effort="high",
+                stall_seconds=120,
+                combine_review_units_when_at_most=2,
+                required_lenses=("code-review",),
+                conditional_lenses=(),
+            )
+            original_describe = m.describe_formal_lens
+            m.describe_formal_lens = lambda lens_name: f"description for {lens_name}"
+            try:
+                m.write_fullscan(
+                    output,
+                    {"notes.md"},
+                    profile,
+                    ["code-review", "doc-verification", "future-conditional"],
+                )
+            finally:
+                m.describe_formal_lens = original_describe
+            text = output.read_text(encoding="utf-8")
+            self.assertIn("- doc-verification: description for doc-verification", text)
+            self.assertIn("- future-conditional: description for future-conditional", text)
+
     def test_write_fullscan_does_not_duplicate_required_optional_lenses(self) -> None:
         with TemporaryDirectory() as td:
             output = Path(td) / "fullscan.txt"
@@ -179,6 +257,7 @@ class FormalReviewProfileTests(unittest.TestCase):
             contract.write_text(
                 json.dumps(
                     {
+                        "schema_version": 1,
                         "default_profile": "formal_repo_review",
                         "profiles": {
                             "formal_repo_review": {
