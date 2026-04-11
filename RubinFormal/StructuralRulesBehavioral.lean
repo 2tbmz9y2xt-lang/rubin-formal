@@ -4,19 +4,14 @@ import RubinFormal.BytesEqLemmas
 /-!
 # Transaction Structural Rules Behavioral Proofs (§16)
 
-Universal behavioral theorems on the live `validateWitnessItemLengths`
-and `validateThresholdSigSpendNoCrypto` validators.
+Legacy pre-rotation LIVE theorems on `validateWitnessItemLengths` and
+`validateThresholdSigSpendNoCrypto`, plus registry companion theorems that
+rebind the spend-side claim surface to the suite-aware helper layer.
 
 ## Coverage summary
-- R1: unknown suite universal rejection (∀ suiteId ∉ {SENTINEL, ML_DSA_87})
-- R2: sentinel non-empty pubkey/sig universal rejection
-- R3: sentinel empty pubkey+sig universal acceptance
-- R4: ML-DSA-87 wrong pubkey size universal rejection
-- R5a: ML-DSA-87 empty sig universal rejection
-- R5b: ML-DSA-87 sig too large universal rejection
-- R6: ML-DSA-87 valid lengths universal acceptance
-- R7: threshold sig spend wrong witness count universal rejection
-- R8: threshold sig spend unknown suite anywhere universal rejection
+- R1-R14 legacy pre-rotation LIVE spend-side properties
+- registry companions on the universal helper layer for the same spend-side
+  properties
 - Concrete examples retained as regression tests.
 -/
 
@@ -43,11 +38,12 @@ theorem sentinel_empty_accepted :
       ⟨RubinFormal.SUITE_ID_SENTINEL, ByteArray.empty, ByteArray.empty⟩ 0 =
     .ok () := by rfl
 
-/-! ## R1: Unknown suite — universal rejection -/
+/-! ## R1: Unknown suite — legacy pre-rotation rejection -/
 
-/-- **R1 (universal):** Any suite ID ∉ {SENTINEL, ML_DSA_87} is rejected
-    with TX_ERR_SIG_ALG_INVALID. LIVE on `validateWitnessItemLengths`. -/
-theorem unknown_suite_rejected_universal
+/-- **R1 (legacy pre-rotation):** Any suite ID ∉ {SENTINEL, ML_DSA_87} is
+    rejected with TX_ERR_SIG_ALG_INVALID by the hardcoded live
+    `validateWitnessItemLengths` path. -/
+theorem unknown_suite_rejected_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hNotS : w.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL)
     (hNotM : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
@@ -61,11 +57,12 @@ theorem unknown_suite_rejected_universal
     CovenantGenesisV1.SUITE_ID_ML_DSA_87]
   simp [hS, hM]; rfl
 
-/-! ## R2: Sentinel — non-empty pubkey or sig rejected -/
+/-! ## R2: Sentinel — legacy pre-rotation non-empty rejection -/
 
-/-- **R2 (universal):** Sentinel with non-empty pubkey or sig is rejected
-    with TX_ERR_PARSE. LIVE on `validateWitnessItemLengths`. -/
-theorem sentinel_nonempty_rejected_universal
+/-- **R2 (legacy pre-rotation):** Sentinel with non-empty pubkey or sig is
+    rejected with TX_ERR_PARSE by the hardcoded live
+    `validateWitnessItemLengths` path. -/
+theorem sentinel_nonempty_rejected_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hS : w.suiteId = RubinFormal.SUITE_ID_SENTINEL)
     (hNE : w.pubkey.size ≠ 0 ∨ w.signature.size ≠ 0) :
@@ -77,11 +74,11 @@ theorem sentinel_nonempty_rejected_universal
   · simp [bne_iff_ne, hp, Bool.true_or]; rfl
   · simp [bne_iff_ne, hs, Bool.or_true]; rfl
 
-/-! ## R3: Sentinel — empty pubkey+sig accepted -/
+/-! ## R3: Sentinel — legacy pre-rotation empty acceptance -/
 
-/-- **R3 (universal):** Sentinel with both empty is accepted.
-    LIVE on `validateWitnessItemLengths`. -/
-theorem sentinel_empty_accepted_universal
+/-- **R3 (legacy pre-rotation):** Sentinel with both empty is accepted by the
+    hardcoded live `validateWitnessItemLengths` path. -/
+theorem sentinel_empty_accepted_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hS : w.suiteId = RubinFormal.SUITE_ID_SENTINEL)
     (hPE : w.pubkey.size = 0)
@@ -92,11 +89,11 @@ theorem sentinel_empty_accepted_universal
   simp only [hS, beq_self_eq_true, ite_true]
   simp [bne_iff_ne, hPE, hSE]; rfl
 
-/-! ## R4: ML-DSA-87 — wrong pubkey size rejected -/
+/-! ## R4: ML-DSA-87 — legacy pre-rotation wrong pubkey rejection -/
 
-/-- **R4 (universal):** ML-DSA-87 with wrong pubkey size is rejected.
-    LIVE on `validateWitnessItemLengths`. -/
-theorem mldsa87_wrong_pubkey_rejected_universal
+/-- **R4 (legacy pre-rotation):** ML-DSA-87 with wrong pubkey size is
+    rejected by the hardcoded live `validateWitnessItemLengths` path. -/
+theorem mldsa87_wrong_pubkey_rejected_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
     (hBad : w.pubkey.size ≠ UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES) :
@@ -107,11 +104,11 @@ theorem mldsa87_wrong_pubkey_rejected_universal
     CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
   simp [show w.suiteId ≠ 0 from by omega, hM, bne_iff_ne, hBad, Bool.true_or]; rfl
 
-/-! ## R5: ML-DSA-87 — sig bounds rejected -/
+/-! ## R5: ML-DSA-87 — legacy pre-rotation sig bounds rejection -/
 
-/-- **R5a (universal):** ML-DSA-87 with empty sig is rejected.
-    LIVE on `validateWitnessItemLengths`. -/
-theorem mldsa87_empty_sig_rejected_universal
+/-- **R5a (legacy pre-rotation):** ML-DSA-87 with empty sig is rejected by
+    the hardcoded live `validateWitnessItemLengths` path. -/
+theorem mldsa87_empty_sig_rejected_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
     (hPOk : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES)
@@ -123,9 +120,9 @@ theorem mldsa87_empty_sig_rejected_universal
     CovenantGenesisV1.SUITE_ID_ML_DSA_87] at *
   simp [show w.suiteId ≠ 0 from by omega, hM, bne_iff_ne, hPOk, hSig0]; rfl
 
-/-- **R5b (universal):** ML-DSA-87 with sig too large is rejected.
-    LIVE on `validateWitnessItemLengths`. -/
-theorem mldsa87_sig_too_large_rejected_universal
+/-- **R5b (legacy pre-rotation):** ML-DSA-87 with sig too large is rejected
+    by the hardcoded live `validateWitnessItemLengths` path. -/
+theorem mldsa87_sig_too_large_rejected_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
     (hPOk : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES)
@@ -141,11 +138,11 @@ theorem mldsa87_sig_too_large_rejected_universal
   · exfalso; rename_i hf; simp only [bne_iff_ne, hPOk, not_true_eq_false, Bool.false_or,
       Bool.or_eq_true, decide_eq_true_eq] at hf; omega
 
-/-! ## R6: ML-DSA-87 — valid lengths accepted -/
+/-! ## R6: ML-DSA-87 — legacy pre-rotation valid lengths acceptance -/
 
-/-- **R6 (universal):** ML-DSA-87 with valid lengths is accepted.
-    LIVE on `validateWitnessItemLengths`. -/
-theorem mldsa87_valid_accepted_universal
+/-- **R6 (legacy pre-rotation):** ML-DSA-87 with valid lengths is accepted by
+    the hardcoded live `validateWitnessItemLengths` path. -/
+theorem mldsa87_valid_accepted_pre_rotation
     (w : WitnessItem) (h : Nat)
     (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
     (hPOk : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES)
@@ -160,11 +157,12 @@ theorem mldsa87_valid_accepted_universal
         show w.signature.size ≠ 0 from by omega]
   simp [show ¬(4628 < w.signature.size) from by omega]; rfl
 
-/-! ## R7: Threshold sig spend — wrong witness count -/
+/-! ## R7: Threshold sig spend — legacy pre-rotation wrong count rejection -/
 
-/-- **R7 (universal):** Wrong witness count in threshold spend is rejected
-    with TX_ERR_PARSE. LIVE on `validateThresholdSigSpendNoCrypto`. -/
-theorem threshold_wrong_count_rejected_universal
+/-- **R7 (legacy pre-rotation):** Wrong witness count in threshold spend is
+    rejected with TX_ERR_PARSE by the hardcoded live
+    `validateThresholdSigSpendNoCrypto` path. -/
+theorem threshold_wrong_count_rejected_pre_rotation
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
     (hMismatch : ws.length ≠ keys.length) :
@@ -173,12 +171,12 @@ theorem threshold_wrong_count_rejected_universal
   unfold UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto
   simp [hMismatch]; rfl
 
-/-! ## R8: Threshold sig spend — unknown suite in witness rejected -/
+/-! ## R8: Threshold sig spend — legacy pre-rotation unknown suite rejection -/
 
-/-- **R8 (universal):** If the first witness in a threshold spend has unknown
-    suite, the function rejects with TX_ERR_SIG_ALG_INVALID — regardless of
-    list length, key content, threshold, or block height.
-    LIVE on `validateThresholdSigSpendNoCrypto`. -/
+/-- **R8a (legacy pre-rotation):** If the first witness in a threshold spend
+    has unknown suite, the hardcoded live path rejects with
+    TX_ERR_SIG_ALG_INVALID — regardless of list length, key content,
+    threshold, or block height. -/
 theorem threshold_unknown_suite_head_rejected
     (k : Bytes) (krest : List Bytes) (w : WitnessItem) (wrest : List WitnessItem)
     (h : Nat) (ctx : String) (threshold : Nat)
@@ -411,12 +409,11 @@ private theorem thresholdBody_mismatch_error
     Except.error "TX_ERR_SIG_INVALID"
   rfl
 
-/-- **R8 (universal):** Any unknown suite appearing anywhere in the threshold
-    witness/key zip causes live threshold dispatch to reject with
-    TX_ERR_SIG_ALG_INVALID. Earlier safe prefix items may yield, but they
-    cannot suppress the first unknown-suite error. LIVE on
-    `validateThresholdSigSpendNoCrypto`. -/
-theorem threshold_unknown_suite_anywhere_rejected_universal
+/-- **R8b (legacy pre-rotation):** Any unknown suite appearing anywhere in the
+    threshold witness/key zip causes the hardcoded live threshold dispatch to
+    reject with TX_ERR_SIG_ALG_INVALID. Earlier safe prefix items may yield,
+    but they cannot suppress the first unknown-suite error. -/
+theorem threshold_unknown_suite_anywhere_rejected_pre_rotation
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
     (safe : List (WitnessItem × Bytes))
@@ -464,11 +461,10 @@ theorem threshold_unknown_suite_anywhere_rejected_universal
     rfl
   simpa using hFinal
 
-/-- Follow-up theorem surface: any ML-DSA-87/key mismatch appearing anywhere
-    in the threshold witness/key zip causes live threshold dispatch to reject
-    with TX_ERR_SIG_INVALID. Earlier safe prefix items may yield, but they
-    cannot suppress the first mismatch error. LIVE on
-    `validateThresholdSigSpendNoCrypto`. -/
+/-- **R9 (legacy pre-rotation):** Any ML-DSA-87/key mismatch appearing
+    anywhere in the threshold witness/key zip causes the hardcoded live
+    threshold dispatch to reject with TX_ERR_SIG_INVALID. Earlier safe prefix
+    items may yield, but they cannot suppress the first mismatch error. -/
 theorem threshold_hash_mismatch_anywhere_rejected
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
@@ -517,10 +513,10 @@ theorem threshold_hash_mismatch_anywhere_rejected
     rfl
   simpa using hFinal
 
-/-- Follow-up theorem surface: if every threshold witness/key pair is
+/-- **R10 (legacy pre-rotation):** If every threshold witness/key pair is
     structurally safe but the accumulated number of ML-DSA-87 matches stays
-    below `threshold`, the live validator rejects with `TX_ERR_SIG_INVALID`.
-    LIVE on `validateThresholdSigSpendNoCrypto`. -/
+    below `threshold`, the hardcoded live validator rejects with
+    `TX_ERR_SIG_INVALID`. -/
 theorem threshold_below_required_count_rejected
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
@@ -566,10 +562,9 @@ theorem threshold_below_required_count_rejected
     simp [Except.bind, hBelow]
   simpa using hFinal
 
-/-- Follow-up theorem surface: if every threshold witness/key pair is
+/-- **R11 (legacy pre-rotation):** If every threshold witness/key pair is
     structurally safe and the accumulated number of ML-DSA-87 matches reaches
-    `threshold`, the live validator accepts. LIVE on
-    `validateThresholdSigSpendNoCrypto`. -/
+    `threshold`, the hardcoded live validator accepts. -/
 theorem threshold_required_count_accepts
     (keys : List Bytes) (threshold : Nat)
     (ws : List WitnessItem) (h : Nat) (ctx : String)
@@ -617,9 +612,9 @@ theorem threshold_required_count_accepts
     simp [Except.bind, hNotBelow]
   simpa using hFinal
 
-/-- Follow-up outer live layer: when vault sponsor checks pass, any threshold
-    hash mismatch anywhere propagates through `validateVaultSpend` as
-    `TX_ERR_SIG_INVALID`. -/
+/-- **R12 (legacy pre-rotation):** When vault sponsor checks pass, any
+    threshold hash mismatch anywhere propagates through the hardcoded live
+    `validateVaultSpend` path as `TX_ERR_SIG_INVALID`. -/
 theorem vault_threshold_hash_mismatch_anywhere_rejected
     (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
@@ -642,9 +637,10 @@ theorem vault_threshold_hash_mismatch_anywhere_rejected
       vKeys vThr vWit h "CORE_VAULT" safe bad rest hLen hZip hSafe hBad
   simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
 
-/-- Follow-up outer live layer: when vault sponsor checks pass and the zipped
-    threshold witness/key loop stays structurally safe but below threshold,
-    `validateVaultSpend` rejects with `TX_ERR_SIG_INVALID`. -/
+/-- **R13 (legacy pre-rotation):** When vault sponsor checks pass and the
+    zipped threshold witness/key loop stays structurally safe but below
+    threshold, the hardcoded live `validateVaultSpend` path rejects with
+    `TX_ERR_SIG_INVALID`. -/
 theorem vault_threshold_below_required_count_rejected
     (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
@@ -662,9 +658,10 @@ theorem vault_threshold_below_required_count_rejected
     exact threshold_below_required_count_rejected vKeys vThr vWit h "CORE_VAULT" hLen hSafe hBelow
   simp [UtxoApplyGenesisV1.validateVaultSpend, hSponsorOk, hSig]
 
-/-- Follow-up outer live layer: when vault sponsor checks pass, the threshold
-    witness/key loop is structurally safe, enough ML-DSA-87 items match, and
-    the whitelist passes, `validateVaultSpend` accepts. -/
+/-- **R14 (legacy pre-rotation):** When vault sponsor checks pass, the
+    threshold witness/key loop is structurally safe, enough ML-DSA-87 items
+    match, and the whitelist passes, the hardcoded live `validateVaultSpend`
+    path accepts. -/
 theorem vault_threshold_required_count_accepts
     (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
@@ -689,7 +686,7 @@ theorem vault_threshold_required_count_accepts
 
     **Q-FORMAL-SPEND-COVENANT-FAMILY-REBIND-01** (issue #427).
 
-    Companion theorems that prove the same behavioural properties as R1-R11
+    Companion theorems that prove the same behavioural properties as R1-R14
     above, but against the **universal helper layer** introduced in Wave A1
     (`validateWitnessItemLengthsRegistry`) and Wave A2
     (`validateThresholdSigSpendRegistry`) at the `PRE_ROTATION_REGISTRY`
@@ -706,7 +703,7 @@ theorem vault_threshold_required_count_accepts
 
     **Class:** all companions are **BRIDGE** per rubin-formal-executor
     classification. Each transfers a property from legacy to the universal
-    Registry helper via the A1/A2 bridge rewrite.
+    Registry helper via the A1/A2/A3 bridge chain.
 
     **Limitations:** valid only on `PRE_ROTATION_REGISTRY` instance. Post-
     rotation registries with additional suites are not covered — that's
@@ -716,7 +713,7 @@ theorem vault_threshold_required_count_accepts
 
 /-- **R1 registry companion:** Any suite ID ∉ {SENTINEL, ML_DSA_87} is
     rejected by `validateWitnessItemLengthsRegistry PRE_ROTATION_REGISTRY`
-    with TX_ERR_SIG_ALG_INVALID. BRIDGE to `unknown_suite_rejected_universal`
+    with TX_ERR_SIG_ALG_INVALID. BRIDGE to `unknown_suite_rejected_pre_rotation`
     via `validateWitnessItemLengths_eq_registry_pre_rotation`. -/
 theorem unknown_suite_rejected_registry_pre_rotation
     (w : WitnessItem) (h : Nat)
@@ -726,7 +723,7 @@ theorem unknown_suite_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .error "TX_ERR_SIG_ALG_INVALID" := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact unknown_suite_rejected_universal w h hNotS hNotM
+  exact unknown_suite_rejected_pre_rotation w h hNotS hNotM
 
 /-- **R2 registry companion:** Sentinel with non-empty pubkey or sig is
     rejected with TX_ERR_PARSE. BRIDGE via A1 bridge. -/
@@ -738,7 +735,7 @@ theorem sentinel_nonempty_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .error "TX_ERR_PARSE" := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact sentinel_nonempty_rejected_universal w h hS hNE
+  exact sentinel_nonempty_rejected_pre_rotation w h hS hNE
 
 /-- **R3 registry companion:** Sentinel with both empty is accepted.
     BRIDGE via A1 bridge. -/
@@ -751,7 +748,7 @@ theorem sentinel_empty_accepted_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .ok () := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact sentinel_empty_accepted_universal w h hS hPE hSE
+  exact sentinel_empty_accepted_pre_rotation w h hS hPE hSE
 
 /-- **R4 registry companion:** ML-DSA-87 with wrong pubkey size is rejected.
     BRIDGE via A1 bridge. -/
@@ -763,7 +760,7 @@ theorem mldsa87_wrong_pubkey_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .error "TX_ERR_SIG_NONCANONICAL" := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact mldsa87_wrong_pubkey_rejected_universal w h hM hBad
+  exact mldsa87_wrong_pubkey_rejected_pre_rotation w h hM hBad
 
 /-- **R5a registry companion:** ML-DSA-87 with empty sig is rejected.
     BRIDGE via A1 bridge. -/
@@ -776,7 +773,7 @@ theorem mldsa87_empty_sig_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .error "TX_ERR_SIG_NONCANONICAL" := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact mldsa87_empty_sig_rejected_universal w h hM hPOk hSig0
+  exact mldsa87_empty_sig_rejected_pre_rotation w h hM hPOk hSig0
 
 /-- **R5b registry companion:** ML-DSA-87 with sig too large is rejected.
     BRIDGE via A1 bridge. -/
@@ -789,7 +786,7 @@ theorem mldsa87_sig_too_large_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .error "TX_ERR_SIG_NONCANONICAL" := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact mldsa87_sig_too_large_rejected_universal w h hM hPOk hBig
+  exact mldsa87_sig_too_large_rejected_pre_rotation w h hM hPOk hBig
 
 /-- **R6 registry companion:** ML-DSA-87 with valid lengths is accepted.
     BRIDGE via A1 bridge. -/
@@ -803,12 +800,12 @@ theorem mldsa87_valid_accepted_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY w h =
       .ok () := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
-  exact mldsa87_valid_accepted_universal w h hM hPOk hSPos hSBound
+  exact mldsa87_valid_accepted_pre_rotation w h hM hPOk hSPos hSBound
 
 /-! ### R7-R11 Threshold sig spend — registry companions -/
 
 /-- **R7 registry companion:** Wrong witness count in threshold spend is
-    rejected with TX_ERR_PARSE. BRIDGE to `threshold_wrong_count_rejected_universal`
+    rejected with TX_ERR_PARSE. BRIDGE to `threshold_wrong_count_rejected_pre_rotation`
     via `validateThresholdSigSpend_eq_registry_pre_rotation`. -/
 theorem threshold_wrong_count_rejected_registry_pre_rotation
     (keys : List Bytes) (threshold : Nat)
@@ -818,7 +815,7 @@ theorem threshold_wrong_count_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
       .error "TX_ERR_PARSE" := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
-  exact threshold_wrong_count_rejected_universal keys threshold ws h ctx hMismatch
+  exact threshold_wrong_count_rejected_pre_rotation keys threshold ws h ctx hMismatch
 
 /-- **R8a registry companion:** Unknown suite at the head of a threshold
     witness list is rejected with TX_ERR_SIG_ALG_INVALID. BRIDGE via A2 bridge. -/
@@ -851,7 +848,7 @@ theorem threshold_unknown_suite_anywhere_rejected_registry_pre_rotation
         Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
       .error "TX_ERR_SIG_ALG_INVALID" := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
-  exact threshold_unknown_suite_anywhere_rejected_universal
+  exact threshold_unknown_suite_anywhere_rejected_pre_rotation
     keys threshold ws h ctx safe bad rest hLen hZip hSafe hBad
 
 /-- **R9 registry companion:** Any ML-DSA-87/key hash mismatch appearing
@@ -903,5 +900,89 @@ theorem threshold_required_count_accepts_registry_pre_rotation
       .ok () := by
   rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
   exact threshold_required_count_accepts keys threshold ws h ctx hLen hSafe hEnough
+
+/-! ### R12-R14 Outer vault propagation — registry companions -/
+
+/-- **R12 registry companion:** When vault sponsor checks pass, any threshold
+    hash mismatch anywhere propagates through
+    `validateVaultSpendRegistry PRE_ROTATION_REGISTRY` as
+    `TX_ERR_SIG_INVALID`. -/
+theorem vault_threshold_hash_mismatch_anywhere_rejected_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hZip : List.zip vWit vKeys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairMismatch bad) :
+    UtxoApplyGenesisV1.validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY
+      true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .error "TX_ERR_SIG_INVALID" := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY vKeys vThr vWit h "CORE_VAULT" =
+        .error "TX_ERR_SIG_INVALID" := by
+    exact threshold_hash_mismatch_anywhere_rejected_registry_pre_rotation
+      vKeys vThr vWit h "CORE_VAULT" safe bad rest hLen hZip hSafe hBad
+  exact UtxoApplyGenesisV1.vault_threshold_error_propagates_registry_pre_rotation
+    lids covs vOwnLid vKeys vThr vWit h outs wl "TX_ERR_SIG_INVALID"
+    hSponsorOk hSig
+
+/-- **R13 registry companion:** When vault sponsor checks pass and the zipped
+    threshold witness/key loop stays structurally safe but below threshold,
+    `validateVaultSpendRegistry PRE_ROTATION_REGISTRY` rejects with
+    `TX_ERR_SIG_INVALID`. -/
+theorem vault_threshold_below_required_count_rejected_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hSafe : ∀ p ∈ List.zip vWit vKeys, thresholdPairSafe p)
+    (hBelow : thresholdSafeCount (List.zip vWit vKeys) < vThr) :
+    UtxoApplyGenesisV1.validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY
+      true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .error "TX_ERR_SIG_INVALID" := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY vKeys vThr vWit h "CORE_VAULT" =
+        .error "TX_ERR_SIG_INVALID" := by
+    exact threshold_below_required_count_rejected_registry_pre_rotation
+      vKeys vThr vWit h "CORE_VAULT" hLen hSafe hBelow
+  exact UtxoApplyGenesisV1.vault_threshold_error_propagates_registry_pre_rotation
+    lids covs vOwnLid vKeys vThr vWit h outs wl "TX_ERR_SIG_INVALID"
+    hSponsorOk hSig
+
+/-- **R14 registry companion:** When vault sponsor checks pass, the threshold
+    witness/key loop is structurally safe, enough counted items match, and the
+    whitelist passes, `validateVaultSpendRegistry PRE_ROTATION_REGISTRY`
+    accepts. -/
+theorem vault_threshold_required_count_accepts_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List WitnessItem) (h : Nat)
+    (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hSponsorOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hLen : vWit.length = vKeys.length)
+    (hSafe : ∀ p ∈ List.zip vWit vKeys, thresholdPairSafe p)
+    (hEnough : vThr ≤ thresholdSafeCount (List.zip vWit vKeys))
+    (hWL : UtxoApplyGenesisV1.vaultSpendOutputsAllowed wl outs = true) :
+    UtxoApplyGenesisV1.validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY
+      true lids covs vOwnLid vKeys vThr vWit h outs wl =
+      .ok () := by
+  have hSig :
+      UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY vKeys vThr vWit h "CORE_VAULT" =
+        .ok () := by
+    exact threshold_required_count_accepts_registry_pre_rotation
+      vKeys vThr vWit h "CORE_VAULT" hLen hSafe hEnough
+  exact UtxoApplyGenesisV1.vault_all_pass_registry_pre_rotation
+    lids covs vOwnLid vKeys vThr vWit h outs wl hSponsorOk hSig hWL
 
 end RubinFormal

@@ -578,6 +578,59 @@ def validateVaultSpend
           Except.error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
         else Except.ok ()
 
+/-- Registry-aware vault spend helper used to rebind the spend-side theorem
+    surface to the suite-aware helper layer. It mirrors `validateVaultSpend`
+    exactly, but delegates threshold validation to
+    `validateThresholdSigSpendRegistry`. -/
+def validateVaultSpendRegistry
+    (reg : Rotation.SuiteRegistry)
+    (ownerAuthPresent : Bool)
+    (inputLockIds : List Bytes)
+    (inputCovTypes : List Nat)
+    (vaultOwnerLockId : Bytes)
+    (vaultKeys : List Bytes)
+    (vaultThreshold : Nat)
+    (vaultWitness : List UtxoBasicV1.WitnessItem)
+    (height : Nat)
+    (txOutputs : List UtxoBasicV1.TxOut)
+    (vaultWhitelist : List Bytes)
+    (rotDesc? : Option NativeSuiteRotation.RotationDeploymentDescriptor := none)
+    : Except String Unit :=
+  if !ownerAuthPresent then Except.error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED"
+  else
+    let sponsorOk := (List.zip inputCovTypes inputLockIds).all fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vaultOwnerLockId
+    if !sponsorOk then Except.error "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN"
+    else
+      match validateThresholdSigSpendRegistry reg vaultKeys vaultThreshold vaultWitness height "CORE_VAULT" rotDesc? with
+      | .error e => Except.error e
+      | .ok () =>
+        if !(vaultSpendOutputsAllowed vaultWhitelist txOutputs) then
+          Except.error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED"
+        else Except.ok ()
+
+/-- **Q-FORMAL-WAVE-A3 BRIDGE theorem** (class: BRIDGE). On
+    `PRE_ROTATION_REGISTRY`, the live hardcoded vault spend helper is
+    pointwise equal to the registry-aware helper. -/
+theorem validateVaultSpend_eq_registry_pre_rotation
+    (ownerAuthPresent : Bool)
+    (inputLockIds : List Bytes)
+    (inputCovTypes : List Nat)
+    (vaultOwnerLockId : Bytes)
+    (vaultKeys : List Bytes)
+    (vaultThreshold : Nat)
+    (vaultWitness : List UtxoBasicV1.WitnessItem)
+    (height : Nat)
+    (txOutputs : List UtxoBasicV1.TxOut)
+    (vaultWhitelist : List Bytes) :
+    validateVaultSpend ownerAuthPresent inputLockIds inputCovTypes vaultOwnerLockId
+      vaultKeys vaultThreshold vaultWitness height txOutputs vaultWhitelist =
+    validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY ownerAuthPresent
+      inputLockIds inputCovTypes vaultOwnerLockId vaultKeys vaultThreshold
+      vaultWitness height txOutputs vaultWhitelist := by
+  unfold validateVaultSpend validateVaultSpendRegistry
+  simp [validateThresholdSigSpend_eq_registry_pre_rotation]
+
 /-- Owner auth missing → TX_ERR_VAULT_OWNER_AUTH_REQUIRED. -/
 theorem vault_no_owner (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
@@ -585,6 +638,16 @@ theorem vault_no_owner (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     validateVaultSpend false lids covs vOwnLid vKeys vThr vWit h outs wl =
     .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED" := by
   simp [validateVaultSpend]
+
+/-- Registry companion for `vault_no_owner` on `PRE_ROTATION_REGISTRY`. -/
+theorem vault_no_owner_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem)
+    (h : Nat) (outs : List UtxoBasicV1.TxOut) (wl : List Bytes) :
+    validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY false lids covs
+      vOwnLid vKeys vThr vWit h outs wl =
+    .error "TX_ERR_VAULT_OWNER_AUTH_REQUIRED" := by
+  simp [validateVaultSpendRegistry]
 
 /-- Bad fee sponsor → TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN. -/
 theorem vault_bad_sponsor (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
@@ -595,6 +658,18 @@ theorem vault_bad_sponsor (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes
     validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl =
     .error "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN" := by
   simp [validateVaultSpend, hBad]
+
+/-- Registry companion for `vault_bad_sponsor` on `PRE_ROTATION_REGISTRY`. -/
+theorem vault_bad_sponsor_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem)
+    (h : Nat) (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hBad : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = false) :
+    validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY true lids covs
+      vOwnLid vKeys vThr vWit h outs wl =
+    .error "TX_ERR_VAULT_FEE_SPONSOR_FORBIDDEN" := by
+  simp [validateVaultSpendRegistry, hBad]
 
 /-- Generic live propagation bridge: once owner-auth and sponsor checks pass,
     any error returned by `validateThresholdSigSpendNoCrypto` is forwarded
@@ -611,6 +686,22 @@ theorem vault_threshold_error_propagates
     .error e := by
   simp [validateVaultSpend, hOk, hSig]
 
+/-- Registry companion for `vault_threshold_error_propagates` on
+    `PRE_ROTATION_REGISTRY`. -/
+theorem vault_threshold_error_propagates_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem)
+    (h : Nat) (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (e : String)
+    (hOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hSig : validateThresholdSigSpendRegistry Rotation.PRE_ROTATION_REGISTRY
+      vKeys vThr vWit h "CORE_VAULT" = .error e) :
+    validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY true lids covs
+      vOwnLid vKeys vThr vWit h outs wl =
+    .error e := by
+  simp [validateVaultSpendRegistry, hOk, hSig]
+
 /-- Bad whitelist → TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED. -/
 theorem vault_bad_whitelist (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
@@ -623,6 +714,21 @@ theorem vault_bad_whitelist (lids : List Bytes) (covs : List Nat) (vOwnLid : Byt
     .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED" := by
   simp [validateVaultSpend, hOk, hSig, hWL]
 
+/-- Registry companion for `vault_bad_whitelist` on `PRE_ROTATION_REGISTRY`. -/
+theorem vault_bad_whitelist_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem)
+    (h : Nat) (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hSig : validateThresholdSigSpendRegistry Rotation.PRE_ROTATION_REGISTRY
+      vKeys vThr vWit h "CORE_VAULT" = .ok ())
+    (hWL : vaultSpendOutputsAllowed wl outs = false) :
+    validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY true lids covs
+      vOwnLid vKeys vThr vWit h outs wl =
+    .error "TX_ERR_VAULT_OUTPUT_NOT_WHITELISTED" := by
+  simp [validateVaultSpendRegistry, hOk, hSig, hWL]
+
 /-- All vault rules pass → .ok (). -/
 theorem vault_all_pass (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem) (h : Nat)
@@ -633,6 +739,20 @@ theorem vault_all_pass (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
     (hWL : vaultSpendOutputsAllowed wl outs = true) :
     validateVaultSpend true lids covs vOwnLid vKeys vThr vWit h outs wl = .ok () := by
   simp [validateVaultSpend, hOk, hSig, hWL]
+
+/-- Registry companion for `vault_all_pass` on `PRE_ROTATION_REGISTRY`. -/
+theorem vault_all_pass_registry_pre_rotation
+    (lids : List Bytes) (covs : List Nat) (vOwnLid : Bytes)
+    (vKeys : List Bytes) (vThr : Nat) (vWit : List UtxoBasicV1.WitnessItem)
+    (h : Nat) (outs : List UtxoBasicV1.TxOut) (wl : List Bytes)
+    (hOk : (List.zip covs lids).all (fun (cov, lid) =>
+      cov == CovenantGenesisV1.COV_TYPE_VAULT || lid == vOwnLid) = true)
+    (hSig : validateThresholdSigSpendRegistry Rotation.PRE_ROTATION_REGISTRY
+      vKeys vThr vWit h "CORE_VAULT" = .ok ())
+    (hWL : vaultSpendOutputsAllowed wl outs = true) :
+    validateVaultSpendRegistry Rotation.PRE_ROTATION_REGISTRY true lids covs
+      vOwnLid vKeys vThr vWit h outs wl = .ok () := by
+  simp [validateVaultSpendRegistry, hOk, hSig, hWL]
 
 def applyNonCoinbaseTxBasicNoCrypto
     (txBytes : Bytes)
