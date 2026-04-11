@@ -279,7 +279,8 @@ def validate_contract(
     errors.extend(validate_check_type(fields, expected_check_type))
     errors.extend(active_lens_errors)
     errors.extend(covered_errors)
-    errors.extend(validate_covered_lenses(summary_active_lenses, covered))
+    if not active_lens_errors:
+        errors.extend(validate_covered_lenses(summary_active_lenses, covered))
     errors.extend(no_findings_errors)
     errors.extend(
         validate_rationale_mentions(

@@ -81,10 +81,7 @@ def compose_prompt(
     focus_lines: list[str],
     bundle_text: str,
 ) -> str:
-    try:
-        allowed = allowed_formal_check_types()
-    except ValueError as exc:
-        raise ValueError(str(exc)) from exc
+    allowed = allowed_formal_check_types()
     if check_type not in allowed:
         raise ValueError(f"unsupported check_type {check_type!r}")
     if not bundle_text.strip():

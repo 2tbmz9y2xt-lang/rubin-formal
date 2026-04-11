@@ -211,6 +211,10 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             expected_active_lenses=["code-review"],
         )
         self.assertTrue(any("duplicate entry" in err for err in errors))
+        self.assertFalse(
+            any("outside ACTIVE_LENSES" in err for err in errors),
+            msg=f"unexpected cascading errors: {errors}",
+        )
 
     def test_validate_contract_rejects_empty_active_lens_entries(self) -> None:
         summary = (
