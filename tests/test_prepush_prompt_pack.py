@@ -30,6 +30,7 @@ class FormalPromptPackTests(unittest.TestCase):
             "ACTIVE_LENSES=code-review,formal-proof-soundness,doc-verification",
             prompt,
         )
+        self.assertIn("relevant `AGENTS.md` files", prompt)
 
     def test_compose_prompt_rejects_unknown_check_type(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported check_type"):
