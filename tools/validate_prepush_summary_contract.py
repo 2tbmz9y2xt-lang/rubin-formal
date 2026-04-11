@@ -297,9 +297,9 @@ def load_result_payload(path: str) -> tuple[dict[str, object] | None, list[str]]
         raw_text = Path(path).read_text(encoding="utf-8")
         result = json.loads(raw_text)
     except (OSError, json.JSONDecodeError) as exc:
-        return None, [f"summary-contract: unable to read result-json: {exc}"]
+        return None, [f"unable to read result-json: {exc}"]
     if not isinstance(result, dict):
-        return None, ["summary-contract: result payload must be a JSON object"]
+        return None, ["result payload must be a JSON object"]
     return result, []
 
 
@@ -344,9 +344,7 @@ def main(argv: list[str] | None = None) -> int:
 
     result, load_errors = load_result_payload(args.result_json)
     if load_errors:
-        for err in load_errors:
-            print(err, file=sys.stderr)
-        return 2
+        return print_fail(load_errors)
     assert result is not None
 
     summary, findings, payload_errors = payload_validation_errors(result)

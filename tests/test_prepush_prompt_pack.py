@@ -63,7 +63,7 @@ class FormalPromptPackTests(unittest.TestCase):
             focus.write_text("x\n", encoding="utf-8")
             fullscan = td_path / "fullscan.txt"
             fullscan.write_text("y\n", encoding="utf-8")
-            with self.assertRaises(FileNotFoundError):
+            with self.assertRaisesRegex(SystemExit, "bundle file is missing"):
                 m.main(
                     [
                         "--check-type",
@@ -141,6 +141,31 @@ class FormalPromptPackTests(unittest.TestCase):
                     )
         finally:
             m.allowed_formal_check_types = original
+
+    def test_main_reports_missing_fullscan_cleanly(self) -> None:
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            focus = td_path / "focus.txt"
+            focus.write_text("x\n", encoding="utf-8")
+            bundle = td_path / "bundle.txt"
+            bundle.write_text("=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n", encoding="utf-8")
+            with self.assertRaisesRegex(SystemExit, "fullscan file is missing"):
+                m.main(
+                    [
+                        "--check-type",
+                        "formal_repo_review",
+                        "--active-lenses",
+                        "code-review",
+                        "--fullscan-path",
+                        str(td_path / "missing-fullscan.txt"),
+                        "--focus-path",
+                        str(focus),
+                        "--bundle-path",
+                        str(bundle),
+                        "--output",
+                        str(td_path / "out.txt"),
+                    ]
+                )
 
 
 if __name__ == "__main__":

@@ -123,6 +123,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True)
     args = parser.parse_args(argv)
 
+    fullscan_path = Path(args.fullscan_path)
+    focus_path = Path(args.focus_path)
+    bundle_path = Path(args.bundle_path)
+    output_path = Path(args.output)
+
     try:
         prompt = compose_prompt(
             check_type=args.check_type.strip(),
@@ -131,13 +136,16 @@ def main(argv: list[str] | None = None) -> int:
                 reject_empty=True,
                 reject_duplicates=True,
             ),
-            fullscan_text=read_required_text(Path(args.fullscan_path), "fullscan"),
-            focus_lines=read_nonempty_lines(Path(args.focus_path), "focus"),
-            bundle_text=read_required_text(Path(args.bundle_path), "bundle"),
+            fullscan_text=read_required_text(fullscan_path, "fullscan"),
+            focus_lines=read_nonempty_lines(focus_path, "focus"),
+            bundle_text=read_required_text(bundle_path, "bundle"),
         )
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
-    Path(args.output).write_text(prompt, encoding="utf-8")
+    try:
+        output_path.write_text(prompt, encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(f"failed to write output to {output_path}: {exc}") from exc
     return 0
 
 

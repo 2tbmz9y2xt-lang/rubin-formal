@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import contextlib
+import io
 import unittest
 from json import dumps
 from pathlib import Path
@@ -104,6 +106,25 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
                 ]
             )
             self.assertEqual(rc, 2)
+
+    def test_main_reports_load_errors_via_print_fail(self) -> None:
+        with TemporaryDirectory() as td:
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                rc = m.main(
+                    [
+                        "--result-json",
+                        str(Path(td) / "missing.json"),
+                        "--expected-check-type",
+                        "formal_repo_review",
+                        "--active-lenses",
+                        "code-review",
+                    ]
+                )
+            self.assertEqual(rc, 2)
+            err = stderr.getvalue()
+            self.assertIn("summary-contract: FAIL", err)
+            self.assertIn("unable to read result-json", err)
 
     def test_main_rejects_missing_model_field(self) -> None:
         with TemporaryDirectory() as td:
