@@ -301,4 +301,242 @@ theorem binding_recognized_openssl_digest32 :
     bindingRecognized "verify_sig_ext_openssl_digest32_v1" = true := by
   native_decide
 
+-- ============================================================================
+-- Section 7: Post-Parse Verify/Binding Path Ordering (D3)
+-- ============================================================================
+
+/-- Live post-parse CORE_EXT verification state.
+    This D3 model starts after covenant-data parse and digest extraction have
+    already succeeded. It captures only suite/native/binding route selection,
+    txcontext preconditions, and the final error-class mapping for the
+    `verify_sig_ext` callback paths. -/
+structure VerifySigExtLiveState where
+  suiteId : Nat
+  allowedSuites : List Nat
+  nativeRegistered : Bool
+  nativeSpendPermitted : Bool
+  nativeWitnessCanonical : Bool
+  txContextEnabled : Bool
+  verifySigExtSupported : Bool
+  txContextPresent : Bool
+  txContextContinuingPresent : Bool
+deriving Repr, DecidableEq
+
+/-- Route selection after parse/digest success and ACTIVE profile admission. -/
+inductive VerifySigExtRoute
+  | suiteReject
+  | nativeSpendReject
+  | nativeRegistryDriftReject
+  | nativeWitnessReject
+  | nativeVerify
+  | txContextUnsupportedReject
+  | txContextBundleReject
+  | txContextContinuingReject
+  | txContextVerify
+  | extUnsupportedReject
+  | extVerify
+deriving Repr, DecidableEq
+
+/-- Final error-class surface for the post-parse verify/binding lane. -/
+inductive VerifySigExtVerdict
+  | accept
+  | sigAlgInvalid
+  | sigInvalid
+  | sigNoncanonical
+deriving Repr, DecidableEq
+
+/-- Select the live verification route after parse and digest extraction.
+    The ordering mirrors `validateCoreExtWitnessAtHeight`: suite gate first,
+    then native-vs-ext dispatch, then txcontext/binding preconditions. -/
+def verifySigExtRoute (s : VerifySigExtLiveState) : VerifySigExtRoute :=
+  if !suiteAllowed s.suiteId s.allowedSuites then
+    .suiteReject
+  else if s.nativeRegistered then
+    if !s.nativeSpendPermitted then
+      .nativeSpendReject
+    else if !s.nativeWitnessCanonical then
+      .nativeWitnessReject
+    else
+      .nativeVerify
+  else if s.nativeSpendPermitted then
+    .nativeRegistryDriftReject
+  else if s.txContextEnabled then
+    if !s.verifySigExtSupported then
+      .txContextUnsupportedReject
+    else if !s.txContextPresent then
+      .txContextBundleReject
+    else if !s.txContextContinuingPresent then
+      .txContextContinuingReject
+    else
+      .txContextVerify
+  else if !s.verifySigExtSupported then
+    .extUnsupportedReject
+  else
+    .extVerify
+
+/-- Final verdict mapping for the live post-parse verify/binding lane.
+    `callbackErr` is meaningful only on the `verify_sig_ext` branches; the
+    native route models only success vs signature-invalid at this layer. -/
+def verifySigExtVerdict (route : VerifySigExtRoute) (callbackErr sigOk : Bool) :
+    VerifySigExtVerdict :=
+  match route with
+  | .suiteReject
+  | .nativeSpendReject
+  | .nativeRegistryDriftReject
+  | .txContextUnsupportedReject
+  | .extUnsupportedReject =>
+      .sigAlgInvalid
+  | .nativeWitnessReject =>
+      .sigNoncanonical
+  | .txContextBundleReject
+  | .txContextContinuingReject =>
+      .sigInvalid
+  | .nativeVerify =>
+      if sigOk then .accept else .sigInvalid
+  | .txContextVerify
+  | .extVerify =>
+      if callbackErr then .sigAlgInvalid else if sigOk then .accept else .sigInvalid
+
+/-- Runtime-facing error-code rendering for D3 route/verdict theorems. -/
+def verifySigExtErrCode : VerifySigExtVerdict → Option String
+  | .accept => none
+  | .sigAlgInvalid => some "TX_ERR_SIG_ALG_INVALID"
+  | .sigInvalid => some "TX_ERR_SIG_INVALID"
+  | .sigNoncanonical => some "TX_ERR_SIG_NONCANONICAL"
+
+theorem verify_sig_ext_suite_gate_rejects_before_path
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = false) :
+    verifySigExtRoute s = .suiteReject := by
+  simp [verifySigExtRoute, hSuite]
+
+theorem verify_sig_ext_registered_native_outside_spend_set_rejects
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = true)
+    (hSpend : s.nativeSpendPermitted = false) :
+    verifySigExtRoute s = .nativeSpendReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend]
+
+theorem verify_sig_ext_native_spend_set_without_registry_rejects
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = true) :
+    verifySigExtRoute s = .nativeRegistryDriftReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend]
+
+theorem verify_sig_ext_native_noncanonical_rejects_before_verify
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = true)
+    (hSpend : s.nativeSpendPermitted = true)
+    (hCanonical : s.nativeWitnessCanonical = false) :
+    verifySigExtRoute s = .nativeWitnessReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hCanonical]
+
+theorem verify_sig_ext_native_registered_canonical_reaches_native_verify
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = true)
+    (hSpend : s.nativeSpendPermitted = true)
+    (hCanonical : s.nativeWitnessCanonical = true) :
+    verifySigExtRoute s = .nativeVerify := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hCanonical]
+
+theorem verify_sig_ext_txcontext_unsupported_rejects
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = false)
+    (hTx : s.txContextEnabled = true)
+    (hSupport : s.verifySigExtSupported = false) :
+    verifySigExtRoute s = .txContextUnsupportedReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport]
+
+theorem verify_sig_ext_txcontext_missing_bundle_rejects
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = false)
+    (hTx : s.txContextEnabled = true)
+    (hSupport : s.verifySigExtSupported = true)
+    (hBundle : s.txContextPresent = false) :
+    verifySigExtRoute s = .txContextBundleReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport, hBundle]
+
+theorem verify_sig_ext_txcontext_missing_continuing_rejects
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = false)
+    (hTx : s.txContextEnabled = true)
+    (hSupport : s.verifySigExtSupported = true)
+    (hBundle : s.txContextPresent = true)
+    (hContinuing : s.txContextContinuingPresent = false) :
+    verifySigExtRoute s = .txContextContinuingReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport, hBundle, hContinuing]
+
+theorem verify_sig_ext_txcontext_ready_reaches_verify
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = false)
+    (hTx : s.txContextEnabled = true)
+    (hSupport : s.verifySigExtSupported = true)
+    (hBundle : s.txContextPresent = true)
+    (hContinuing : s.txContextContinuingPresent = true) :
+    verifySigExtRoute s = .txContextVerify := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport, hBundle, hContinuing]
+
+theorem verify_sig_ext_ext_binding_unsupported_rejects
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = false)
+    (hTx : s.txContextEnabled = false)
+    (hSupport : s.verifySigExtSupported = false) :
+    verifySigExtRoute s = .extUnsupportedReject := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport]
+
+theorem verify_sig_ext_ext_binding_ready_reaches_verify
+    (s : VerifySigExtLiveState)
+    (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
+    (hNative : s.nativeRegistered = false)
+    (hSpend : s.nativeSpendPermitted = false)
+    (hTx : s.txContextEnabled = false)
+    (hSupport : s.verifySigExtSupported = true) :
+    verifySigExtRoute s = .extVerify := by
+  simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport]
+
+theorem verify_sig_ext_native_noncanonical_maps_sig_noncanonical :
+    verifySigExtErrCode (verifySigExtVerdict .nativeWitnessReject false false) =
+      some "TX_ERR_SIG_NONCANONICAL" := by
+  native_decide
+
+theorem verify_sig_ext_txcontext_missing_bundle_maps_sig_invalid :
+    verifySigExtErrCode (verifySigExtVerdict .txContextBundleReject false false) =
+      some "TX_ERR_SIG_INVALID" := by
+  native_decide
+
+theorem verify_sig_ext_txcontext_callback_error_maps_alg_invalid :
+    verifySigExtErrCode (verifySigExtVerdict .txContextVerify true false) =
+      some "TX_ERR_SIG_ALG_INVALID" := by
+  native_decide
+
+theorem verify_sig_ext_txcontext_callback_false_maps_sig_invalid :
+    verifySigExtErrCode (verifySigExtVerdict .txContextVerify false false) =
+      some "TX_ERR_SIG_INVALID" := by
+  native_decide
+
+theorem verify_sig_ext_ext_callback_error_maps_alg_invalid :
+    verifySigExtErrCode (verifySigExtVerdict .extVerify true false) =
+      some "TX_ERR_SIG_ALG_INVALID" := by
+  native_decide
+
+theorem verify_sig_ext_ext_callback_false_maps_sig_invalid :
+    verifySigExtErrCode (verifySigExtVerdict .extVerify false false) =
+      some "TX_ERR_SIG_INVALID" := by
+  native_decide
+
 end RubinFormal.CoreExtRefinement

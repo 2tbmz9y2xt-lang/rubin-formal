@@ -1260,6 +1260,15 @@
         "RubinFormal.Conformance.cv_ext_vectors_pass",
         "RubinFormal.Conformance.cv_ext_parsing_surface_proved",
         "RubinFormal.Conformance.cv_ext_dispatch_surface_proved",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_suite_gate_rejects_before_path",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_spend_set_without_registry_rejects",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_noncanonical_rejects_before_verify",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_registered_canonical_reaches_native_verify",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_missing_bundle_rejects",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_ready_reaches_verify",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_callback_error_maps_alg_invalid",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_binding_ready_reaches_verify",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid",
         "RubinFormal.Conformance.cv_txctx_vectors_pass"
       ],
       "file": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
@@ -1267,14 +1276,23 @@
         "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.Conformance.cv_ext_parsing_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.Conformance.cv_ext_dispatch_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_suite_gate_rejects_before_path": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_spend_set_without_registry_rejects": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_noncanonical_rejects_before_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_registered_canonical_reaches_native_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_missing_bundle_rejects": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_ready_reaches_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_callback_error_maps_alg_invalid": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_binding_ready_reaches_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
         "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
       },
-      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry still preserves the pinned-bundle contract checks (vector counts, distinct IDs, reject vectors carry expect_err, family tags match the pinned CV-EXT ids, op tags stay within the pinned replay vocabulary, and TXCTX governance-scope markers stay explicit), but D2 now also machine-checks a finite CORE_EXT parse/dispatch replay surface over the shipped CV-EXT vectors: malformed envelope rejection, duplicate-profile rejection, matched-profile rows missing activation metadata reject before dispatch, unsupported replay-op rows reject as fixture metadata, pre-active permissive dispatch, active suite-gate rejection, and binding-selection reachability. The replay remains fixture-anchored and does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
+      "notes": "Additive mixed contract/theorem lane for the current CV-EXT and CV-TXCTX bundles. This entry still preserves the pinned-bundle contract checks (vector counts, distinct IDs, reject vectors carry expect_err, family tags match the pinned CV-EXT ids, op tags stay within the pinned replay vocabulary, and TXCTX governance-scope markers stay explicit), and D2 continues to machine-check the finite fixture-anchored CORE_EXT parse/dispatch replay surface over the shipped CV-EXT vectors. D3 now adds post-parse live ordering theorems in CoreExtRefinement for the same §14 family: suite gate rejects before any native/ext route, native spend-set drift rejects before `verify_sig_ext`, native canonical witnesses stay on the native verify path, txcontext-enabled routes require the bundle before callback execution, and ext/txcontext callback failures map to the live `TX_ERR_SIG_ALG_INVALID` / `TX_ERR_SIG_INVALID` split. This row remains complementary evidence and does not reopen or replace the full §14 live theorem closure recorded in txcontext_formal.",
       "limitations": [
-        "This lane is still below universal/live closure: it proves only the finite fixture-anchored CORE_EXT parse/dispatch model exercised by the shipped CV-EXT vectors, not full live `verify_sig_ext` correctness or txcontext-enabled replay.",
+        "This lane is still below universal/live closure: D2 covers only the finite shipped CV-EXT replay bundle, and D3 covers only the post-parse/post-digest verify/binding ordering model. Neither piece claims full live `verify_sig_ext` correctness or full txcontext-enabled replay equivalence.",
         "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
         "Where the current shipped CV-EXT vectors encode fixture-lane behavior that diverges from the separate live spend-side theorem surface (including active sentinel-admitted cases), this row stays anchored to the shipped fixture lane and must not be read as a live sentinel/binding theorem.",
-        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; full CORE_EXT parse/verify theorem closure still requires the later D3/D4/D5 lanes, and this replay row remains complementary evidence only."
+        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; the remaining CORE_EXT uplift still requires the later D4/D5 lanes, and this mixed row remains complementary evidence only."
       ],
       "evidence_level": "machine_checked_contract"
     },
