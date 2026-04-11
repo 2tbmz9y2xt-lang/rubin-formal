@@ -684,4 +684,224 @@ theorem vault_threshold_required_count_accepts
   exact UtxoApplyGenesisV1.vault_all_pass lids covs vOwnLid vKeys vThr vWit h outs wl
     hSponsorOk hSig hWL
 
+/-! ## Wave A3 Registry companions — rebind spend-side theorem surface to
+    universal helper layer
+
+    **Q-FORMAL-SPEND-COVENANT-FAMILY-REBIND-01** (issue #427).
+
+    Companion theorems that prove the same behavioural properties as R1-R11
+    above, but against the **universal helper layer** introduced in Wave A1
+    (`validateWitnessItemLengthsRegistry`) and Wave A2
+    (`validateThresholdSigSpendRegistry`) at the `PRE_ROTATION_REGISTRY`
+    instance. Each companion is trivially derived from its legacy counterpart
+    via the corresponding bridge theorem
+    (`validateWitnessItemLengths_eq_registry_pre_rotation` /
+    `validateThresholdSigSpend_eq_registry_pre_rotation`).
+
+    **Why:** the legacy theorems above prove statements about
+    `validateWitnessItemLengths` / `validateThresholdSigSpendNoCrypto`, which
+    are the pre-rotation hardcoded ML-DSA-87 functions. Per Wave A3 discipline,
+    the §16 spend-side covenant theorem surface must honestly sit on the
+    suite-aware helper layer — these companions provide that grounding.
+
+    **Class:** all companions are **BRIDGE** per rubin-formal-executor
+    classification. Each transfers a property from legacy to the universal
+    Registry helper via the A1/A2 bridge rewrite.
+
+    **Limitations:** valid only on `PRE_ROTATION_REGISTRY` instance. Post-
+    rotation registries with additional suites are not covered — that's
+    Wave A4+/F scope. -/
+
+/-! ### R1-R6 Witness item lengths — registry companions -/
+
+/-- **R1 registry companion:** Any suite ID ∉ {SENTINEL, ML_DSA_87} is
+    rejected by `validateWitnessItemLengthsRegistry PRE_ROTATION_REGISTRY`
+    with TX_ERR_SIG_ALG_INVALID. BRIDGE to `unknown_suite_rejected_universal`
+    via `validateWitnessItemLengths_eq_registry_pre_rotation`. -/
+theorem unknown_suite_rejected_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hNotS : w.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL)
+    (hNotM : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .error "TX_ERR_SIG_ALG_INVALID" := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact unknown_suite_rejected_universal w h hNotS hNotM
+
+/-- **R2 registry companion:** Sentinel with non-empty pubkey or sig is
+    rejected with TX_ERR_PARSE. BRIDGE via A1 bridge. -/
+theorem sentinel_nonempty_rejected_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hS : w.suiteId = RubinFormal.SUITE_ID_SENTINEL)
+    (hNE : w.pubkey.size ≠ 0 ∨ w.signature.size ≠ 0) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .error "TX_ERR_PARSE" := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact sentinel_nonempty_rejected_universal w h hS hNE
+
+/-- **R3 registry companion:** Sentinel with both empty is accepted.
+    BRIDGE via A1 bridge. -/
+theorem sentinel_empty_accepted_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hS : w.suiteId = RubinFormal.SUITE_ID_SENTINEL)
+    (hPE : w.pubkey.size = 0)
+    (hSE : w.signature.size = 0) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .ok () := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact sentinel_empty_accepted_universal w h hS hPE hSE
+
+/-- **R4 registry companion:** ML-DSA-87 with wrong pubkey size is rejected.
+    BRIDGE via A1 bridge. -/
+theorem mldsa87_wrong_pubkey_rejected_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
+    (hBad : w.pubkey.size ≠ UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .error "TX_ERR_SIG_NONCANONICAL" := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact mldsa87_wrong_pubkey_rejected_universal w h hM hBad
+
+/-- **R5a registry companion:** ML-DSA-87 with empty sig is rejected.
+    BRIDGE via A1 bridge. -/
+theorem mldsa87_empty_sig_rejected_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
+    (hPOk : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES)
+    (hSig0 : w.signature.size = 0) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .error "TX_ERR_SIG_NONCANONICAL" := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact mldsa87_empty_sig_rejected_universal w h hM hPOk hSig0
+
+/-- **R5b registry companion:** ML-DSA-87 with sig too large is rejected.
+    BRIDGE via A1 bridge. -/
+theorem mldsa87_sig_too_large_rejected_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
+    (hPOk : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES)
+    (hBig : w.signature.size > UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .error "TX_ERR_SIG_NONCANONICAL" := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact mldsa87_sig_too_large_rejected_universal w h hM hPOk hBig
+
+/-- **R6 registry companion:** ML-DSA-87 with valid lengths is accepted.
+    BRIDGE via A1 bridge. -/
+theorem mldsa87_valid_accepted_registry_pre_rotation
+    (w : WitnessItem) (h : Nat)
+    (hM : w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87)
+    (hPOk : w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES)
+    (hSPos : w.signature.size > 0)
+    (hSBound : w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h =
+      .ok () := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact mldsa87_valid_accepted_universal w h hM hPOk hSPos hSBound
+
+/-! ### R7-R11 Threshold sig spend — registry companions -/
+
+/-- **R7 registry companion:** Wrong witness count in threshold spend is
+    rejected with TX_ERR_PARSE. BRIDGE to `threshold_wrong_count_rejected_universal`
+    via `validateThresholdSigSpend_eq_registry_pre_rotation`. -/
+theorem threshold_wrong_count_rejected_registry_pre_rotation
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (hMismatch : ws.length ≠ keys.length) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
+      .error "TX_ERR_PARSE" := by
+  rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
+  exact threshold_wrong_count_rejected_universal keys threshold ws h ctx hMismatch
+
+/-- **R8a registry companion:** Unknown suite at the head of a threshold
+    witness list is rejected with TX_ERR_SIG_ALG_INVALID. BRIDGE via A2 bridge. -/
+theorem threshold_unknown_suite_head_rejected_registry_pre_rotation
+    (k : Bytes) (krest : List Bytes) (w : WitnessItem) (wrest : List WitnessItem)
+    (h : Nat) (ctx : String) (threshold : Nat)
+    (hLen : (w :: wrest).length = (k :: krest).length)
+    (hNotS : w.suiteId ≠ RubinFormal.SUITE_ID_SENTINEL)
+    (hNotM : w.suiteId ≠ UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY (k :: krest) threshold (w :: wrest) h ctx =
+      .error "TX_ERR_SIG_ALG_INVALID" := by
+  rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
+  exact threshold_unknown_suite_head_rejected k krest w wrest h ctx threshold hLen hNotS hNotM
+
+/-- **R8b registry companion:** Any unknown suite appearing anywhere in the
+    threshold witness/key zip causes the universal registry helper to reject
+    with TX_ERR_SIG_ALG_INVALID. BRIDGE via A2 bridge. -/
+theorem threshold_unknown_suite_anywhere_rejected_registry_pre_rotation
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hLen : ws.length = keys.length)
+    (hZip : List.zip ws keys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairUnknownSuite bad) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
+      .error "TX_ERR_SIG_ALG_INVALID" := by
+  rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
+  exact threshold_unknown_suite_anywhere_rejected_universal
+    keys threshold ws h ctx safe bad rest hLen hZip hSafe hBad
+
+/-- **R9 registry companion:** Any ML-DSA-87/key hash mismatch appearing
+    anywhere in the threshold witness/key zip causes the universal registry
+    helper to reject with TX_ERR_SIG_INVALID. BRIDGE via A2 bridge. -/
+theorem threshold_hash_mismatch_anywhere_rejected_registry_pre_rotation
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (safe : List (WitnessItem × Bytes))
+    (bad : WitnessItem × Bytes)
+    (rest : List (WitnessItem × Bytes))
+    (hLen : ws.length = keys.length)
+    (hZip : List.zip ws keys = safe ++ bad :: rest)
+    (hSafe : ∀ p ∈ safe, thresholdPairSafe p)
+    (hBad : thresholdPairMismatch bad) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
+      .error "TX_ERR_SIG_INVALID" := by
+  rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
+  exact threshold_hash_mismatch_anywhere_rejected
+    keys threshold ws h ctx safe bad rest hLen hZip hSafe hBad
+
+/-- **R10 registry companion:** If every threshold pair is structurally safe
+    but the accumulated ML-DSA-87 match count stays below `threshold`, the
+    universal registry helper rejects with TX_ERR_SIG_INVALID. BRIDGE via A2. -/
+theorem threshold_below_required_count_rejected_registry_pre_rotation
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (hLen : ws.length = keys.length)
+    (hSafe : ∀ p ∈ List.zip ws keys, thresholdPairSafe p)
+    (hBelow : thresholdSafeCount (List.zip ws keys) < threshold) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
+      .error "TX_ERR_SIG_INVALID" := by
+  rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
+  exact threshold_below_required_count_rejected keys threshold ws h ctx hLen hSafe hBelow
+
+/-- **R11 registry companion:** If every threshold pair is structurally safe
+    and the ML-DSA-87 match count reaches `threshold`, the universal registry
+    helper accepts. BRIDGE via A2. -/
+theorem threshold_required_count_accepts_registry_pre_rotation
+    (keys : List Bytes) (threshold : Nat)
+    (ws : List WitnessItem) (h : Nat) (ctx : String)
+    (hLen : ws.length = keys.length)
+    (hSafe : ∀ p ∈ List.zip ws keys, thresholdPairSafe p)
+    (hEnough : threshold ≤ thresholdSafeCount (List.zip ws keys)) :
+    UtxoApplyGenesisV1.validateThresholdSigSpendRegistry
+        Rotation.PRE_ROTATION_REGISTRY keys threshold ws h ctx =
+      .ok () := by
+  rw [← UtxoApplyGenesisV1.validateThresholdSigSpend_eq_registry_pre_rotation]
+  exact threshold_required_count_accepts keys threshold ws h ctx hLen hSafe hEnough
+
 end RubinFormal
