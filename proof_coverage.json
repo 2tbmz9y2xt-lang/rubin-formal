@@ -1265,11 +1265,11 @@
         "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
       },
-      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry checks the shipped bundle shape only: vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit. It does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
+      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry checks the shipped bundle shape only: vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit. It is executable evidence for the current pinned fixture bundles, not a universal theorem surface for live TxContext/CoreExt parse/verify behavior, and it does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
       "limitations": [
-        "This lane is a structural fixture contract, not a universal theorem over live TxContext/CoreExt semantics.",
+        "This lane is a structural fixture contract, not a universal theorem over live TxContext/CoreExt semantics or a general proof of live CORE_EXT parse/verify behavior outside the shipped bundles.",
         "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
-        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; this replay lane is complementary evidence only."
+        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; full CORE_EXT parse/verify theorem closure stays separate future work, and this replay lane is complementary evidence only."
       ],
       "evidence_level": "machine_checked_contract"
     },
