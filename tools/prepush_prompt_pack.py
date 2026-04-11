@@ -4,11 +4,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from prepush_review_common import (
-    parse_unique_csv,
-    read_nonempty_lines,
-    read_required_text,
-)
+try:
+    from tools.prepush_review_common import (
+        parse_unique_csv,
+        read_nonempty_lines,
+        read_required_text,
+    )
+except ImportError:
+    from prepush_review_common import (  # type: ignore[no-redef]
+        parse_unique_csv,
+        read_nonempty_lines,
+        read_required_text,
+    )
 
 ALLOWED_CHECK_TYPES = {"formal_repo_review"}
 

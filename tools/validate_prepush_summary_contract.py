@@ -7,7 +7,10 @@ import re
 import sys
 from pathlib import Path
 
-from prepush_review_common import parse_unique_csv
+try:
+    from tools.prepush_review_common import parse_unique_csv
+except ImportError:
+    from prepush_review_common import parse_unique_csv  # type: ignore[no-redef]
 
 REQUIRED_KEYS = ("CHECK_TYPE", "ACTIVE_LENSES", "LENSES_COVERED", "NO_FINDINGS", "RATIONALE")
 ALLOWED_CHECK_TYPES = {"formal_repo_review"}
@@ -35,6 +38,9 @@ def parse_summary(summary: str) -> dict[str, str]:
     return fields
 
 
+ALLOWED_LENS_STATUSES = {"ok", "skip", "na"}
+
+
 def parse_lenses_covered(raw: str) -> dict[str, str]:
     covered: dict[str, str] = {}
     for item in raw.split(";"):
@@ -47,7 +53,14 @@ def parse_lenses_covered(raw: str) -> dict[str, str]:
         lens_name = lens.strip()
         if not re.fullmatch(r"[a-z0-9._-]+", lens_name):
             raise ValueError(f"LENSES_COVERED lens name has unsupported chars: {lens_name!r}")
-        covered[lens_name] = status.strip().lower()
+        if lens_name in covered:
+            raise ValueError(f"LENSES_COVERED duplicate lens: {lens_name!r}")
+        status_val = status.strip().lower()
+        if status_val not in ALLOWED_LENS_STATUSES:
+            raise ValueError(
+                f"LENSES_COVERED status not allowed: {status_val!r} for lens {lens_name!r}"
+            )
+        covered[lens_name] = status_val
     return covered
 
 
@@ -151,7 +164,14 @@ def main() -> int:
     parser.add_argument("--active-lenses", required=True)
     args = parser.parse_args()
 
-    result = json.loads(Path(args.result_json).read_text(encoding="utf-8"))
+    try:
+        result = json.loads(Path(args.result_json).read_text(encoding="utf-8"))
+    except OSError as exc:
+        print(f"summary-contract: cannot read result file: {exc}", file=sys.stderr)
+        return 2
+    except json.JSONDecodeError as exc:
+        print(f"summary-contract: result file is not valid JSON: {exc}", file=sys.stderr)
+        return 2
     findings = result.get("findings", [])
     if not isinstance(findings, list):
         print("summary-contract: findings must be a list", file=sys.stderr)

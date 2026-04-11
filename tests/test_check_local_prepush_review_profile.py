@@ -2,15 +2,11 @@
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-TOOLS_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(TOOLS_DIR))
-
-import check_local_prepush_review_profile as m
+from tools import check_local_prepush_review_profile as m
 
 
 class FormalReviewProfileTests(unittest.TestCase):
@@ -43,6 +39,22 @@ class FormalReviewProfileTests(unittest.TestCase):
             payload = json.loads(profile.read_text(encoding="utf-8"))
             self.assertEqual(payload["check_type"], "formal_repo_review")
             self.assertIn("doc-verification", payload["active_lenses"])
+
+    def test_parse_changed_files_raises_when_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            missing = Path(td) / "no_such_file.txt"
+            with self.assertRaises(SystemExit) as ctx:
+                m.parse_changed_files(missing)
+            self.assertIn("Missing changed-files manifest", str(ctx.exception))
+
+    def test_parse_changed_files_strips_whitespace(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            manifest = Path(td) / "changed.txt"
+            manifest.write_text("  RubinFormal/Foo.lean  \n  tools/bar.py \n", encoding="utf-8")
+            result = m.parse_changed_files(manifest)
+            self.assertIn("RubinFormal/Foo.lean", result)
+            self.assertIn("tools/bar.py", result)
+            self.assertNotIn("  RubinFormal/Foo.lean  ", result)
 
 
 if __name__ == "__main__":

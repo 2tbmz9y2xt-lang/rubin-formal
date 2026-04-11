@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-TOOLS_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(TOOLS_DIR))
-
-import validate_prepush_summary_contract as m
+from tools import validate_prepush_summary_contract as m
 
 
 class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
@@ -54,6 +49,18 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             expected_active_lenses=["code-review", "formal-proof-soundness"],
         )
         self.assertEqual(errors, [])
+
+    def test_parse_lenses_covered_rejects_duplicate_lens(self) -> None:
+        with self.assertRaisesRegex(ValueError, "duplicate lens"):
+            m.parse_lenses_covered("code-review:ok;code-review:ok")
+
+    def test_parse_lenses_covered_rejects_invalid_status(self) -> None:
+        with self.assertRaisesRegex(ValueError, "status not allowed"):
+            m.parse_lenses_covered("code-review:passed")
+
+    def test_parse_lenses_covered_accepts_allowed_statuses(self) -> None:
+        result = m.parse_lenses_covered("code-review:ok;diff-scan:skip;formal-proof-soundness:na")
+        self.assertEqual(result, {"code-review": "ok", "diff-scan": "skip", "formal-proof-soundness": "na"})
 
 
 if __name__ == "__main__":

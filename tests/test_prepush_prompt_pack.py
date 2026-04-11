@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-TOOLS_DIR = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(TOOLS_DIR))
-
-import prepush_prompt_pack as m
+from tools import prepush_prompt_pack as m
 
 
 class FormalPrepushPromptPackTests(unittest.TestCase):

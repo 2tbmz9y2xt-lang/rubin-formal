@@ -3,19 +3,19 @@
 The sanctioned local push path for `rubin-formal` on this machine is:
 
 1. run the usual formal validation you owe for the change (`lake build`, replay checks, metadata updates)
-2. call `/Users/gpt/bin/cl push ...`
-3. let `rubin-formal/.git/hooks-disabled/pre-push` build the hostile formal review bundle
+2. call `cl push ...` (or your local git push entrypoint, e.g. `git push`)
+3. let `.git/hooks/pre-push` (or `hooks-disabled/pre-push` for manual invocation) build the hostile formal review bundle
 4. let that hook run isolated local `codex exec` in read-only mode with repository access
 5. allow the real network push only if there are no blocking findings
 
 ## Runtime contract
 
-- Entry command: `/Users/gpt/bin/cl push ...`
-- Hook: `/Users/gpt/Documents/rubin-formal/.git/hooks-disabled/pre-push`
-- Review contract: `/Users/gpt/Documents/rubin-formal/tools/prepush_review_contract.json`
-- Prompt builder: `/Users/gpt/Documents/rubin-formal/tools/prepush_prompt_pack.py`
-- Profile planner: `/Users/gpt/Documents/rubin-formal/tools/check_local_prepush_review_profile.py`
-- Summary validator: `/Users/gpt/Documents/rubin-formal/tools/validate_prepush_summary_contract.py`
+- Entry command: `cl push ...` (or your local git push entrypoint)
+- Hook: `$REPO_ROOT/.git/hooks/pre-push`
+- Review contract: `tools/prepush_review_contract.json`
+- Prompt builder: `tools/prepush_prompt_pack.py`
+- Profile planner: `tools/check_local_prepush_review_profile.py`
+- Summary validator: `tools/validate_prepush_summary_contract.py`
 
 ## Model/profile
 
@@ -23,8 +23,8 @@ The sanctioned local push path for `rubin-formal` on this machine is:
 - Model: `gpt-5.4-mini`
 - Reasoning: `xhigh`
 - Sandbox: read-only
-- Repo access: enabled via `codex exec -C /Users/gpt/Documents/rubin-formal`
-- Human-readable local profile mirror: `[profiles.formal-review]` in `/Users/gpt/.codex/config.toml`
+- Repo access: enabled via `codex exec -C $REPO_ROOT`
+- Human-readable local profile mirror: `[profiles.formal-review]` in `$HOME/.codex/config.toml`
 - Fast mode: smaller frontier model route, still fail-closed and repo-aware
 
 If the local reviewer hits a `no-json stall`, the sanctioned runtime may retry

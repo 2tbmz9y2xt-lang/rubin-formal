@@ -70,10 +70,10 @@ FOCUS_RULES: tuple[tuple[ChangedPredicate, str], ...] = (
 
 def parse_changed_files(path: Path) -> set[str]:
     if not path.exists():
-        return set()
+        raise SystemExit(f"Missing changed-files manifest: {path}")
     raw = path.read_text(encoding="utf-8")
     parts = raw.split("\0") if "\0" in raw else raw.splitlines()
-    return {part for part in parts if part}
+    return {part.strip() for part in parts if part.strip()}
 
 
 def load_profile(path: Path = CONTRACT_PATH) -> ReviewProfile:
