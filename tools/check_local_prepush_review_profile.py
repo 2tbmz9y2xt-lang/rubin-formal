@@ -9,6 +9,7 @@ from typing import Callable
 
 try:
     from tools.prepush_review_common import (
+        allowed_formal_check_types_from_payload,
         describe_formal_lens,
         FORMAL_REVIEW_CONTRACT_PATH,
         load_formal_review_contract,
@@ -17,6 +18,7 @@ try:
     )
 except ImportError:
     from prepush_review_common import (
+        allowed_formal_check_types_from_payload,
         describe_formal_lens,
         FORMAL_REVIEW_CONTRACT_PATH,
         load_formal_review_contract,
@@ -103,14 +105,6 @@ def load_contract_payload(path: Path | None = None) -> dict[str, object]:
     return payload
 
 
-def allowed_check_types(path: Path | None = None) -> set[str]:
-    contract_path = CONTRACT_PATH if path is None else path
-    payload = load_contract_payload(contract_path)
-    profiles = payload["profiles"]
-    assert isinstance(profiles, dict)
-    return {"auto", *(str(name) for name in profiles)}
-
-
 def changed_contains_suffix(changed: set[str], suffix: str) -> bool:
     return any(path.endswith(suffix) for path in changed)
 
@@ -190,7 +184,17 @@ def load_profile(
     requested_check_type: str = "auto",
     path: Path | None = None,
 ) -> ReviewProfile:
-    payload = load_contract_payload(path)
+    return load_profile_from_payload(
+        load_contract_payload(path),
+        requested_check_type=requested_check_type,
+    )
+
+
+def load_profile_from_payload(
+    payload: dict[str, object],
+    *,
+    requested_check_type: str = "auto",
+) -> ReviewProfile:
     default_profile = str(payload["default_profile"])
     profiles = payload["profiles"]
     assert isinstance(profiles, dict)
@@ -296,14 +300,18 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         requested = args.check_type.strip()
-        allowed = allowed_check_types()
+        payload = load_contract_payload()
+        allowed = allowed_formal_check_types_from_payload(payload)
         if requested not in allowed:
             allowed_joined = ", ".join(sorted(allowed))
             raise ValueError(
                 f"unsupported check_type {requested!r}; expected one of: {allowed_joined}"
             )
         changed = parse_changed_files(changed_path)
-        profile = load_profile(requested)
+        profile = load_profile_from_payload(
+            payload,
+            requested_check_type=requested,
+        )
         active_lenses = active_lenses_for(changed, profile)
         write_fullscan(fullscan_output, changed, profile, active_lenses)
         focus_lines = focus_lines_for(changed)

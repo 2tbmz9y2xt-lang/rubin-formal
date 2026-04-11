@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from tools import check_local_prepush_review_profile as m
+from tools.prepush_review_common import allowed_formal_check_types
 
 
 class FormalReviewProfileTests(unittest.TestCase):
@@ -91,7 +92,7 @@ class FormalReviewProfileTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(
-                m.allowed_check_types(contract),
+                allowed_formal_check_types(contract),
                 {"auto", "formal_repo_review", "future_profile"},
             )
 
@@ -121,7 +122,7 @@ class FormalReviewProfileTests(unittest.TestCase):
                 ValueError,
                 "must not have leading/trailing whitespace",
             ):
-                m.allowed_check_types(contract)
+                allowed_formal_check_types(contract)
 
     def test_allowed_check_types_rejects_unsupported_schema_version(self) -> None:
         with TemporaryDirectory() as td:
@@ -146,7 +147,15 @@ class FormalReviewProfileTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "unsupported review contract schema_version"):
-                m.allowed_check_types(contract)
+                allowed_formal_check_types(contract)
+
+    def test_load_profile_from_payload_reuses_validated_contract(self) -> None:
+        payload = m.load_contract_payload()
+        profile = m.load_profile_from_payload(
+            payload,
+            requested_check_type="formal_repo_review",
+        )
+        self.assertEqual(profile.name, "formal_repo_review")
 
     def test_load_contract_payload_rejects_non_positive_integer_fields(self) -> None:
         with TemporaryDirectory() as td:

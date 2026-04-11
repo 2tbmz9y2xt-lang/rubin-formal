@@ -98,8 +98,7 @@ def load_formal_review_contract(path: Path | None = None) -> dict[str, object]:
     return payload
 
 
-def allowed_formal_check_types(path: Path | None = None) -> set[str]:
-    payload = load_formal_review_contract(path)
+def allowed_formal_check_types_from_payload(payload: dict[str, object]) -> set[str]:
     profiles = payload.get("profiles")
     if not isinstance(profiles, dict) or not profiles:
         raise ValueError("review contract missing non-empty object profiles")
@@ -112,6 +111,11 @@ def allowed_formal_check_types(path: Path | None = None) -> set[str]:
             )
         )
     return {"auto", *names}
+
+
+def allowed_formal_check_types(path: Path | None = None) -> set[str]:
+    payload = load_formal_review_contract(path)
+    return allowed_formal_check_types_from_payload(payload)
 
 
 def describe_formal_lens(lens_name: str) -> str:
