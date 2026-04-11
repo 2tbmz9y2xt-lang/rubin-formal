@@ -217,4 +217,87 @@ theorem post_activation_disallowed_rejects :
 theorem post_activation_allowed_accepts :
     extSpendDecision true 3 [1, 3] = true := by native_decide
 
+-- ============================================================================
+-- Section 6: Fixture-Replay Parse/Dispatch Helpers
+-- ============================================================================
+
+/-- Minimal deployment-profile view reused by the finite `CV-EXT` replay lane.
+    This stays narrower than the live runtime profile surface: it models only
+    the fields needed to prove parse/dispatch ordering without claiming
+    `verify_sig_ext` correctness or txcontext-enabled behavior. -/
+structure ReplayProfile where
+  extId : Nat
+  activationHeight : Nat
+  allowedSuiteIds : List Nat
+  binding : String
+deriving Repr, DecidableEq
+
+/-- Parsed CORE_EXT envelope: `ext_id` plus the raw payload bytes. -/
+structure ParsedEnvelope where
+  extId : Nat
+  payload : Bytes
+deriving Repr, DecidableEq
+
+/-- Parse the finite fixture-envelope shape used by `CV-EXT`.
+    Encoding is little-endian `ext_id:u16 || payload_len:u8 || payload`. -/
+def parseEnvelope? (raw : Bytes) : Option ParsedEnvelope :=
+  if raw.size < 3 then
+    none
+  else
+    let extId := (raw.get! 0).toNat + 256 * (raw.get! 1).toNat
+    let payloadLen := (raw.get! 2).toNat
+    if raw.size == payloadLen + 3 then
+      some { extId := extId, payload := raw.extract 3 raw.size }
+    else
+      none
+
+/-- Duplicate `ext_id` detection for finite fixture replay profiles. -/
+def hasDuplicateReplayProfileExtId : List ReplayProfile → Bool
+  | [] => false
+  | p :: rest =>
+      if rest.any (fun q => q.extId == p.extId) then true
+      else hasDuplicateReplayProfileExtId rest
+
+/-- Find the first replay profile matching an `ext_id`. Duplicate rejection is
+    enforced separately via `hasDuplicateReplayProfileExtId`. -/
+def findReplayProfile? (profiles : List ReplayProfile) (extId : Nat) : Option ReplayProfile :=
+  profiles.find? (fun p => p.extId == extId)
+
+/-- The current finite replay lane knows only the shipped OpenSSL digest32
+    binding name. D2 models reachability to this binding, not verifier
+    correctness; D3 remains the theorem lane for `verify_sig_ext`. -/
+def bindingRecognized (binding : String) : Bool :=
+  binding == "verify_sig_ext_openssl_digest32_v1"
+
+theorem parse_envelope_short_rejects :
+    parseEnvelope? (RubinFormal.bytes #[0x01]) = none := by
+  native_decide
+
+theorem parse_envelope_len_mismatch_rejects :
+    parseEnvelope? (RubinFormal.bytes #[0x00, 0x10, 0x05, 0x01, 0x02]) = none := by
+  native_decide
+
+theorem parse_envelope_empty_payload_roundtrip :
+    parseEnvelope? (RubinFormal.bytes #[0x00, 0x10, 0x00]) =
+      some { extId := 4096, payload := ByteArray.empty } := by
+  native_decide
+
+theorem duplicate_replay_profile_detected :
+    hasDuplicateReplayProfileExtId
+      [ { extId := 7, activationHeight := 10, allowedSuiteIds := [1], binding := "verify_sig_ext_openssl_digest32_v1" }
+      , { extId := 7, activationHeight := 20, allowedSuiteIds := [3], binding := "verify_sig_ext_openssl_digest32_v1" }
+      ] = true := by
+  native_decide
+
+theorem distinct_replay_profiles_accept :
+    hasDuplicateReplayProfileExtId
+      [ { extId := 7, activationHeight := 10, allowedSuiteIds := [1], binding := "verify_sig_ext_openssl_digest32_v1" }
+      , { extId := 8, activationHeight := 20, allowedSuiteIds := [3], binding := "verify_sig_ext_openssl_digest32_v1" }
+      ] = false := by
+  native_decide
+
+theorem binding_recognized_openssl_digest32 :
+    bindingRecognized "verify_sig_ext_openssl_digest32_v1" = true := by
+  native_decide
+
 end RubinFormal.CoreExtRefinement

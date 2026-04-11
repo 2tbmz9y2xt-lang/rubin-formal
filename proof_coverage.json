@@ -1258,18 +1258,23 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_ext_vectors_pass",
+        "RubinFormal.Conformance.cv_ext_parsing_surface_proved",
+        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved",
         "RubinFormal.Conformance.cv_txctx_vectors_pass"
       ],
-      "file": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean",
+      "file": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
       "theorem_files": {
         "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+        "RubinFormal.Conformance.cv_ext_parsing_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
       },
-      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry checks the shipped bundle shape only: vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit. It is executable evidence for the current pinned fixture bundles, not a universal theorem surface for live TxContext/CoreExt parse/verify behavior, and it does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
+      "notes": "Additive fixture-backed contract lane for the current CV-EXT and CV-TXCTX bundles. This entry still preserves the pinned-bundle contract checks (vector counts, distinct IDs, reject vectors carry expect_err, and TXCTX governance-scope markers stay explicit), but D2 now also machine-checks a finite CORE_EXT parse/dispatch replay surface over the shipped CV-EXT vectors: malformed envelope rejection, duplicate-profile rejection, pre-active permissive dispatch, active suite-gate rejection, and binding-selection reachability. The replay remains fixture-anchored and does not reopen or replace the live §14 theorem closure recorded in txcontext_formal.",
       "limitations": [
-        "This lane is a structural fixture contract, not a universal theorem over live TxContext/CoreExt semantics or a general proof of live CORE_EXT parse/verify behavior outside the shipped bundles.",
+        "This lane is still below universal/live closure: it proves only the finite fixture-anchored CORE_EXT parse/dispatch model exercised by the shipped CV-EXT vectors, not full live `verify_sig_ext` correctness or txcontext-enabled replay.",
         "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
-        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; full CORE_EXT parse/verify theorem closure stays separate future work, and this replay lane is complementary evidence only."
+        "Where the current shipped CV-EXT vectors encode narrower fixture-lane behavior than the separate live spend-side theorem surface, this row stays anchored to the fixture lane and must not be read as a live sentinel/binding theorem.",
+        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; full CORE_EXT parse/verify theorem closure still requires the later D3/D4/D5 lanes, and this replay row remains complementary evidence only."
       ],
       "evidence_level": "machine_checked_contract"
     },

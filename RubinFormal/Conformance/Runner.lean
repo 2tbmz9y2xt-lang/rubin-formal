@@ -44,7 +44,7 @@ def run : IO UInt32 := do
   okAll := (← reportGate "CV-TIMESTAMP" (collectFails cvTimestampVectors (·.id) checkTimestampVector)) && okAll
   okAll := (← reportGate "CV-SIG" (collectFails cvSigVectors (·.id) checkSigVector)) && okAll
   okAll := (← reportGate "CV-COMPACT" (collectFails cvCompactVectors_CV_COMPACT (·.id) compactVectorPass)) && okAll
-  okAll := (← reportGate "CV-EXT" (if cvExtVectorBundleContract then [] else ["bundle-contract"])) && okAll
+  okAll := (← reportGate "CV-EXT" (collectFails cvExtVectors (·.id) checkExtVector)) && okAll
   okAll := (← reportGate "CV-TXCTX" (if cvTxctxVectorBundleContract then [] else ["bundle-contract"])) && okAll
 
   if okAll then
