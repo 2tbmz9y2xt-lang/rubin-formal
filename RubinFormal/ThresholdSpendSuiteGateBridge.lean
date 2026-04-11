@@ -9,8 +9,8 @@
   Descriptor-aware suite gate BRIDGE for threshold-sig spend paths.
   Pre-rotation: BRIDGE theorems prove equivalence between the
   thresholdItemSuiteAllowed helper and `decide (suiteId = ML_DSA_87)`,
-  which matches the comparison on line 98 of the live
-  validateThresholdSigSpendNoCrypto.
+  which matches the live per-item comparison inside
+  `validateThresholdSigSpendNoCrypto`.
   Post-rotation: BRIDGE theorems (helper ↔ NativeSpendSuites model),
   plus MODEL iff theorems on the helper.
 

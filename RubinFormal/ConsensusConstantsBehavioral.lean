@@ -5,7 +5,7 @@ import RubinFormal.UtxoApplyGenesisV1
 
 LIVE validator rejection proofs for witness validation constants.
 Each theorem proves that `validateWitnessItemLengths` (LIVE function
-in UtxoApplyGenesisV1.lean:59-70) REJECTS when a numeric bound
+in `UtxoApplyGenesisV1.lean`) REJECTS when a numeric bound
 from §4 is violated, and ACCEPTS when bounds are satisfied.
 
 File role:
