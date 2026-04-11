@@ -1254,7 +1254,7 @@
     },
     {
       "section_key": "txctx_coreext_fixture_replay",
-      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Fixture Replay Lane",
+      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Replay + Route Lane",
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_ext_vectors_pass",
@@ -1297,7 +1297,7 @@
         "The D4 bridge is still route-level only: it proves that the current live computed TxContext surface reaches the txcontext verify or continuing-reject branch once the suite/native premises are supplied, but it does not yet prove ext_id/profile selection or callback correctness for a specific live CORE_EXT profile.",
         "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
         "Where the current shipped CV-EXT vectors encode fixture-lane behavior that diverges from the separate live spend-side theorem surface (including active sentinel-admitted cases), this row stays anchored to the shipped fixture lane and must not be read as a live sentinel/binding theorem.",
-        "The 10 live §14 closure theorems remain the substantive TxContext proof surface; this behavioral row is additive/complementary evidence only and is not a replacement for txcontext_formal."
+        "The live §14 theorem closure recorded in txcontext_formal remains the substantive TxContext proof surface; this behavioral row is additive/complementary evidence only and is not a replacement for that formal coverage."
       ],
       "evidence_level": "machine_checked_behavioral"
     },
