@@ -1,6 +1,10 @@
 /-
   RubinFormal/WeightSuiteAware.lean — Q-FORMAL-ROTATION-03
 
+  File role:
+    active authoritative universal layer for post-rotation weight accounting.
+    `TxWeightV2.lean` remains the historical pre-rotation helper surface.
+
   Theorem: weight_suite_aware_correct — for any transaction T and height h,
   weight(T,h) using NATIVE_SPEND_SUITES(h) registry VERIFY_COST is
   deterministic and matches spec §9 formula.

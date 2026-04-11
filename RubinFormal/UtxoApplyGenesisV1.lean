@@ -6,6 +6,17 @@ import RubinFormal.CovenantGenesisV1
 import RubinFormal.NativeSpendCreateGate
 import RubinFormal.RotationPrelude
 
+/-!
+# UtxoApplyGenesisV1
+
+File role:
+- mixed legacy/helper + bridge-support file for the spend-side surface
+- retains hardcoded pre-rotation helpers such as `validateWitnessItemLengths`
+  and `validateThresholdSigSpendNoCrypto`
+- not the authoritative post-rotation universal layer; suite-aware claim
+  ceilings now come from registry companions and dedicated bridge files
+-/
+
 namespace RubinFormal
 
 namespace UtxoApplyGenesisV1

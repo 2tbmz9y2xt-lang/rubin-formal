@@ -1,11 +1,16 @@
 /-
   RubinFormal/ThresholdSpendSuiteGateBridge.lean
 
+  File role:
+    bridge-only layer for threshold suite-gating semantics.
+    Authoritative universal helper claims live in the suite-aware gate/model
+    files; this file exists to pin bridge equivalence and scope transitions.
+
   Descriptor-aware suite gate BRIDGE for threshold-sig spend paths.
   Pre-rotation: BRIDGE theorems prove equivalence between the
   thresholdItemSuiteAllowed helper and `decide (suiteId = ML_DSA_87)`,
-  which matches the comparison on line 98 of the live
-  validateThresholdSigSpendNoCrypto.
+  which matches the live per-item comparison inside
+  `validateThresholdSigSpendNoCrypto`.
   Post-rotation: BRIDGE theorems (helper ↔ NativeSpendSuites model),
   plus MODEL iff theorems on the helper.
 
@@ -179,7 +184,7 @@ theorem threshold_suite_gate_reject_iff
 
   The theorems above prove properties of the thresholdItemSuiteAllowed
   helper. These bridge theorems connect to the actual per-item suite
-  check in UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto (line 98):
+  check inside UtxoApplyGenesisV1.validateThresholdSigSpendNoCrypto:
     `else if w.suiteId == SUITE_ID_ML_DSA_87 then`
   This upgrades the row from model-only to live-bridged. -/
 
@@ -191,7 +196,7 @@ private theorem utxo_suite_eq_canonical :
 
 /-- LIVE bridge (accept direction): when the rotation-aware gate accepts
     under pre-rotation, the live suite check in validateThresholdSigSpendNoCrypto
-    line 98 evaluates to true (suite IS ML_DSA_87). -/
+    evaluates to true (suite IS ML_DSA_87). -/
 theorem live_threshold_suite_check_passes_on_gate_accept
     (w : UtxoBasicV1.WitnessItem) (h : Nat)
     (hGate : thresholdItemSuiteAllowed none h w = true) :
