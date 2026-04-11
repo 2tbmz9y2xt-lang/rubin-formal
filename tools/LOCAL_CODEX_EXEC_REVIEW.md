@@ -13,10 +13,17 @@ The sanctioned local push path for `rubin-formal` on this machine is:
 
 - Entry command: `cl push ...`
 - Hook: `$(git rev-parse --git-path hooks-disabled/pre-push)`
-- Review contract: `tools/prepush_review_contract.json`
-- Prompt builder: `tools/prepush_prompt_pack.py`
-- Profile planner: `tools/check_local_prepush_review_profile.py`
-- Summary validator: `tools/validate_prepush_summary_contract.py`
+- Public repo contract stops at this README.
+- The actual machine-local runtime assets live in the private orchestration
+  repository under `inbox/operational/local_push_gate/formal/`.
+- That private path owns the review contract JSON, prompt builder, profile
+  planner, and summary validator.
+- `rubin-formal` keeps only this README as the public repo-facing pointer for
+  this local push contract; unrelated repository tooling remains outside this
+  contract boundary.
+- A clone without the private orchestration layer is intentionally unsupported
+  for the sanctioned local push path and must fail closed before any network
+  push.
 
 ## Model/profile
 
@@ -36,14 +43,6 @@ up. That retry path is still the same sanctioned `cl push` -> `pre-push` ->
 This path is intentionally repo-aware. The reviewer may inspect the repository
 for coupled context, but findings must stay grounded in the changed claim
 surface and point to exact file+line locations.
-
-## Local verification
-
-The Python contract tests for this push path live under the repo-level `tests/`
-directory, not `tools/tests/`.
-
-- `python3 -m unittest discover -s tests -p 'test_*.py'`
-- `python3 -m unittest tests.test_check_local_prepush_review_profile tests.test_prepush_prompt_pack tests.test_validate_prepush_summary_contract`
 
 ## Hostile review themes
 
@@ -71,3 +70,7 @@ The worktree-local artifacts live under the current git-dir:
 - `local-security-review/last-codex.log`
 - `local-security-review/last-result-raw.json`
 - `local-security-review/last-result.json`
+
+The review still runs as part of the hook itself. The difference is location:
+the runtime helpers now live in private orchestration state instead of this
+public repository.
