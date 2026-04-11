@@ -19,7 +19,7 @@ class FormalPromptPackTests(unittest.TestCase):
             ],
             fullscan_text=(
                 "Skill-backed full-scan supplement:\n"
-                "- ACTIVE_LENSES=code-review,formal-proof-soundness,doc-verification\n"
+                "- Review plan selected by the formal pre-push profile planner.\n"
             ),
             focus_lines=["Attack theorem statement strength."],
             bundle_text="=== PUSH TARGET ===\nPath: RubinFormal/Foo.lean\n",
