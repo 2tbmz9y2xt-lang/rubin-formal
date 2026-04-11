@@ -35,11 +35,17 @@ private def activationRoutedOp (op : String) : Bool :=
   op == "ext_enforcement_check" ||
   op == "ext_error_priority"
 
+private def knownReplayOp (op : String) : Bool :=
+  activationRoutedOp op ||
+  op == "ext_envelope_parse" ||
+  op == "ext_duplicate_profile"
+
 def cvExtVectorBundleContract : Bool :=
   cvExtVectors.length == 25 &&
   allDistinctIds cvExtVectors &&
   allRejectsHaveErr cvExtVectors &&
   cvExtVectors.all familyTagMatchesId &&
+  cvExtVectors.all (fun v => knownReplayOp v.op) &&
   hasFamilies cvExtVectors ["ENV", "ACT", "PRE", "ENF", "PAY", "ERR", "DUP", "GEN", "PAR"]
 
 def parseEnvelopeHex? (hex : String) : Option ParsedEnvelope := do
@@ -90,18 +96,21 @@ def replayExtVector (v : CVExtVector) : CVExtReplayOutcome :=
       if hasDuplicateReplayProfileExtId v.profiles then
         .duplicateProfileReject
       else
-        if activationRoutedOp v.op then
-          match findReplayProfile? v.profiles env.extId, v.height with
-          | none, _ => .permissiveAccept
-          | some _, none => .fixtureMetadataReject
-          | some profile, some height => dispatchFromProfile profile height v.suiteId
-        else match v.op with
-        | "ext_envelope_parse" =>
-            .permissiveAccept
-        | "ext_duplicate_profile" =>
-            .permissiveAccept
-        | _ =>
-            .parseReject
+        if knownReplayOp v.op then
+          if activationRoutedOp v.op then
+            match findReplayProfile? v.profiles env.extId, v.height with
+            | none, _ => .permissiveAccept
+            | some _, none => .fixtureMetadataReject
+            | some profile, some height => dispatchFromProfile profile height v.suiteId
+          else match v.op with
+          | "ext_envelope_parse" =>
+              .permissiveAccept
+          | "ext_duplicate_profile" =>
+              .permissiveAccept
+          | _ =>
+              .fixtureMetadataReject
+        else
+          .fixtureMetadataReject
 
 private def replayOutcomeVerdict (outcome : CVExtReplayOutcome) : Bool × Option String :=
   match outcome with
@@ -175,7 +184,15 @@ theorem matched_profile_without_height_rejects_before_dispatch
     (hProfile : findReplayProfile? v.profiles env.extId = some profile)
     (hHeight : v.height = none) :
     replayExtVector v = .fixtureMetadataReject := by
-  simp [replayExtVector, hParse, hDup, hOp, hProfile, hHeight]
+  simp [replayExtVector, hParse, hDup, hOp, hProfile, hHeight, knownReplayOp]
+
+theorem unknown_op_rejects_as_fixture_metadata
+    (v : CVExtVector) (env : ParsedEnvelope)
+    (hParse : parseEnvelopeHex? v.covenantDataHex = some env)
+    (hDup : hasDuplicateReplayProfileExtId v.profiles = false)
+    (hKnown : knownReplayOp v.op = false) :
+    replayExtVector v = .fixtureMetadataReject := by
+  simp [replayExtVector, hParse, hDup, hKnown]
 
 theorem dispatch_profile_preactive_is_permissive (profile : ReplayProfile) (height : Nat)
     (suiteId : Option Nat)
@@ -227,16 +244,23 @@ def cvExtParsingSurface : Prop :=
     activationRoutedOp v.op = true →
     findReplayProfile? v.profiles env.extId = some profile →
     v.height = none →
+    replayExtVector v = .fixtureMetadataReject) ∧
+  (∀ v : CVExtVector, ∀ env : ParsedEnvelope,
+    parseEnvelopeHex? v.covenantDataHex = some env →
+    hasDuplicateReplayProfileExtId v.profiles = false →
+    knownReplayOp v.op = false →
     replayExtVector v = .fixtureMetadataReject)
 
 theorem cv_ext_parsing_surface_proved : cvExtParsingSurface := by
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_⟩
   · intro v hParse
     exact parse_failure_rejects_before_dispatch v hParse
   · intro v env hParse hDup
     exact duplicate_profiles_reject_before_activation v env hParse hDup
   · intro v env profile hParse hDup hOp hProfile hHeight
     exact matched_profile_without_height_rejects_before_dispatch v env profile hParse hDup hOp hProfile hHeight
+  · intro v env hParse hDup hKnown
+    exact unknown_op_rejects_as_fixture_metadata v env hParse hDup hKnown
 
 /-- D2 dispatch surface: pre-active permissive path, suite gate ordering, and
     binding reachability are explicit theorem obligations. This remains a
