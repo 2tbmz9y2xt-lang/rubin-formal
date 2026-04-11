@@ -305,12 +305,12 @@ theorem binding_recognized_openssl_digest32 :
 -- Section 7: Post-Parse Verify/Binding Path Ordering (D3)
 -- ============================================================================
 
-/-- Live post-parse CORE_EXT verification state.
+/-- Model-level post-parse CORE_EXT verification state.
     This D3 model starts after covenant-data parse and digest extraction have
     already succeeded. It captures only suite/native/binding route selection,
     txcontext preconditions, and the final error-class mapping for the
     `verify_sig_ext` callback paths. -/
-structure VerifySigExtLiveState where
+structure VerifySigExtModelState where
   suiteId : Nat
   allowedSuites : List Nat
   nativeRegistered : Bool
@@ -345,10 +345,10 @@ inductive VerifySigExtVerdict
   | sigNoncanonical
 deriving Repr, DecidableEq
 
-/-- Select the live verification route after parse and digest extraction.
+/-- Select the model-level verification route after parse and digest extraction.
     The ordering mirrors `validateCoreExtWitnessAtHeight`: suite gate first,
     then native-vs-ext dispatch, then txcontext/binding preconditions. -/
-def verifySigExtRoute (s : VerifySigExtLiveState) : VerifySigExtRoute :=
+def verifySigExtRoute (s : VerifySigExtModelState) : VerifySigExtRoute :=
   if !suiteAllowed s.suiteId s.allowedSuites then
     .suiteReject
   else if s.nativeRegistered then
@@ -374,7 +374,7 @@ def verifySigExtRoute (s : VerifySigExtLiveState) : VerifySigExtRoute :=
   else
     .extVerify
 
-/-- Final verdict mapping for the live post-parse verify/binding lane.
+/-- Final verdict mapping for the model-level post-parse verify/binding lane.
     `callbackErr` is meaningful only on the `verify_sig_ext` branches; the
     native route models only success vs signature-invalid at this layer. -/
 def verifySigExtVerdict (route : VerifySigExtRoute) (callbackErr sigOk : Bool) :
@@ -405,13 +405,13 @@ def verifySigExtErrCode : VerifySigExtVerdict → Option String
   | .sigNoncanonical => some "TX_ERR_SIG_NONCANONICAL"
 
 theorem verify_sig_ext_suite_gate_rejects_before_path
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = false) :
     verifySigExtRoute s = .suiteReject := by
   simp [verifySigExtRoute, hSuite]
 
 theorem verify_sig_ext_registered_native_outside_spend_set_rejects
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = true)
     (hSpend : s.nativeSpendPermitted = false) :
@@ -419,7 +419,7 @@ theorem verify_sig_ext_registered_native_outside_spend_set_rejects
   simp [verifySigExtRoute, hSuite, hNative, hSpend]
 
 theorem verify_sig_ext_native_spend_set_without_registry_rejects
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = true) :
@@ -427,7 +427,7 @@ theorem verify_sig_ext_native_spend_set_without_registry_rejects
   simp [verifySigExtRoute, hSuite, hNative, hSpend]
 
 theorem verify_sig_ext_native_noncanonical_rejects_before_verify
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = true)
     (hSpend : s.nativeSpendPermitted = true)
@@ -436,7 +436,7 @@ theorem verify_sig_ext_native_noncanonical_rejects_before_verify
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hCanonical]
 
 theorem verify_sig_ext_native_registered_canonical_reaches_native_verify
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = true)
     (hSpend : s.nativeSpendPermitted = true)
@@ -445,7 +445,7 @@ theorem verify_sig_ext_native_registered_canonical_reaches_native_verify
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hCanonical]
 
 theorem verify_sig_ext_txcontext_unsupported_rejects
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = false)
@@ -455,7 +455,7 @@ theorem verify_sig_ext_txcontext_unsupported_rejects
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport]
 
 theorem verify_sig_ext_txcontext_missing_bundle_rejects
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = false)
@@ -466,7 +466,7 @@ theorem verify_sig_ext_txcontext_missing_bundle_rejects
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport, hBundle]
 
 theorem verify_sig_ext_txcontext_missing_continuing_rejects
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = false)
@@ -478,7 +478,7 @@ theorem verify_sig_ext_txcontext_missing_continuing_rejects
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport, hBundle, hContinuing]
 
 theorem verify_sig_ext_txcontext_ready_reaches_verify
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = false)
@@ -490,7 +490,7 @@ theorem verify_sig_ext_txcontext_ready_reaches_verify
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport, hBundle, hContinuing]
 
 theorem verify_sig_ext_ext_binding_unsupported_rejects
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = false)
@@ -500,7 +500,7 @@ theorem verify_sig_ext_ext_binding_unsupported_rejects
   simp [verifySigExtRoute, hSuite, hNative, hSpend, hTx, hSupport]
 
 theorem verify_sig_ext_ext_binding_ready_reaches_verify
-    (s : VerifySigExtLiveState)
+    (s : VerifySigExtModelState)
     (hSuite : suiteAllowed s.suiteId s.allowedSuites = true)
     (hNative : s.nativeRegistered = false)
     (hSpend : s.nativeSpendPermitted = false)
