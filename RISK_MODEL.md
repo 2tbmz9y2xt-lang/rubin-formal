@@ -26,7 +26,12 @@
 - `toy-model`: модельный baseline (ранняя форма инвариантов). **Не** байтовая и **не** эквивалентность с Go/Rust.
 - `spec-model`: модель уже явно отражает ключевые определения из CANONICAL (ещё не bit‑exact wire).
 - `byte-model`: доказательства привязаны к byte‑accurate wire/serialization формулам.
-- `refinement`: есть слой уточнения “модель → исполняемая семантика” (в идеале — привязка к reference implementation).
+- `refinement`: есть слой уточнения “модель → исполняемая семантика”.
+  В текущем `rubin-formal` это op-scoped bridge map из `refinement_bridge.json`:
+  часть ops закрыта Go-trace / CV replay, часть — LIVE/BRIDGE theorem surface
+  на Lean transcription с explicit parity boundary к Go/Rust. Это **не**
+  uniform machine-checked equivalence между Lean и Go/Rust по всему critical-op
+  surface.
 
 ## Профили готовности (CI gate)
 
@@ -72,6 +77,16 @@
 - `0` deferred rows.
 
 Это сильнее старого bootstrap narrative, но всё ещё не даёт права заявлять universal proof of full CANONICAL semantics.
+
+Отдельно по Lean ↔ Go/Rust bridge ceiling:
+
+- источник истины: `rubin-formal/refinement_bridge.json`
+- ceiling op-scoped, не repo-wide
+- допустимы mixed ceilings (`machine_checked_universal`,
+  `machine_checked_assumption_backed`, `machine_checked_behavioral`,
+  `machine_checked_contract`)
+- недопустима формулировка, будто весь critical-op layer uniformly backed by
+  Go-trace refinement или machine-checked Lean↔Go/Rust equivalence
 
 ## Risk scoring (информативно)
 

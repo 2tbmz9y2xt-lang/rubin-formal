@@ -1598,7 +1598,7 @@
   "claims": {
     "allowed": [
       "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 28 machine-checked section entries, but this is still not a universal proof of full CANONICAL semantics",
-      "Go(reference) → Lean refinement is checked for critical ops over the full conformance fixture set (trace schema v1)",
+      "Executable Lean↔Go/Rust bridge evidence is op-scoped and mixed: depending on the critical op, the honest ceiling recorded in refinement_bridge.json is universal, assumption-backed, behavioral, or contract-level rather than one uniform Go-trace refinement claim over the full conformance set",
       "The pinned-section registry currently covers 28 section entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."

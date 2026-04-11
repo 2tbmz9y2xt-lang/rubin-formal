@@ -10,8 +10,11 @@
 
 ## Термины (важно)
 
-- `proof_level=refinement` означает: в репо есть исполняемый Lean replay-слой и trace-based
-  Go(reference) → Lean refinement checks для критических ops на conformance-наборе.
+- `proof_level=refinement` означает: в репо есть исполняемый Lean replay-слой и
+  op-scoped executable bridge evidence для критических ops. В зависимости от
+  surface это может быть Go-trace replay, CV replay, LIVE/BRIDGE theorem layer
+  на Lean transcription, или их честная комбинация. Это **не** означает один
+  uniform trace-based Go(reference) → Lean refinement слой для всех critical ops.
 - `claim_level` фиксирует допустимый публичный уровень заявлений:
   - `toy` (только model-baseline),
   - `byte` (byte-accurate слой),
@@ -37,6 +40,19 @@
 - `machine_checked_assumption_backed`: 4
 - `machine_checked_behavioral`: 3
 - `machine_checked_contract`: 0
+
+## Lean ↔ Go/Rust bridge ceiling
+
+- `refinement_bridge.json` — op-scoped bridge map, а не repo-wide equivalence claim.
+- Для разных executable critical ops честный ceiling сейчас разный:
+  `machine_checked_universal`, `machine_checked_assumption_backed`,
+  `machine_checked_behavioral`, или `machine_checked_contract`.
+- Часть ops опирается на Go-trace / CV replay по pinned fixtures, часть — на
+  LIVE/BRIDGE theorems о Lean transcriptions с явно названной human-reviewed
+  parity к Go/Rust.
+- Следовательно, текущий refinement слой **не** даёт права заявлять uniform
+  machine-checked Lean↔Go/Rust equivalence или uniform Go-trace refinement для
+  всего critical-op surface.
 
 ## Путь к freeze-ready
 
