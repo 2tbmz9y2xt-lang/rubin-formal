@@ -3,9 +3,9 @@ import RubinFormal.UtxoApplyGenesisV1
 /-!
 # Consensus Constants Behavioral Proofs (§4)
 
-LIVE validator rejection proofs for witness validation constants.
-Each theorem proves that `validateWitnessItemLengths` (LIVE function
-in `UtxoApplyGenesisV1.lean`) REJECTS when a numeric bound
+Behavioral rejection proofs for witness validation constants.
+Each theorem proves that the current helper-backed
+`validateWitnessItemLengths` path in `UtxoApplyGenesisV1.lean` REJECTS when a numeric bound
 from §4 is violated, and ACCEPTS when bounds are satisfied.
 
 File role:
