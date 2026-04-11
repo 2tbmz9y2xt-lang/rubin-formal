@@ -69,6 +69,14 @@
         "RubinFormal.u32le_roundtrip_16909060",
         "RubinFormal.Refinement.parse_tx_go_trace_contract_proved",
         "RubinFormal.parseTx_result_integrity",
+        "RubinFormal.UtxoBasicV1.parseInput_serializeInput_between",
+        "RubinFormal.UtxoBasicV1.parseInputs_serializeInputs_between",
+        "RubinFormal.UtxoBasicV1.parseOutput_serializeOutput_between",
+        "RubinFormal.UtxoBasicV1.parseOutputs_serializeOutputs_between",
+        "RubinFormal.UtxoBasicV1.parseWitnessItem_serializeWitnessItem_between",
+        "RubinFormal.UtxoBasicV1.parseWitnessItems_serializeWitnessItems_between",
+        "RubinFormal.UtxoBasicV1.parseWitness_serializeWitness_between",
+        "RubinFormal.UtxoBasicV1.parseDaCoreFieldsWithBytes_between",
         "RubinFormal.UtxoBasicV1.parseTx_serializeTx_roundtrip",
         "RubinFormal.UtxoBasicV1.parseTxAfterNonce_serializeTx_roundtrip"
       ],
@@ -92,14 +100,22 @@
         "RubinFormal.u32le_roundtrip_16909060": "rubin-formal/RubinFormal/PrimitiveEncodingRoundtrip.lean",
         "RubinFormal.Refinement.parse_tx_go_trace_contract_proved": "rubin-formal/RubinFormal/Refinement/GoTraceV1Check.lean",
         "RubinFormal.parseTx_result_integrity": "rubin-formal/RubinFormal/TxWireRoundtrip.lean",
+        "RubinFormal.UtxoBasicV1.parseInput_serializeInput_between": "rubin-formal/RubinFormal/TxWireInputBetweenContract.lean",
+        "RubinFormal.UtxoBasicV1.parseInputs_serializeInputs_between": "rubin-formal/RubinFormal/TxWireListContract.lean",
+        "RubinFormal.UtxoBasicV1.parseOutput_serializeOutput_between": "rubin-formal/RubinFormal/TxWireOutputBetweenContract.lean",
+        "RubinFormal.UtxoBasicV1.parseOutputs_serializeOutputs_between": "rubin-formal/RubinFormal/TxWireListContract.lean",
+        "RubinFormal.UtxoBasicV1.parseWitnessItem_serializeWitnessItem_between": "rubin-formal/RubinFormal/TxWireWitnessBetweenContract.lean",
+        "RubinFormal.UtxoBasicV1.parseWitnessItems_serializeWitnessItems_between": "rubin-formal/RubinFormal/TxWireListContract.lean",
+        "RubinFormal.UtxoBasicV1.parseWitness_serializeWitness_between": "rubin-formal/RubinFormal/TxWireListContract.lean",
+        "RubinFormal.UtxoBasicV1.parseDaCoreFieldsWithBytes_between": "rubin-formal/RubinFormal/TxWireDaCoreContract.lean",
         "RubinFormal.UtxoBasicV1.parseTx_serializeTx_roundtrip": "rubin-formal/RubinFormal/TxWireTxContract.lean",
         "RubinFormal.UtxoBasicV1.parseTxAfterNonce_serializeTx_roundtrip": "rubin-formal/RubinFormal/TxWireTxBodyContract.lean"
       },
       "limitations": [
         "PARSE-16 error-priority drift documented (Go: WITNESS_OVERFLOW, Lean: SIG_ALG_INVALID). Drift exception payload-pinned via triple-segment content hash (~192-bit collision resistance).",
-        "Cross-language Lean→Go/Rust byte-level equivalence relies on human-reviewed parity, not machine-checked bridge. The universal roundtrip is proved within Lean only."
+        "Cross-language Lean→Go/Rust byte-level equivalence is machine-checked only for the replayed fixture/trace corpus. Outside those exercised bytes, emitted-wire parity still relies on human-reviewed Go/Rust alignment rather than a universal binary bridge."
       ],
-      "notes": "Universal theorem lane: full transaction parse-serialize roundtrip, `parseTx_result_integrity`, and the complete serialize→parse chain over all 14 structural well-formedness fields and all 3 txKind variants (0x00, 0x01, 0x02). Separate fixture/contract lane: CV-PARSE, CV-COMPACT, and the machine-checked Go-trace contract for parse_tx over pinned vectors, including the payload-pinned PARSE-16 drift exception. Those replay/trace artifacts remain complementary executable evidence and do not replace the universal theorem lane.",
+      "notes": "Universal Lean serializer-contract lane: CompactSize canonicality/overflow/cursor-advance theorems, fixed-width primitive encoder size/roundtrip theorems, explicit between-contracts for input/output/witness-item/witness-list/DA-core lanes, `parseTx_result_integrity`, and the tx-body/full-tx roundtrip theorems over all 14 structural well-formedness fields and all 3 txKind variants (0x00, 0x01, 0x02). Separate fixture/contract lane: CV-PARSE, CV-COMPACT, and the machine-checked Go-trace contract for parse_tx over pinned vectors, including the payload-pinned PARSE-16 drift exception. Those replay/trace artifacts are complementary executable evidence only: they establish the current cross-language bit-exact ceiling for exercised fixtures/traces, but they do not upgrade the universal Lean serializer theorem lane into a machine-checked Go/Rust binary-equivalence claim.",
       "evidence_level": "machine_checked_universal"
     },
     {
