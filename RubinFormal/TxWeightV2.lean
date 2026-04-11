@@ -3,6 +3,17 @@ import RubinFormal.ByteWireV2
 import RubinFormal.TxParseV2
 import RubinFormal.DaCoreV1
 
+/-!
+# TxWeightV2
+
+File role:
+- legacy pre-rotation helper / historical hardcoded weight surface
+- authoritative universal post-rotation weight path lives in
+  `WeightSuiteAware.lean`
+- retained for pre-rotation constants, parser helpers, and regression context;
+  it should not be read as the active universal weight layer
+-/
+
 namespace RubinFormal
 
 open Wire

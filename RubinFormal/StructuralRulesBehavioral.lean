@@ -8,6 +8,13 @@ Legacy pre-rotation LIVE theorems on `validateWitnessItemLengths` and
 `validateThresholdSigSpendNoCrypto`, plus registry companion theorems that
 rebind the spend-side claim surface to the suite-aware helper layer.
 
+File role:
+- legacy pre-rotation theorem bundle plus companion rebind layer
+- not the authoritative universal live layer for post-rotation spend-side
+  semantics
+- retained to keep historical scope explicit while the claim surface points at
+  the suite-aware companions instead of the hardcoded helpers
+
 ## Coverage summary
 - R1-R14 legacy pre-rotation LIVE spend-side properties
 - registry companions on the universal helper layer for the same spend-side

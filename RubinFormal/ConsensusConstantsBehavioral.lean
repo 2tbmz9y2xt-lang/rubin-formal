@@ -8,6 +8,12 @@ Each theorem proves that `validateWitnessItemLengths` (LIVE function
 in UtxoApplyGenesisV1.lean:59-70) REJECTS when a numeric bound
 from §4 is violated, and ACCEPTS when bounds are satisfied.
 
+File role:
+- active behavioral-only claim layer for the current Section 4 registry row
+- intentionally anchored to the current legacy/pre-rotation
+  `validateWitnessItemLengths` helper
+- not the authoritative universal post-rotation parser/witness layer
+
 Go equivalent: validateWitnessItemLengths (consensus/core_ext.go)
 Rust equivalent: validate_witness_item_lengths (rubin-consensus/src/core_ext.rs)
 

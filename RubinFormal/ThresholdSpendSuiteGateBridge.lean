@@ -1,6 +1,11 @@
 /-
   RubinFormal/ThresholdSpendSuiteGateBridge.lean
 
+  File role:
+    bridge-only layer for threshold suite-gating semantics.
+    Authoritative universal helper claims live in the suite-aware gate/model
+    files; this file exists to pin bridge equivalence and scope transitions.
+
   Descriptor-aware suite gate BRIDGE for threshold-sig spend paths.
   Pre-rotation: BRIDGE theorems prove equivalence between the
   thresholdItemSuiteAllowed helper and `decide (suiteId = ML_DSA_87)`,
