@@ -85,8 +85,8 @@ def replayExtVector (v : CVExtVector) : CVExtReplayOutcome :=
             .permissiveAccept
         | "ext_duplicate_profile" =>
             .permissiveAccept
-        | "ext_activation_check" | "ext_pre_activation_spend" | "ext_enforcement_check"
-          | "ext_error_priority" =>
+        | "ext_activation_check" | "ext_pre_activation_spend"
+          | "ext_enforcement_check" | "ext_error_priority" =>
             match findReplayProfile? v.profiles env.extId, v.height with
             | none, _ => .permissiveAccept
             | some _, none => .activeProfileAccept
@@ -115,6 +115,9 @@ def checkExtVector (v : CVExtVector) : Bool :=
 def allCVExt : Bool :=
   cvExtVectors.all checkExtVector
 
+def cvExtReplayContract : Bool :=
+  cvExtVectorBundleContract && allCVExt
+
 private theorem all_append (xs ys : List CVExtVector) (p : CVExtVector → Bool) :
     (xs ++ ys).all p = (xs.all p && ys.all p) := by
   induction xs with
@@ -123,7 +126,10 @@ private theorem all_append (xs ys : List CVExtVector) (p : CVExtVector → Bool)
   | cons _ _ ih =>
       simp [List.all, ih, Bool.and_assoc]
 
-theorem cv_ext_vectors_pass : allCVExt = true := by
+theorem cv_ext_vector_bundle_contract_holds : cvExtVectorBundleContract = true := by
+  native_decide
+
+private theorem all_cv_ext_holds : allCVExt = true := by
   let n : Nat := cvExtVectors.length / 2
   have h1 : (cvExtVectors.take n).all checkExtVector = true := by
     native_decide
@@ -137,6 +143,9 @@ theorem cv_ext_vectors_pass : allCVExt = true := by
       _ = (true && true) := by simp [h1, h2]
       _ = true := by simp
   simpa [allCVExt, List.take_append_drop] using h
+
+theorem cv_ext_vectors_pass : cvExtReplayContract = true := by
+  simp [cvExtReplayContract, cv_ext_vector_bundle_contract_holds, all_cv_ext_holds]
 
 theorem parse_failure_rejects_before_dispatch (v : CVExtVector)
     (hParse : parseEnvelopeHex? v.covenantDataHex = none) :
