@@ -4,7 +4,7 @@ import RubinFormal.BytesEqLemmas
 /-!
 # Transaction Structural Rules Behavioral Proofs (§16)
 
-Legacy pre-rotation LIVE theorems on `validateWitnessItemLengths` and
+Legacy pre-rotation helper-backed theorems on `validateWitnessItemLengths` and
 `validateThresholdSigSpendNoCrypto`, plus registry companion theorems that
 rebind the spend-side claim surface to the suite-aware helper layer.
 
@@ -16,7 +16,7 @@ File role:
   the suite-aware companions instead of the hardcoded helpers
 
 ## Coverage summary
-- R1-R14 legacy pre-rotation LIVE spend-side properties
+- R1-R14 legacy pre-rotation helper-backed spend-side properties
 - registry companions on the universal helper layer for the same spend-side
   properties
 - Concrete examples retained as regression tests.
