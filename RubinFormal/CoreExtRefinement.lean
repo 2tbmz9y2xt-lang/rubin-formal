@@ -112,12 +112,16 @@ structure DeploymentProfile where
   extId : Nat
   activationHeight : Nat
 
-/-- Check for duplicate ext_ids in a list of profiles. -/
-def hasDuplicateExtId : List DeploymentProfile → Bool
+/-- Generic duplicate detection by a projected natural-number key. -/
+def hasDuplicateNatKey {α : Type} (key : α → Nat) : List α → Bool
   | [] => false
-  | p :: rest =>
-    if rest.any (fun q => q.extId == p.extId) then true
-    else hasDuplicateExtId rest
+  | x :: rest =>
+    if rest.any (fun y => key y == key x) then true
+    else hasDuplicateNatKey key rest
+
+/-- Check for duplicate ext_ids in a list of profiles. -/
+def hasDuplicateExtId : List DeploymentProfile → Bool :=
+  hasDuplicateNatKey (fun p => p.extId)
 
 /-- Empty profile list has no duplicates (definitional). -/
 theorem no_duplicates_empty : hasDuplicateExtId [] = false := rfl
@@ -125,7 +129,7 @@ theorem no_duplicates_empty : hasDuplicateExtId [] = false := rfl
 /-- A single profile has no duplicates (definitional). -/
 theorem no_duplicates_singleton (p : DeploymentProfile) :
     hasDuplicateExtId [p] = false := by
-  simp [hasDuplicateExtId, List.any]
+  simp [hasDuplicateExtId, hasDuplicateNatKey, List.any]
 
 /-- Concrete 3-profile list with distinct ext_ids: no duplicates. -/
 theorem no_duplicates_three_distinct :
@@ -146,14 +150,14 @@ theorem duplicate_in_three :
 /-- Two profiles with the same ext_id are detected as duplicates. -/
 theorem duplicate_detected (p q : DeploymentProfile) (h : p.extId = q.extId) :
     hasDuplicateExtId [p, q] = true := by
-  simp [hasDuplicateExtId, List.any, BEq.beq, h]
+  simp [hasDuplicateExtId, hasDuplicateNatKey, h]
 
 /-- Two profiles with different ext_ids are not duplicates. -/
 theorem no_duplicate_different_ids (p q : DeploymentProfile) (h : p.extId ≠ q.extId) :
     hasDuplicateExtId [p, q] = false := by
-  simp [hasDuplicateExtId, List.any]
-  intro heq
-  exact absurd heq.symm h
+  simp [hasDuplicateExtId, hasDuplicateNatKey, List.any]
+  intro hEq
+  exact h hEq.symm
 
 -- ============================================================================
 -- Section 4: Suite Authorization
@@ -252,11 +256,8 @@ def parseEnvelope? (raw : Bytes) : Option ParsedEnvelope :=
       none
 
 /-- Duplicate `ext_id` detection for finite fixture replay profiles. -/
-def hasDuplicateReplayProfileExtId : List ReplayProfile → Bool
-  | [] => false
-  | p :: rest =>
-      if rest.any (fun q => q.extId == p.extId) then true
-      else hasDuplicateReplayProfileExtId rest
+def hasDuplicateReplayProfileExtId : List ReplayProfile → Bool :=
+  hasDuplicateNatKey (fun p => p.extId)
 
 /-- Find the first replay profile matching an `ext_id`. Duplicate rejection is
     enforced separately via `hasDuplicateReplayProfileExtId`. -/

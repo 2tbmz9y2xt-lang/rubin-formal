@@ -23,13 +23,23 @@ private def allRejectsHaveErr (vs : List CVExtVector) : Bool :=
       | some e => e.length > 0
       | none => false
 
+private def familyTagMatchesId (v : CVExtVector) : Bool :=
+  v.id.startsWith ("CV-EXT-" ++ v.family ++ "-")
+
 private def hasFamilies (vs : List CVExtVector) (families : List String) : Bool :=
-  families.all fun fam => vs.any fun v => v.id.startsWith ("CV-EXT-" ++ fam)
+  families.all fun fam => vs.any fun v => v.family == fam
+
+private def activationRoutedOp (op : String) : Bool :=
+  op == "ext_activation_check" ||
+  op == "ext_pre_activation_spend" ||
+  op == "ext_enforcement_check" ||
+  op == "ext_error_priority"
 
 def cvExtVectorBundleContract : Bool :=
   cvExtVectors.length == 25 &&
   allDistinctIds cvExtVectors &&
   allRejectsHaveErr cvExtVectors &&
+  cvExtVectors.all familyTagMatchesId &&
   hasFamilies cvExtVectors ["ENV", "ACT", "PRE", "ENF", "PAY", "ERR", "DUP", "GEN", "PAR"]
 
 private def parseEnvelopeHex? (hex : String) : Option ParsedEnvelope := do
@@ -41,6 +51,7 @@ private def parseEnvelopeHex? (hex : String) : Option ParsedEnvelope := do
     all succeeded; D3 remains responsible for proving the verifier itself. -/
 inductive CVExtReplayOutcome
   | parseReject
+  | fixtureMetadataReject
   | duplicateProfileReject
   | permissiveAccept
   | activeProfileAccept
@@ -65,7 +76,7 @@ def dispatchFromProfile (profile : ReplayProfile) (height : Nat)
   | ActivationState.PreActive => .permissiveAccept
   | ActivationState.Active =>
       match suiteId with
-      | none => .activeProfileAccept
+      | none => .suiteReject
       | some sid =>
           if fixtureSuiteAdmitted sid profile.allowedSuiteIds then
             if bindingRecognized profile.binding then .verifyReachable else .bindingReject
@@ -80,23 +91,22 @@ def replayExtVector (v : CVExtVector) : CVExtReplayOutcome :=
       if hasDuplicateReplayProfileExtId v.profiles then
         .duplicateProfileReject
       else
-        match v.op with
+        if activationRoutedOp v.op then
+          match findReplayProfile? v.profiles env.extId, v.height with
+          | none, _ => .permissiveAccept
+          | some _, none => .fixtureMetadataReject
+          | some profile, some height => dispatchFromProfile profile height v.suiteId
+        else match v.op with
         | "ext_envelope_parse" =>
             .permissiveAccept
         | "ext_duplicate_profile" =>
             .permissiveAccept
-        | "ext_activation_check" | "ext_pre_activation_spend"
-          | "ext_enforcement_check" | "ext_error_priority" =>
-            match findReplayProfile? v.profiles env.extId, v.height with
-            | none, _ => .permissiveAccept
-            | some _, none => .activeProfileAccept
-            | some profile, some height => dispatchFromProfile profile height v.suiteId
         | _ =>
             .parseReject
 
 private def replayOutcomeVerdict (outcome : CVExtReplayOutcome) : Bool × Option String :=
   match outcome with
-  | .parseReject | .duplicateProfileReject =>
+  | .parseReject | .fixtureMetadataReject | .duplicateProfileReject =>
       (false, some "TX_ERR_COVENANT_TYPE_INVALID")
   | .suiteReject =>
       (false, some "TX_ERR_SIG_ALG_INVALID")
@@ -158,6 +168,16 @@ theorem duplicate_profiles_reject_before_activation (v : CVExtVector) (env : Par
     replayExtVector v = .duplicateProfileReject := by
   simp [replayExtVector, hParse, hDup]
 
+theorem matched_profile_without_height_rejects_before_dispatch
+    (v : CVExtVector) (env : ParsedEnvelope) (profile : ReplayProfile)
+    (hParse : parseEnvelopeHex? v.covenantDataHex = some env)
+    (hDup : hasDuplicateReplayProfileExtId v.profiles = false)
+    (hOp : activationRoutedOp v.op = true)
+    (hProfile : findReplayProfile? v.profiles env.extId = some profile)
+    (hHeight : v.height = none) :
+    replayExtVector v = .fixtureMetadataReject := by
+  simp [replayExtVector, hParse, hDup, hOp, hProfile, hHeight]
+
 theorem dispatch_profile_preactive_is_permissive (profile : ReplayProfile) (height : Nat)
     (suiteId : Option Nat)
     (hState : activationStateAt height profile.activationHeight = ActivationState.PreActive) :
@@ -170,6 +190,12 @@ theorem dispatch_profile_active_disallowed_suite_rejects (profile : ReplayProfil
     (hAllowed : fixtureSuiteAdmitted suiteId profile.allowedSuiteIds = false) :
     dispatchFromProfile profile height (some suiteId) = .suiteReject := by
   simp [dispatchFromProfile, hState, hAllowed]
+
+theorem dispatch_profile_active_missing_suite_rejects (profile : ReplayProfile)
+    (height : Nat)
+    (hState : activationStateAt height profile.activationHeight = ActivationState.Active) :
+    dispatchFromProfile profile height none = .suiteReject := by
+  simp [dispatchFromProfile, hState]
 
 theorem dispatch_profile_active_allowed_suite_reaches_verify (profile : ReplayProfile)
     (height suiteId : Nat)
@@ -195,14 +221,23 @@ def cvExtParsingSurface : Prop :=
   (∀ v : CVExtVector, ∀ env : ParsedEnvelope,
     parseEnvelopeHex? v.covenantDataHex = some env →
     hasDuplicateReplayProfileExtId v.profiles = true →
-    replayExtVector v = .duplicateProfileReject)
+    replayExtVector v = .duplicateProfileReject) ∧
+  (∀ v : CVExtVector, ∀ env : ParsedEnvelope, ∀ profile : ReplayProfile,
+    parseEnvelopeHex? v.covenantDataHex = some env →
+    hasDuplicateReplayProfileExtId v.profiles = false →
+    activationRoutedOp v.op = true →
+    findReplayProfile? v.profiles env.extId = some profile →
+    v.height = none →
+    replayExtVector v = .fixtureMetadataReject)
 
 theorem cv_ext_parsing_surface_proved : cvExtParsingSurface := by
-  refine ⟨?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · intro v hParse
     exact parse_failure_rejects_before_dispatch v hParse
   · intro v env hParse hDup
     exact duplicate_profiles_reject_before_activation v env hParse hDup
+  · intro v env profile hParse hDup hOp hProfile hHeight
+    exact matched_profile_without_height_rejects_before_dispatch v env profile hParse hDup hOp hProfile hHeight
 
 /-- D2 dispatch surface: pre-active permissive path, suite gate ordering, and
     binding reachability are explicit theorem obligations. This remains a
@@ -220,6 +255,9 @@ def cvExtDispatchSurface : Prop :=
     fixtureSuiteAdmitted suiteId profile.allowedSuiteIds = true →
     bindingRecognized profile.binding = true →
     dispatchFromProfile profile height (some suiteId) = .verifyReachable) ∧
+  (∀ profile : ReplayProfile, ∀ height : Nat,
+    activationStateAt height profile.activationHeight = ActivationState.Active →
+    dispatchFromProfile profile height none = .suiteReject) ∧
   (∀ profile : ReplayProfile, ∀ height suiteId : Nat,
     activationStateAt height profile.activationHeight = ActivationState.Active →
     fixtureSuiteAdmitted suiteId profile.allowedSuiteIds = true →
@@ -227,13 +265,15 @@ def cvExtDispatchSurface : Prop :=
     dispatchFromProfile profile height (some suiteId) = .bindingReject)
 
 theorem cv_ext_dispatch_surface_proved : cvExtDispatchSurface := by
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · intro profile height suiteId hState
     exact dispatch_profile_preactive_is_permissive profile height suiteId hState
   · intro profile height suiteId hState hAllowed
     exact dispatch_profile_active_disallowed_suite_rejects profile height suiteId hState hAllowed
   · intro profile height suiteId hState hAllowed hBinding
     exact dispatch_profile_active_allowed_suite_reaches_verify profile height suiteId hState hAllowed hBinding
+  · intro profile height hState
+    exact dispatch_profile_active_missing_suite_rejects profile height hState
   · intro profile height suiteId hState hAllowed hBinding
     exact dispatch_profile_active_unknown_binding_rejects profile height suiteId hState hAllowed hBinding
 
