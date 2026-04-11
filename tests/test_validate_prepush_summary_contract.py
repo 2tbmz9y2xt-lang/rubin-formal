@@ -110,11 +110,12 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
     def test_main_reports_load_errors_via_print_fail(self) -> None:
         with TemporaryDirectory() as td:
             stderr = io.StringIO()
+            missing = Path(td) / "missing.json"
             with contextlib.redirect_stderr(stderr):
                 rc = m.main(
                     [
                         "--result-json",
-                        str(Path(td) / "missing.json"),
+                        str(missing),
                         "--expected-check-type",
                         "formal_repo_review",
                         "--active-lenses",
@@ -125,6 +126,20 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             err = stderr.getvalue()
             self.assertIn("summary-contract: FAIL", err)
             self.assertIn("unable to read result-json", err)
+            self.assertIn(str(missing), err)
+
+    def test_load_result_payload_reports_decode_path(self) -> None:
+        with TemporaryDirectory() as td:
+            result = Path(td) / "result.json"
+            result.write_text("{", encoding="utf-8")
+            payload, errors = m.load_result_payload(str(result))
+            self.assertIsNone(payload)
+            self.assertTrue(
+                any(
+                    "unable to decode result-json" in err and str(result) in err
+                    for err in errors
+                )
+            )
 
     def test_main_rejects_missing_model_field(self) -> None:
         with TemporaryDirectory() as td:
@@ -219,6 +234,10 @@ class FormalValidatePrepushSummaryContractTests(unittest.TestCase):
             expected_active_lenses=["code-review"],
         )
         self.assertTrue(any("status not allowed" in err for err in errors))
+        self.assertFalse(
+            any("missing ok status" in err for err in errors),
+            msg=f"unexpected cascading errors: {errors}",
+        )
 
     def test_validate_contract_rejects_duplicate_active_lenses(self) -> None:
         summary = (

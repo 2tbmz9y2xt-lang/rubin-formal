@@ -20,6 +20,40 @@ FORMAL_LENS_DESCRIPTIONS = {
 }
 
 
+def require_canonical_nonempty_string(value: object, *, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
+    canonical = value.strip()
+    if not canonical:
+        raise ValueError(f"{label} must be a non-empty string")
+    if value != canonical:
+        raise ValueError(
+            f"{label} must not have leading/trailing whitespace: {value!r}"
+        )
+    return canonical
+
+
+def require_unique_canonical_string_list(
+    value: object,
+    *,
+    label: str,
+) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list of non-empty strings")
+    items: list[str] = []
+    seen: set[str] = set()
+    for position, item in enumerate(value, start=1):
+        canonical = require_canonical_nonempty_string(
+            item,
+            label=f"{label}[{position}]",
+        )
+        if canonical in seen:
+            raise ValueError(f"{label} contains duplicate entry: {canonical!r}")
+        seen.add(canonical)
+        items.append(canonical)
+    return items
+
+
 def parse_unique_csv(
     raw: str,
     *,
@@ -71,9 +105,12 @@ def allowed_formal_check_types(path: Path | None = None) -> set[str]:
         raise ValueError("review contract missing non-empty object profiles")
     names = set()
     for profile_name in profiles:
-        if not isinstance(profile_name, str) or not profile_name.strip():
-            raise ValueError("review contract contains empty profile name")
-        names.add(profile_name)
+        names.add(
+            require_canonical_nonempty_string(
+                profile_name,
+                label="review contract profile name",
+            )
+        )
     return {"auto", *names}
 
 

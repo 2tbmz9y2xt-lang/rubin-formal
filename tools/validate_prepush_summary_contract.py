@@ -279,7 +279,7 @@ def validate_contract(
     errors.extend(validate_check_type(fields, expected_check_type))
     errors.extend(active_lens_errors)
     errors.extend(covered_errors)
-    if not active_lens_errors:
+    if not active_lens_errors and not covered_errors:
         errors.extend(validate_covered_lenses(summary_active_lenses, covered))
     errors.extend(no_findings_errors)
     errors.extend(
@@ -293,11 +293,15 @@ def validate_contract(
 
 
 def load_result_payload(path: str) -> tuple[dict[str, object] | None, list[str]]:
+    result_path = Path(path)
     try:
-        raw_text = Path(path).read_text(encoding="utf-8")
+        raw_text = result_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return None, [f"unable to read result-json '{result_path}': {exc}"]
+    try:
         result = json.loads(raw_text)
-    except (OSError, json.JSONDecodeError) as exc:
-        return None, [f"unable to read result-json: {exc}"]
+    except json.JSONDecodeError as exc:
+        return None, [f"unable to decode result-json '{result_path}': {exc}"]
     if not isinstance(result, dict):
         return None, ["result payload must be a JSON object"]
     return result, []

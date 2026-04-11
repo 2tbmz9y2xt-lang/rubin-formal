@@ -95,6 +95,34 @@ class FormalReviewProfileTests(unittest.TestCase):
                 {"auto", "formal_repo_review", "future_profile"},
             )
 
+    def test_allowed_check_types_rejects_whitespace_padded_profile_name(self) -> None:
+        with TemporaryDirectory() as td:
+            contract = Path(td) / "prepush_review_contract.json"
+            contract.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "default_profile": "formal_repo_review",
+                        "profiles": {
+                            " formal_repo_review ": {
+                                "model": "gpt-5.4-mini",
+                                "model_reasoning_effort": "xhigh",
+                                "stall_seconds": 240,
+                                "combine_review_units_when_at_most": 1,
+                                "required_lenses": ["code-review"],
+                                "conditional_lenses": [],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                "must not have leading/trailing whitespace",
+            ):
+                m.allowed_check_types(contract)
+
     def test_allowed_check_types_rejects_unsupported_schema_version(self) -> None:
         with TemporaryDirectory() as td:
             contract = Path(td) / "prepush_review_contract.json"
@@ -143,6 +171,59 @@ class FormalReviewProfileTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(ValueError, "must be an integer >= 1"):
+                m.load_contract_payload(contract)
+
+    def test_load_contract_payload_rejects_duplicate_lenses(self) -> None:
+        with TemporaryDirectory() as td:
+            contract = Path(td) / "prepush_review_contract.json"
+            contract.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "default_profile": "formal_repo_review",
+                        "profiles": {
+                            "formal_repo_review": {
+                                "model": "gpt-5.4-mini",
+                                "model_reasoning_effort": "xhigh",
+                                "stall_seconds": 240,
+                                "combine_review_units_when_at_most": 1,
+                                "required_lenses": ["code-review", "code-review"],
+                                "conditional_lenses": [],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "contains duplicate entry"):
+                m.load_contract_payload(contract)
+
+    def test_load_contract_payload_rejects_whitespace_padded_lens_entries(self) -> None:
+        with TemporaryDirectory() as td:
+            contract = Path(td) / "prepush_review_contract.json"
+            contract.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "default_profile": "formal_repo_review",
+                        "profiles": {
+                            "formal_repo_review": {
+                                "model": "gpt-5.4-mini",
+                                "model_reasoning_effort": "xhigh",
+                                "stall_seconds": 240,
+                                "combine_review_units_when_at_most": 1,
+                                "required_lenses": [" code-review "],
+                                "conditional_lenses": [],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ValueError,
+                "must not have leading/trailing whitespace",
+            ):
                 m.load_contract_payload(contract)
 
     def test_focus_lines_use_suffix_match_for_metadata_files(self) -> None:
@@ -329,6 +410,29 @@ class FormalReviewProfileTests(unittest.TestCase):
                     )
             finally:
                 m.CONTRACT_PATH = original_contract
+
+    def test_main_reports_output_write_errors_cleanly(self) -> None:
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            changed = td_path / "changed.txt"
+            changed.write_text("RubinFormal/Foo.lean\n", encoding="utf-8")
+            fullscan = td_path / "fullscan.txt"
+            profile = td_path / "profile.json"
+            with self.assertRaisesRegex(SystemExit, "Is a directory"):
+                m.main(
+                    [
+                        "--changed-files",
+                        str(changed),
+                        "--focus-output",
+                        str(td_path),
+                        "--fullscan-output",
+                        str(fullscan),
+                        "--check-type",
+                        "auto",
+                        "--profile-output",
+                        str(profile),
+                    ]
+                )
 
     def test_parse_changed_files_requires_manifest(self) -> None:
         with TemporaryDirectory() as td:

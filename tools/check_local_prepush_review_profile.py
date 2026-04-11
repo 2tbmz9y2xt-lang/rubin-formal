@@ -12,12 +12,16 @@ try:
         describe_formal_lens,
         FORMAL_REVIEW_CONTRACT_PATH,
         load_formal_review_contract,
+        require_canonical_nonempty_string,
+        require_unique_canonical_string_list,
     )
 except ImportError:
     from prepush_review_common import (
         describe_formal_lens,
         FORMAL_REVIEW_CONTRACT_PATH,
         load_formal_review_contract,
+        require_canonical_nonempty_string,
+        require_unique_canonical_string_list,
     )
 
 CONTRACT_PATH = FORMAL_REVIEW_CONTRACT_PATH
@@ -40,8 +44,10 @@ def load_contract_payload(path: Path | None = None) -> dict[str, object]:
     payload = load_formal_review_contract(contract_path)
 
     default_profile = payload.get("default_profile")
-    if not isinstance(default_profile, str) or not default_profile.strip():
-        raise ValueError("review contract missing non-empty string default_profile")
+    require_canonical_nonempty_string(
+        default_profile,
+        label="review contract default_profile",
+    )
 
     profiles = payload.get("profiles")
     if not isinstance(profiles, dict) or not profiles:
@@ -56,39 +62,43 @@ def load_contract_payload(path: Path | None = None) -> dict[str, object]:
         "conditional_lenses",
     )
     for profile_name, profile_data in profiles.items():
-        if not isinstance(profile_name, str) or not profile_name.strip():
-            raise ValueError("review contract contains empty profile name")
+        canonical_profile_name = require_canonical_nonempty_string(
+            profile_name,
+            label="review contract profile name",
+        )
         if not isinstance(profile_data, dict):
-            raise ValueError(f"review contract profile {profile_name!r} must be an object")
+            raise ValueError(
+                f"review contract profile {canonical_profile_name!r} must be an object"
+            )
         missing = [field for field in required_fields if field not in profile_data]
         if missing:
             raise ValueError(
-                f"review contract profile {profile_name!r} missing fields: {', '.join(missing)}"
+                f"review contract profile {canonical_profile_name!r} missing fields: {', '.join(missing)}"
             )
         for field_name in ("model", "model_reasoning_effort"):
             value = profile_data[field_name]
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(
-                    f"review contract profile {profile_name!r} field {field_name!r} must be a non-empty string"
+                    f"review contract profile {canonical_profile_name!r} field {field_name!r} must be a non-empty string"
                 )
         for field_name in ("stall_seconds", "combine_review_units_when_at_most"):
             value = profile_data[field_name]
             if isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError(
-                    f"review contract profile {profile_name!r} field {field_name!r} must be an integer"
+                    f"review contract profile {canonical_profile_name!r} field {field_name!r} must be an integer"
                 )
             if value < 1:
                 raise ValueError(
-                    f"review contract profile {profile_name!r} field {field_name!r} must be an integer >= 1"
+                    f"review contract profile {canonical_profile_name!r} field {field_name!r} must be an integer >= 1"
                 )
         for field_name in ("required_lenses", "conditional_lenses"):
-            value = profile_data[field_name]
-            if not isinstance(value, list) or any(
-                not isinstance(item, str) or not item.strip() for item in value
-            ):
-                raise ValueError(
-                    f"review contract profile {profile_name!r} field {field_name!r} must be a list of non-empty strings"
-                )
+            require_unique_canonical_string_list(
+                profile_data[field_name],
+                label=(
+                    f"review contract profile {canonical_profile_name!r} "
+                    f"field {field_name!r}"
+                ),
+            )
 
     return payload
 
@@ -279,37 +289,47 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--profile-output", required=True)
     args = parser.parse_args(argv)
 
+    changed_path = Path(args.changed_files)
+    focus_output = Path(args.focus_output)
+    fullscan_output = Path(args.fullscan_output)
+    profile_output = Path(args.profile_output)
+
     try:
         requested = args.check_type.strip()
         allowed = allowed_check_types()
         if requested not in allowed:
             allowed_joined = ", ".join(sorted(allowed))
-            raise SystemExit(
+            raise ValueError(
                 f"unsupported check_type {requested!r}; expected one of: {allowed_joined}"
             )
-        changed = parse_changed_files(Path(args.changed_files))
+        changed = parse_changed_files(changed_path)
         profile = load_profile(requested)
         active_lenses = active_lenses_for(changed, profile)
-        write_fullscan(Path(args.fullscan_output), changed, profile, active_lenses)
-    except ValueError as exc:
+        write_fullscan(fullscan_output, changed, profile, active_lenses)
+        focus_lines = focus_lines_for(changed)
+        focus_output.write_text(
+            "\n".join(focus_lines) + "\n",
+            encoding="utf-8",
+        )
+
+        profile_payload = {
+            "profile": profile.name,
+            "check_type": profile.name,
+            "why": "Formal repo requires hostile theorem/metadata review with read-only repo context.",
+            "model": profile.model,
+            "model_reasoning_effort": profile.model_reasoning_effort,
+            "stall_seconds": profile.stall_seconds,
+            "combine_review_units_when_at_most": profile.combine_review_units_when_at_most,
+            "required_lenses": list(profile.required_lenses),
+            "conditional_lenses": list(profile.conditional_lenses),
+            "active_lenses": active_lenses,
+        }
+        profile_output.write_text(
+            json.dumps(profile_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    except (OSError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
-    focus_lines = focus_lines_for(changed)
-
-    Path(args.focus_output).write_text("\n".join(focus_lines) + "\n", encoding="utf-8")
-
-    profile_payload = {
-        "profile": profile.name,
-        "check_type": profile.name,
-        "why": "Formal repo requires hostile theorem/metadata review with read-only repo context.",
-        "model": profile.model,
-        "model_reasoning_effort": profile.model_reasoning_effort,
-        "stall_seconds": profile.stall_seconds,
-        "combine_review_units_when_at_most": profile.combine_review_units_when_at_most,
-        "required_lenses": list(profile.required_lenses),
-        "conditional_lenses": list(profile.conditional_lenses),
-        "active_lenses": active_lenses,
-    }
-    Path(args.profile_output).write_text(json.dumps(profile_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0
 
 
