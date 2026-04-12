@@ -19,8 +19,8 @@
     {
       "op": "sighash_v1",
       "gate": "CV-SIGHASH",
-      "model_theorem": "RubinFormal.Conformance.cv_sighash_vectors_pass",
-      "lean_file": "rubin-formal/RubinFormal/Conformance/CVSighashReplay.lean",
+      "model_theorem": "RubinFormal.sighash_v1_proved",
+      "lean_file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_file": "rubin-formal/RubinFormal/SighashRefinementUpgrade.lean",
       "evidence_level": "machine_checked_universal",
       "spec_section": "§12",
@@ -54,7 +54,7 @@
         "RubinFormal.validateTxContextSighashWitness_invalid_base_rejects",
         "RubinFormal.validateTxContextSighashWitness_disallowed_rejects"
       ],
-      "notes": "Bridge upgraded from contract to universal for the live selector/TXCTX gate surface because the assumption-backed digest-collision reduction theorem is no longer counted here. The row remains honest about residual raw-tx/preimage distinctness gaps and does not overclaim universal tx-level digest equivalence."
+      "notes": "Universal bridge for the live selector/TXCTX gate surface after splitting the assumption-backed digest-collision theorem into its own residual row. This row remains honest about residual raw-tx/preimage distinctness gaps and does not overclaim universal tx-level digest equivalence."
     },
     {
       "op": "sighash_v1_digest_collision_residual",
