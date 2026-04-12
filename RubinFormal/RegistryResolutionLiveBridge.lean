@@ -92,53 +92,80 @@ theorem pre_rotation_registered_iff (sid : Nat) :
 -- §3  Lookup params bridge — Go/Rust constant parity
 -- ═══════════════════════════════════════════════════════════════════
 
+/-- Any singleton registry extensionally equal to `[ML_DSA_87_ENTRY]` returns
+    exactly the canonical ML-DSA-87 entry at suite ID `0x01`. -/
+theorem single_ml_dsa_lookup_exact_entry
+    (reg : SuiteRegistry) (entry : SuiteEntry)
+    (hreg : reg = [ML_DSA_87_ENTRY])
+    (hfind : registryLookup reg 0x01 = some entry) :
+    entry = ML_DSA_87_ENTRY := by
+  have hresolve : registryLookup reg 0x01 = some ML_DSA_87_ENTRY :=
+    NativeRegistryResolution.single_ml_dsa_registry_resolves reg hreg
+  rw [hresolve] at hfind
+  simpa using (Option.some.inj hfind).symm
+
 /-- ML-DSA-87 lookup returns exact params matching Go/Rust consensus constants:
     - Go: `ML_DSA_87_PUBKEY_BYTES = 2592`, `ML_DSA_87_SIG_BYTES = 4627`, `VERIFY_COST_ML_DSA_87 = 8`
     - Rust: same constants in `params.rs`
 
-    The bridge verifies constant parity between Lean model and live code. -/
-theorem ml_dsa_87_params_bridge :
-    ∃ entry, registryLookup PRE_ROTATION_REGISTRY 0x01 = some entry ∧
-      entry.pubkeyBytes = 2592 ∧ entry.sigBytes = 4627 ∧ entry.verifyCost = 8 := by
-  exact ⟨ML_DSA_87_ENTRY, by native_decide, rfl, rfl, rfl⟩
+    Quantified over every entry returned by a singleton ML-DSA-87 registry. -/
+theorem ml_dsa_87_params_bridge
+    (reg : SuiteRegistry) (entry : SuiteEntry)
+    (hreg : reg = [ML_DSA_87_ENTRY])
+    (hfind : registryLookup reg 0x01 = some entry) :
+    entry.pubkeyBytes = 2592 ∧ entry.sigBytes = 4627 ∧ entry.verifyCost = 8 := by
+  have heq : entry = ML_DSA_87_ENTRY :=
+    single_ml_dsa_lookup_exact_entry reg entry hreg hfind
+  subst entry
+  exact ⟨rfl, rfl, rfl⟩
 
 /-- Exact pre-rotation native tuple for ML-DSA-87 as carried by the
-    authoritative Section 4.1.1 registry entry. -/
-theorem ml_dsa_87_manifest_tuple_bridge :
-    ∃ entry, registryLookup PRE_ROTATION_REGISTRY 0x01 = some entry ∧
-      entry.suiteId = 0x01 ∧
+    authoritative Section 4.1.1 registry entry, quantified over every
+    singleton registry equal to `[ML_DSA_87_ENTRY]`. -/
+theorem ml_dsa_87_manifest_tuple_bridge
+    (reg : SuiteRegistry) (entry : SuiteEntry)
+    (hreg : reg = [ML_DSA_87_ENTRY])
+    (hfind : registryLookup reg 0x01 = some entry) :
+    entry.suiteId = 0x01 ∧
       entry.semanticId = "ml-dsa-87" ∧
       entry.pubkeyBytes = 2592 ∧
       entry.sigBytes = 4627 ∧
       entry.verifyCost = 8 ∧
       entry.bindingProfile = "native-v1-raw-digest32" := by
-  exact ⟨ML_DSA_87_ENTRY, by native_decide, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  have heq : entry = ML_DSA_87_ENTRY :=
+    single_ml_dsa_lookup_exact_entry reg entry hreg hfind
+  subst entry
+  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Exact `NativeSuiteEntryBytes_v1` payload for the pre-rotation ML-DSA-87
     native registry entry. This closes the normative field order for the
-    native component of the canonical binding manifest. -/
-theorem ml_dsa_87_manifest_bytes_hash_bridge :
-    ∃ entry, registryLookup PRE_ROTATION_REGISTRY 0x01 = some entry ∧
-      Rotation.nativeSuiteEntryBytesV1 entry =
-        RubinFormal.bytes #[
-          0x01,
-          0x09, 0x6d, 0x6c, 0x2d, 0x64, 0x73, 0x61, 0x2d, 0x38, 0x37,
-          0x20, 0x0a, 0x00, 0x00,
-          0x13, 0x12, 0x00, 0x00,
-          0x08, 0x00, 0x00, 0x00,
-          0x16, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x2d, 0x76, 0x31, 0x2d,
-          0x72, 0x61, 0x77, 0x2d, 0x64, 0x69, 0x67, 0x65, 0x73, 0x74, 0x33, 0x32
-        ] ∧
-      Rotation.nativeSuiteEntryHashV1 entry =
-        RubinFormal.bytes #[
-          0x3f, 0x8a, 0x8f, 0x6b, 0xe4, 0xed, 0x04, 0x54,
-          0x43, 0x32, 0xfc, 0x65, 0x3a, 0x09, 0x02, 0x47,
-          0x43, 0x7a, 0x44, 0xa8, 0x0d, 0xc7, 0xba, 0x78,
-          0x28, 0xc2, 0x23, 0x2d, 0xda, 0x14, 0xee, 0xa9
-        ] := by
-  refine ⟨ML_DSA_87_ENTRY, by native_decide, ?_, ?_⟩
-  · native_decide
-  · native_decide
+    native component of the canonical binding manifest for every singleton
+    registry equal to `[ML_DSA_87_ENTRY]`. -/
+theorem ml_dsa_87_manifest_bytes_hash_bridge
+    (reg : SuiteRegistry) (entry : SuiteEntry)
+    (hreg : reg = [ML_DSA_87_ENTRY])
+    (hfind : registryLookup reg 0x01 = some entry) :
+    Rotation.nativeSuiteEntryBytesV1 entry =
+      RubinFormal.bytes #[
+        0x01,
+        0x09, 0x6d, 0x6c, 0x2d, 0x64, 0x73, 0x61, 0x2d, 0x38, 0x37,
+        0x20, 0x0a, 0x00, 0x00,
+        0x13, 0x12, 0x00, 0x00,
+        0x08, 0x00, 0x00, 0x00,
+        0x16, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x2d, 0x76, 0x31, 0x2d,
+        0x72, 0x61, 0x77, 0x2d, 0x64, 0x69, 0x67, 0x65, 0x73, 0x74, 0x33, 0x32
+      ] ∧
+    Rotation.nativeSuiteEntryHashV1 entry =
+      RubinFormal.bytes #[
+        0x3f, 0x8a, 0x8f, 0x6b, 0xe4, 0xed, 0x04, 0x54,
+        0x43, 0x32, 0xfc, 0x65, 0x3a, 0x09, 0x02, 0x47,
+        0x43, 0x7a, 0x44, 0xa8, 0x0d, 0xc7, 0xba, 0x78,
+        0x28, 0xc2, 0x23, 0x2d, 0xda, 0x14, 0xee, 0xa9
+      ] := by
+  have heq : entry = ML_DSA_87_ENTRY :=
+    single_ml_dsa_lookup_exact_entry reg entry hreg hfind
+  subst entry
+  exact ⟨by native_decide, by native_decide⟩
 
 /-- The looked-up entry's suiteId matches the query — no ID confusion.
     Bridges Go: `p, ok := reg.Lookup(id); p.SuiteID == id`. -/
