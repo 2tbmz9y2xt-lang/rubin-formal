@@ -1346,13 +1346,10 @@
       "evidence_level": "machine_checked_universal"
     },
     {
-      "section_key": "txctx_coreext_fixture_replay",
-      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Replay + Route Lane",
+      "section_key": "txctx_coreext_route_lane",
+      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Route + Bridge Lane",
       "status": "proved",
       "theorems": [
-        "RubinFormal.Conformance.cv_ext_vectors_pass",
-        "RubinFormal.Conformance.cv_ext_parsing_surface_proved",
-        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_suite_gate_rejects_before_path",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_native_spend_set_without_registry_rejects",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_native_noncanonical_rejects_before_verify",
@@ -1363,14 +1360,10 @@
         "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_verify_route",
         "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_continuing_reject_route",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_binding_ready_reaches_verify",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid",
-        "RubinFormal.Conformance.cv_txctx_vectors_pass"
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid"
       ],
-      "file": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+      "file": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
       "theorem_files": {
-        "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
-        "RubinFormal.Conformance.cv_ext_parsing_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
-        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_suite_gate_rejects_before_path": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_native_spend_set_without_registry_rejects": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_native_noncanonical_rejects_before_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
@@ -1381,16 +1374,38 @@
         "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_verify_route": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
         "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_continuing_reject_route": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
         "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_binding_ready_reaches_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
+        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid": "rubin-formal/RubinFormal/CoreExtRefinement.lean"
+      },
+      "notes": "Universal route/bridge lane for the currently counted §14 CORE_EXT theorem surface. These theorems do not claim full live `verify_sig_ext` correctness; they close the route-selection boundary that the current formal model actually proves: suite gate rejects before any native/ext path, native spend-set and canonicality routing, txcontext bundle gating, ext-binding routing, callback error-code split, and the computed-TxContext bridge from successful `connectBlockFullComputed` runs into the txcontext verify versus continuing-reject branches.",
+      "limitations": [
+        "This universal row is route-scoped only. It does not claim ext_id/profile selection correctness for an arbitrary live CORE_EXT profile or full callback semantics beyond the counted route/error-code theorems.",
+        "Fixture replay for the shipped CV-EXT / CV-TXCTX bundles remains complementary evidence and is tracked separately in `txctx_coreext_fixture_replay`."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
+      "section_key": "txctx_coreext_fixture_replay",
+      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Replay Residual",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.Conformance.cv_ext_vectors_pass",
+        "RubinFormal.Conformance.cv_ext_parsing_surface_proved",
+        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved",
+        "RubinFormal.Conformance.cv_txctx_vectors_pass"
+      ],
+      "file": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+      "theorem_files": {
+        "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+        "RubinFormal.Conformance.cv_ext_parsing_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
+        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
         "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
       },
-      "notes": "Mixed behavioral row for the current CV-EXT and CV-TXCTX bundles. This entry still preserves the pinned-bundle contract checks (vector counts, distinct IDs, reject vectors carry expect_err, family tags match the pinned CV-EXT ids, op tags stay within the pinned replay vocabulary, and TXCTX governance-scope markers stay explicit), and machine-checks the finite fixture-anchored CORE_EXT parse/dispatch replay surface over the shipped CV-EXT vectors. It also counts post-parse/post-digest route theorems in CoreExtRefinement for the same §14 family: suite gate rejects before any native/ext route, native spend-set drift rejects before `verify_sig_ext`, native canonical witnesses stay on the native verify path, txcontext-enabled routes require the bundle before callback execution, and ext/txcontext callback failures map to the runtime `TX_ERR_SIG_ALG_INVALID` / `TX_ERR_SIG_INVALID` split. Finally, it counts the current computed-TxContext bridge theorems showing that successful `connectBlockFullComputed` runs establish the continuing-count and sighash gate premises and route nonempty versus empty continuing data into the txcontext verify versus continuing-reject branches. Because this row combines fixture replay with route-specific bridge theorems, its honest ceiling is behavioral; it remains complementary evidence and does not reopen or replace the full §14 live theorem closure recorded in txcontext_formal.",
+      "notes": "Behavioral replay residual for the current CV-EXT and CV-TXCTX bundles. This row preserves the pinned-bundle contract checks (vector counts, distinct IDs, reject vectors carry expect_err, family tags match the pinned CV-EXT ids, op tags stay within the pinned replay vocabulary, and TXCTX governance-scope markers stay explicit) and the finite fixture-anchored CORE_EXT parse/dispatch replay surface over the shipped vectors. The separate route/bridge theorem lane now lives in `txctx_coreext_route_lane`; this residual row stays anchored to replay evidence and does not reopen or replace the substantive live §14 theorem closure in `txcontext_formal`.",
       "limitations": [
-        "This row is still below universal/live closure: the finite shipped CV-EXT replay bundle, the post-parse/post-digest verify/binding ordering model, and the current computed-TxContext bridge still do not claim full live `verify_sig_ext` correctness or full txcontext-enabled replay equivalence.",
-        "The computed-TxContext bridge is still route-level only: it proves that the current live computed TxContext surface reaches the txcontext verify or continuing-reject branch once the suite/native premises are supplied, but it does not yet prove ext_id/profile selection or callback correctness for a specific live CORE_EXT profile.",
+        "This residual row is intentionally replay-scoped. It does not claim full live `verify_sig_ext` correctness or full txcontext-enabled replay equivalence beyond the shipped fixture bundles.",
         "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
         "Where the current shipped CV-EXT vectors encode fixture-lane behavior that diverges from the separate live spend-side theorem surface (including active sentinel-admitted cases), this row stays anchored to the shipped fixture lane and must not be read as a live sentinel/binding theorem.",
-        "The live §14 theorem closure recorded in txcontext_formal remains the substantive TxContext proof surface; this behavioral row is additive/complementary evidence only and is not a replacement for that formal coverage."
+        "The live §14 theorem closure recorded in `txcontext_formal` and the route-scoped bridge theorems recorded in `txctx_coreext_route_lane` remain the substantive theorem surfaces; this residual row is complementary replay evidence only."
       ],
       "evidence_level": "machine_checked_behavioral"
     },
@@ -1687,9 +1702,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 32 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 33 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
       "Executable Lean↔Go/Rust bridge evidence is op-scoped and mixed: depending on the critical op, the honest ceiling recorded in rubin-formal/refinement_bridge.json is universal, assumption-backed, behavioral, or contract-level rather than one uniform Go-trace refinement claim over the full conformance set",
-      "The registry currently covers 32 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
+      "The registry currently covers 33 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
