@@ -93,19 +93,12 @@ def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
 def nativeSuiteEntryBytesV1? (entry : SuiteEntry) : Option Bytes := do
   let semanticBytes := entry.semanticId.toUTF8
   let bindingBytes := entry.bindingProfile.toUTF8
-  if hsid : entry.suiteId < 256 then
-    if hsem : semanticBytes.size < 18446744073709551616 then
-      if hpub : entry.pubkeyBytes < 4294967296 then
-        if hsig : entry.sigBytes < 4294967296 then
-          if hcost : entry.verifyCost < 4294967296 then
-            if hbind : bindingBytes.size < 18446744073709551616 then
-              have _ : (UInt8.ofNat entry.suiteId).toNat = entry.suiteId := by
-                simp [UInt8.ofNat, UInt8.toNat, Fin.ofNat, Nat.mod_eq_of_lt hsid]
-              have _ : semanticBytes.size < 18446744073709551616 := hsem
-              have _ : entry.pubkeyBytes < 4294967296 := hpub
-              have _ : entry.sigBytes < 4294967296 := hsig
-              have _ : entry.verifyCost < 4294967296 := hcost
-              have _ : bindingBytes.size < 18446744073709551616 := hbind
+  if _hsid : entry.suiteId < 256 then
+    if _hsem : semanticBytes.size < 18446744073709551616 then
+      if _hpub : entry.pubkeyBytes < 4294967296 then
+        if _hsig : entry.sigBytes < 4294967296 then
+          if _hcost : entry.verifyCost < 4294967296 then
+            if _hbind : bindingBytes.size < 18446744073709551616 then
               pure <|
                 RubinFormal.bytes #[UInt8.ofNat entry.suiteId] ++
                   RubinFormal.WireEnc.compactSize semanticBytes.size ++
