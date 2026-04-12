@@ -88,20 +88,29 @@ def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
 
 /-- Canonical byte encoding of a Section 4.1.1 native suite entry.
     Field order matches `NativeSuiteEntryBytes_v1` exactly.
-    Fails closed when `suiteId` is outside the one-byte canonical domain. -/
+    Fails closed when any fixed-width field is outside the canonical byte domain. -/
 def nativeSuiteEntryBytesV1? (entry : SuiteEntry) : Option Bytes := do
   let semanticBytes := entry.semanticId.toUTF8
   let bindingBytes := entry.bindingProfile.toUTF8
   if hsid : entry.suiteId < 256 then
-    pure <|
-      RubinFormal.bytes #[⟨entry.suiteId, hsid⟩] ++
-        RubinFormal.WireEnc.compactSize semanticBytes.size ++
-        semanticBytes ++
-        RubinFormal.WireEnc.u32le entry.pubkeyBytes ++
-        RubinFormal.WireEnc.u32le entry.sigBytes ++
-        RubinFormal.WireEnc.u32le entry.verifyCost ++
-        RubinFormal.WireEnc.compactSize bindingBytes.size ++
-        bindingBytes
+    if hpub : entry.pubkeyBytes < 4294967296 then
+      if hsig : entry.sigBytes < 4294967296 then
+        if hcost : entry.verifyCost < 4294967296 then
+          pure <|
+            RubinFormal.bytes #[⟨entry.suiteId, hsid⟩] ++
+              RubinFormal.WireEnc.compactSize semanticBytes.size ++
+              semanticBytes ++
+              RubinFormal.WireEnc.u32le entry.pubkeyBytes ++
+              RubinFormal.WireEnc.u32le entry.sigBytes ++
+              RubinFormal.WireEnc.u32le entry.verifyCost ++
+              RubinFormal.WireEnc.compactSize bindingBytes.size ++
+              bindingBytes
+        else
+          none
+      else
+        none
+    else
+      none
   else
     none
 
