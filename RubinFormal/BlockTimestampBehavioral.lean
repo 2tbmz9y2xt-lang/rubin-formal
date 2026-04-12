@@ -1,6 +1,8 @@
 import RubinFormal.BlockBasicCheckV1
+import RubinFormal.BytesEqLemmas
 namespace RubinFormal
 open BlockBasicCheckV1
+open BlockBasicV1
 
 -- ============================================================
 -- §16 block_timestamp_rules — Universal Upgrade
@@ -147,5 +149,227 @@ theorem timestampBounds_complete (mtp ts : Nat) :
   · exact Or.inl ⟨h, (timestampBounds_ok_iff mtp ts).mp h⟩
   · exact Or.inr (Or.inl ⟨h, (timestampBounds_old_iff mtp ts).mp h⟩)
   · exact Or.inr (Or.inr ⟨h, (timestampBounds_future_iff mtp ts).mp h⟩)
+
+private theorem except_unit_bind_pure_eq_self (x : Except String Unit) :
+    (match x with
+    | .error err => .error err
+    | .ok _ => .ok ()) = x := by
+  cases x <;> rfl
+
+-- ============================================================
+-- LIVE: validateBlockBasicCheck — timestamp stage on the top-level path
+-- ============================================================
+
+/-- Exact post-prefix decomposition of the real `validateBlockBasicCheck`
+    timestamp stage. Once parse/pow/target/linkage/merkle/witness checks
+    have passed on the live path, the remaining suffix is exactly:
+    derive `medianTimePast`, apply `timestampBounds`, then run nonce replay. -/
+theorem validateBlockBasicCheck_timestamp_stage
+    (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes)
+    (blockHeight : Nat)
+    (prevTimestamps : List Nat)
+    (pb : ParsedBlock)
+    (witnessRoot gotCommit : Bytes)
+    (hParse : BlockBasicV1.parseBlock blockBytes = .ok pb)
+    (hPow : BlockBasicV1.powCheck pb.header = .ok ())
+    (hTarget :
+      match expectedTarget with
+      | none => True
+      | some exp => pb.header.target = exp)
+    (hPrev :
+      match expectedPrevHash with
+      | none => True
+      | some exp => pb.header.prevHash = exp)
+    (hMerkle : BlockBasicV1.merkleRootTxids pb.txids = .ok pb.header.merkleRoot)
+    (hWmr : BlockBasicV1.witnessMerkleRootWtxids pb.wtxids = .ok witnessRoot)
+    (hCommit : BlockBasicV1.findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit)
+    (hEq : gotCommit = BlockBasicV1.witnessCommitmentHash witnessRoot) :
+    validateBlockBasicCheck blockBytes expectedPrevHash expectedTarget blockHeight prevTimestamps =
+      (do
+        let mtp ← medianTimePast prevTimestamps
+        timestampBounds mtp pb.header.timestamp
+        nonceReplayCheck pb.txs) := by
+  have hCommitFalse : (gotCommit != BlockBasicV1.witnessCommitmentHash witnessRoot) = false := by
+    subst hEq
+    exact bytes_bne_self_false _
+  cases expectedTarget with
+  | none =>
+      cases expectedPrevHash with
+      | none =>
+          simp [validateBlockBasicCheck, enforceSigSuiteActivation, Bind.bind, Except.bind,
+            Pure.pure, Except.pure, hParse, hPow, hMerkle, hWmr, hCommit, hCommitFalse,
+            bytes_bne_self_false]
+          cases hMtp : medianTimePast prevTimestamps with
+          | error err => simp [hMtp, except_unit_bind_pure_eq_self]
+          | ok mtp =>
+              cases hTs : timestampBounds mtp pb.header.timestamp with
+              | error err => simp [hMtp, hTs, except_unit_bind_pure_eq_self]
+              | ok u =>
+                  cases hNonce : nonceReplayCheck pb.txs with
+                  | error err => simp [hTs, hNonce]
+                  | ok u' => simp [hTs, hNonce]
+      | some prev =>
+          simp at hPrev
+          have hPrevFalse : (pb.header.prevHash != prev) = false := by
+            subst hPrev
+            exact bytes_bne_self_false _
+          simp [validateBlockBasicCheck, enforceSigSuiteActivation, Bind.bind, Except.bind,
+            Pure.pure, Except.pure, hParse, hPow, hPrevFalse, hMerkle, hWmr, hCommit,
+            hCommitFalse, bytes_bne_self_false]
+          cases hMtp : medianTimePast prevTimestamps with
+          | error err => simp [hMtp, except_unit_bind_pure_eq_self]
+          | ok mtp =>
+              cases hTs : timestampBounds mtp pb.header.timestamp with
+              | error err => simp [hMtp, hTs, except_unit_bind_pure_eq_self]
+              | ok u =>
+                  cases hNonce : nonceReplayCheck pb.txs with
+                  | error err => simp [hTs, hNonce]
+                  | ok u' => simp [hTs, hNonce]
+  | some target =>
+      simp at hTarget
+      have hTargetFalse : (pb.header.target != target) = false := by
+        subst hTarget
+        exact bytes_bne_self_false _
+      cases expectedPrevHash with
+      | none =>
+          simp [validateBlockBasicCheck, enforceSigSuiteActivation, Bind.bind, Except.bind,
+            Pure.pure, Except.pure, hParse, hPow, hTargetFalse, hMerkle, hWmr, hCommit,
+            hCommitFalse, bytes_bne_self_false]
+          cases hMtp : medianTimePast prevTimestamps with
+          | error err => simp [hMtp, except_unit_bind_pure_eq_self]
+          | ok mtp =>
+              cases hTs : timestampBounds mtp pb.header.timestamp with
+              | error err => simp [hMtp, hTs, except_unit_bind_pure_eq_self]
+              | ok u =>
+                  cases hNonce : nonceReplayCheck pb.txs with
+                  | error err => simp [hTs, hNonce]
+                  | ok u' => simp [hTs, hNonce]
+      | some prev =>
+          simp at hPrev
+          have hPrevFalse : (pb.header.prevHash != prev) = false := by
+            subst hPrev
+            exact bytes_bne_self_false _
+          simp [validateBlockBasicCheck, enforceSigSuiteActivation, Bind.bind, Except.bind,
+            Pure.pure, Except.pure, hParse, hPow, hTargetFalse, hPrevFalse, hMerkle, hWmr,
+            hCommit, hCommitFalse, bytes_bne_self_false]
+          cases hMtp : medianTimePast prevTimestamps with
+          | error err => simp [hMtp, except_unit_bind_pure_eq_self]
+          | ok mtp =>
+              cases hTs : timestampBounds mtp pb.header.timestamp with
+              | error err => simp [hMtp, hTs, except_unit_bind_pure_eq_self]
+              | ok u =>
+                  cases hNonce : nonceReplayCheck pb.txs with
+                  | error err => simp [hTs, hNonce]
+                  | ok u' => simp [hTs, hNonce]
+
+/-- LIVE constrained acceptance on the real block-basic timestamp path:
+    once the prefix checks and nonce replay pass, `validateBlockBasicCheck`
+    accepts iff the derived MTP and timestamp satisfy the canonical bounds. -/
+theorem validateBlockBasicCheck_timestamp_ok_constrained
+    (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes)
+    (blockHeight : Nat)
+    (prevTimestamps : List Nat)
+    (pb : ParsedBlock)
+    (witnessRoot gotCommit : Bytes)
+    (mtp : Nat)
+    (hParse : BlockBasicV1.parseBlock blockBytes = .ok pb)
+    (hPow : BlockBasicV1.powCheck pb.header = .ok ())
+    (hTarget :
+      match expectedTarget with
+      | none => True
+      | some exp => pb.header.target = exp)
+    (hPrev :
+      match expectedPrevHash with
+      | none => True
+      | some exp => pb.header.prevHash = exp)
+    (hMerkle : BlockBasicV1.merkleRootTxids pb.txids = .ok pb.header.merkleRoot)
+    (hWmr : BlockBasicV1.witnessMerkleRootWtxids pb.wtxids = .ok witnessRoot)
+    (hCommit : BlockBasicV1.findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit)
+    (hEq : gotCommit = BlockBasicV1.witnessCommitmentHash witnessRoot)
+    (hMtp : medianTimePast prevTimestamps = .ok mtp)
+    (hTs : mtp < pb.header.timestamp ∧ pb.header.timestamp ≤ mtp + MAX_FUTURE_DRIFT)
+    (hNonce : nonceReplayCheck pb.txs = .ok ()) :
+    validateBlockBasicCheck blockBytes expectedPrevHash expectedTarget blockHeight prevTimestamps =
+      .ok () := by
+  rw [validateBlockBasicCheck_timestamp_stage blockBytes expectedPrevHash expectedTarget
+    blockHeight prevTimestamps pb witnessRoot gotCommit hParse hPow hTarget hPrev hMerkle
+    hWmr hCommit hEq, hMtp]
+  have hTsOk : timestampBounds mtp pb.header.timestamp = .ok () :=
+    (timestampBounds_ok_iff mtp pb.header.timestamp).2 hTs
+  simp [hTsOk, hNonce, Bind.bind, Except.bind, Pure.pure, Except.pure]
+
+/-- LIVE constrained rejection on the real block-basic timestamp path:
+    after the same preceding live checks, a timestamp at-or-before the derived
+    median-time-past rejects with `BLOCK_ERR_TIMESTAMP_OLD`. -/
+theorem validateBlockBasicCheck_timestamp_old_rejected_constrained
+    (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes)
+    (blockHeight : Nat)
+    (prevTimestamps : List Nat)
+    (pb : ParsedBlock)
+    (witnessRoot gotCommit : Bytes)
+    (mtp : Nat)
+    (hParse : BlockBasicV1.parseBlock blockBytes = .ok pb)
+    (hPow : BlockBasicV1.powCheck pb.header = .ok ())
+    (hTarget :
+      match expectedTarget with
+      | none => True
+      | some exp => pb.header.target = exp)
+    (hPrev :
+      match expectedPrevHash with
+      | none => True
+      | some exp => pb.header.prevHash = exp)
+    (hMerkle : BlockBasicV1.merkleRootTxids pb.txids = .ok pb.header.merkleRoot)
+    (hWmr : BlockBasicV1.witnessMerkleRootWtxids pb.wtxids = .ok witnessRoot)
+    (hCommit : BlockBasicV1.findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit)
+    (hEq : gotCommit = BlockBasicV1.witnessCommitmentHash witnessRoot)
+    (hMtp : medianTimePast prevTimestamps = .ok mtp)
+    (hOld : pb.header.timestamp ≤ mtp) :
+    validateBlockBasicCheck blockBytes expectedPrevHash expectedTarget blockHeight prevTimestamps =
+      .error "BLOCK_ERR_TIMESTAMP_OLD" := by
+  rw [validateBlockBasicCheck_timestamp_stage blockBytes expectedPrevHash expectedTarget
+    blockHeight prevTimestamps pb witnessRoot gotCommit hParse hPow hTarget hPrev hMerkle
+    hWmr hCommit hEq, hMtp]
+  have hTsOld : timestampBounds mtp pb.header.timestamp = .error "BLOCK_ERR_TIMESTAMP_OLD" :=
+    (timestampBounds_old_iff mtp pb.header.timestamp).2 hOld
+  simp [hTsOld, Bind.bind, Except.bind, Pure.pure, Except.pure]
+
+/-- LIVE constrained rejection on the real block-basic timestamp path:
+    after the same preceding live checks, a timestamp beyond the allowed future
+    drift rejects with `BLOCK_ERR_TIMESTAMP_FUTURE`. -/
+theorem validateBlockBasicCheck_timestamp_future_rejected_constrained
+    (blockBytes : Bytes)
+    (expectedPrevHash expectedTarget : Option Bytes)
+    (blockHeight : Nat)
+    (prevTimestamps : List Nat)
+    (pb : ParsedBlock)
+    (witnessRoot gotCommit : Bytes)
+    (mtp : Nat)
+    (hParse : BlockBasicV1.parseBlock blockBytes = .ok pb)
+    (hPow : BlockBasicV1.powCheck pb.header = .ok ())
+    (hTarget :
+      match expectedTarget with
+      | none => True
+      | some exp => pb.header.target = exp)
+    (hPrev :
+      match expectedPrevHash with
+      | none => True
+      | some exp => pb.header.prevHash = exp)
+    (hMerkle : BlockBasicV1.merkleRootTxids pb.txids = .ok pb.header.merkleRoot)
+    (hWmr : BlockBasicV1.witnessMerkleRootWtxids pb.wtxids = .ok witnessRoot)
+    (hCommit : BlockBasicV1.findCoinbaseAnchorCommitment pb.coinbaseTx = .ok gotCommit)
+    (hEq : gotCommit = BlockBasicV1.witnessCommitmentHash witnessRoot)
+    (hMtp : medianTimePast prevTimestamps = .ok mtp)
+    (hFuture : mtp < pb.header.timestamp ∧ mtp + MAX_FUTURE_DRIFT < pb.header.timestamp) :
+    validateBlockBasicCheck blockBytes expectedPrevHash expectedTarget blockHeight prevTimestamps =
+      .error "BLOCK_ERR_TIMESTAMP_FUTURE" := by
+  rw [validateBlockBasicCheck_timestamp_stage blockBytes expectedPrevHash expectedTarget
+    blockHeight prevTimestamps pb witnessRoot gotCommit hParse hPow hTarget hPrev hMerkle
+    hWmr hCommit hEq, hMtp]
+  have hTsFuture : timestampBounds mtp pb.header.timestamp = .error "BLOCK_ERR_TIMESTAMP_FUTURE" :=
+    (timestampBounds_future_iff mtp pb.header.timestamp).2 hFuture
+  simp [hTsFuture, Bind.bind, Except.bind, Pure.pure, Except.pure]
 
 end RubinFormal

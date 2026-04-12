@@ -1152,29 +1152,35 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_timestamp_vectors_pass",
+        "RubinFormal.medianTimePast_value",
+        "RubinFormal.medianTimePast_index_valid",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff",
-        "RubinFormal.timestamp_after_mtp_accepted",
-        "RubinFormal.timestamp_at_mtp_rejected",
-        "RubinFormal.timestamp_before_mtp_rejected"
+        "RubinFormal.validateBlockBasicCheck_timestamp_stage",
+        "RubinFormal.validateBlockBasicCheck_timestamp_ok_constrained",
+        "RubinFormal.validateBlockBasicCheck_timestamp_old_rejected_constrained",
+        "RubinFormal.validateBlockBasicCheck_timestamp_future_rejected_constrained"
       ],
-      "file": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
+      "file": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
       "theorem_files": {
         "RubinFormal.Conformance.cv_timestamp_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTimestampReplay.lean",
-        "RubinFormal.timestamp_after_mtp_accepted": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.timestamp_at_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
-        "RubinFormal.timestamp_before_mtp_rejected": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.medianTimePast_value": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.medianTimePast_index_valid": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_ok_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
         "RubinFormal.BlockBasicCheckV1.timestampBounds_old_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
-        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean"
+        "RubinFormal.BlockBasicCheckV1.timestampBounds_future_iff": "rubin-formal/RubinFormal/BlockBasicCheckV1.lean",
+        "RubinFormal.validateBlockBasicCheck_timestamp_stage": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.validateBlockBasicCheck_timestamp_ok_constrained": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.validateBlockBasicCheck_timestamp_old_rejected_constrained": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean",
+        "RubinFormal.validateBlockBasicCheck_timestamp_future_rejected_constrained": "rubin-formal/RubinFormal/BlockTimestampBehavioral.lean"
       },
-      "notes": "Mixed behavioral row with an explicit lane split: the theorem lane covers the old/future accept-reject boundary of `timestampBounds` once median-time-past has been supplied, while the fixture lane replays the current timestamp-bounds and block-basic timestamp vectors. Honest ceiling remains behavioral because the list-to-MTP extraction path is still evidenced by replay rather than a standalone theorem.",
+      "notes": "Universal theorem lane: `medianTimePast_value` plus `medianTimePast_index_valid` close the list-to-MTP extraction path on the live helper, `timestampBounds_*_iff` characterizes the canonical old/future/ok boundary, and the new constrained LIVE bridge theorems lift that boundary to the real `validateBlockBasicCheck` path once the parse/pow/target/linkage/merkle/witness prefix has passed. The top-level counted surface now includes exact acceptance and old/future rejection theorems on the live block-basic path rather than concrete regression wrappers. Separate fixture lane: CV-TIMESTAMP replay on shipped timestamp-bounds and block-basic vectors. That executable lane remains complementary evidence only and does not replace the universal theorem lane.",
       "limitations": [
-        "The universal theorem layer is over `timestampBounds` given an already-derived median-time-past value; the list-to-MTP extraction path remains evidenced by executable replay rather than a standalone theorem.",
+        "The counted LIVE bridge theorems are constrained to the real `validateBlockBasicCheck` path after parse/pow/target/linkage/merkle/witness prefix success, and the accept theorem additionally assumes nonce replay passes on the remaining suffix. This row does not claim unrelated block-basic stages beyond that covered timestamp gate.",
         "No chain-wide timestamp monotonicity claim beyond the covered `timestampBounds` gate and current replayed integration path is asserted here."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "fork_choice",
