@@ -284,6 +284,7 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_sighash_vectors_pass",
+        "RubinFormal.sighash_v1_proved",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
         "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs",
         "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input",
@@ -308,6 +309,7 @@
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.Conformance.cv_sighash_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVSighashReplay.lean",
+        "RubinFormal.sighash_v1_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input": "rubin-formal/RubinFormal/SighashV1.lean",
