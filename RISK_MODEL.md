@@ -71,7 +71,7 @@
 
 - `27` universal entries;
 - `4` assumption-backed entries;
-- `2` behavioral entries;
+- `3` behavioral entries;
 - `0` contract-level entries;
 - `0` stated rows;
 - `0` deferred rows.

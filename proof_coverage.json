@@ -21,11 +21,11 @@
         "RubinFormal.subsidy_u128_safety_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.htlc_timelock_proved": "rubin-formal/RubinFormal/PinnedSections.lean"
       },
-      "notes": "Universal finite-constant lane for the dedicated Section 4 constant theorems. `subsidy_u128_safety_proved` closes the §19.1 subsidy arithmetic safety ceiling, and `htlc_timelock_proved` closes the strict refund-before-expiry timelock semantics. This split intentionally stops short of both the live witness-length validator surface and the newer Section 4 native binding-manifest cross-reference; that pre-rotation `validateWitnessItemLengths` subset now lives in its own behavioral residual row, while the native registry tuple's role as the Section 23.2.2 binding-manifest component is not counted by this finite-constant lane.",
+      "notes": "Universal finite-constant lane for the dedicated Section 4 constant theorems. `subsidy_u128_safety_proved` closes the §19.1 subsidy arithmetic safety ceiling, and `htlc_timelock_proved` closes the strict refund-before-expiry timelock semantics. This split intentionally stops short of the live witness-length validator surface and the Section 4 native binding-manifest fragment. Those two surfaces now live in dedicated behavioral residual rows rather than depressing the dedicated constant lane.",
       "limitations": [
         "This row does not claim the legacy/pre-rotation `validateWitnessItemLengths` branch surface. That live witness-length subset is tracked separately in `consensus_constants_witness_lengths_pre_rotation`.",
         "Other Section 4 literals that already belong to dedicated rows such as weight accounting or DA integrity remain outside this finite-constant lane and are not re-counted here.",
-        "This row does not claim the Section 4 normative cross-reference that makes the native registry tuple the native component of the chain-instance canonical binding manifest under Section 23.2.2. That binding-authority fragment is currently outside the counted Section 4 theorem surface."
+        "This row does not claim the Section 4 normative cross-reference that makes the native registry tuple the native component of the chain-instance canonical binding manifest under Section 23.2.2. That pre-rotation native-binding fragment is tracked separately in `consensus_constants_native_binding_manifest_pre_rotation`."
       ],
       "evidence_level": "machine_checked_universal"
     },
@@ -54,11 +54,37 @@
         "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
         "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
       },
-      "notes": "Behavioral residual row for the Section 4 witness-length subset. `sem001_mldsa_bounded_lengths_proved` packages the ML-DSA-87 iff boundary under its explicit suite hypothesis, while the counted LIVE theorems in ConsensusConstantsBehavioral still close only the default pre-rotation `validateWitnessItemLengths` branch surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and the constrained outcome partition for that live validator. This row does not uplift the newer registry-aware parser model in `TxParseV2.parseWitnessItemWithRegistry`, does not claim post-rotation registered-suite witness canonicalization parity, and does not absorb the Section 4 native binding-manifest cross-reference into the witness-length residual.",
+      "notes": "Behavioral residual row for the Section 4 witness-length subset. `sem001_mldsa_bounded_lengths_proved` packages the ML-DSA-87 iff boundary under its explicit suite hypothesis, while the counted LIVE theorems in ConsensusConstantsBehavioral still close only the default pre-rotation `validateWitnessItemLengths` branch surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and the constrained outcome partition for that live validator. This row does not uplift the newer registry-aware parser model in `TxParseV2.parseWitnessItemWithRegistry` and does not claim post-rotation registered-suite witness canonicalization parity.",
       "limitations": [
         "This residual row intentionally covers only the legacy/pre-rotation `validateWitnessItemLengths` subset plus the explicit ML-DSA-87 iff theorem. It does not re-count the dedicated finite constants now carried by the universal `consensus_constants` row.",
-        "Registry-aware parse-stage witness classification and registered-suite canonicalization are intentionally not counted by this row and are not yet claimed here as covered by the Section 4 witness-length subset.",
-        "The Section 4 statement that the native registry tuple forms the native component of the Section 23.2.2 canonical binding manifest is not counted by this residual row either; this row stays limited to witness-length semantics."
+        "Registry-aware parse-stage witness classification and registered-suite canonicalization are intentionally not counted by this row and are not yet claimed here as covered by the Section 4 witness-length subset."
+      ],
+      "evidence_level": "machine_checked_behavioral"
+    },
+    {
+      "section_key": "consensus_constants_native_binding_manifest_pre_rotation",
+      "section_heading": "## 4. Consensus Constants (Native Binding Manifest Pre-Rotation Residual)",
+      "status": "proved",
+      "theorems": [
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_ml_dsa_resolves",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff",
+        "RubinFormal.RegistryResolutionLiveBridge.ml_dsa_87_params_bridge",
+        "RubinFormal.UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation",
+        "RubinFormal.sem002_mldsa_binding_proved"
+      ],
+      "file": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+      "theorem_files": {
+        "RubinFormal.NativeRegistryResolution.fi_rot_03_pre_rotation_ml_dsa_resolves": "rubin-formal/RubinFormal/NativeRegistryResolution.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.pre_rotation_registered_iff": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.RegistryResolutionLiveBridge.ml_dsa_87_params_bridge": "rubin-formal/RubinFormal/RegistryResolutionLiveBridge.lean",
+        "RubinFormal.UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
+        "RubinFormal.sem002_mldsa_binding_proved": "rubin-formal/RubinFormal/FormalGap03.lean"
+      },
+      "notes": "Behavioral residual row for the new Section 4 native binding-manifest fragment added by spec commit `a04f543`. The counted theorem bundle closes the pre-rotation singleton native registry fragment that formal code actually models: `fi_rot_03_pre_rotation_ml_dsa_resolves` fixes the authoritative entry to `ML_DSA_87_ENTRY`, `pre_rotation_registered_iff` and `ml_dsa_87_params_bridge` close the default registration/parameter surface, `validateWitnessItemLengths_eq_registry_pre_rotation` bridges the legacy live witness-length validator to the registry-specialized helper on `PRE_ROTATION_REGISTRY`, and `sem002_mldsa_binding_proved` closes the default P2PK pre-signature key-binding fragment. This records actual machine-checked native live-binding evidence instead of leaving the new Section 4 manifest cross-reference only in prose.",
+      "limitations": [
+        "Scope is the singleton pre-rotation registry fragment only. The row does not claim arbitrary post-rotation registries, arbitrary additional native suites, or a general theorem over the Section 4 `NativeSuiteEntry` production profile lifecycle.",
+        "The current Lean `Rotation.SuiteEntry` model carries only `suiteId`, `pubkeyBytes`, `sigBytes`, and `verifyCost`. It does not model the newer spec-level `semantic_id` or `binding_profile` fields, so this row cannot claim the full native registry tuple introduced by the Section 4 / Section 23.2.2 canonical binding-manifest contract.",
+        "This row also does not claim the `CORE_EXT` profile-set half of the chain-instance canonical binding manifest, manifest publication/governance ownership, or release-time runtime-table drift checks. Those remain outside the current formal Section 4 theorem surface."
       ],
       "evidence_level": "machine_checked_behavioral"
     },
@@ -1704,9 +1730,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 33 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 34 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
       "Executable Lean↔Go/Rust bridge evidence is op-scoped and mixed: depending on the critical op, the honest ceiling recorded in rubin-formal/refinement_bridge.json is universal, assumption-backed, behavioral, or contract-level rather than one uniform Go-trace refinement claim over the full conformance set",
-      "The registry currently covers 33 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
+      "The registry currently covers 34 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
