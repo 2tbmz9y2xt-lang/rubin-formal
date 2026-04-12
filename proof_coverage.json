@@ -281,7 +281,7 @@
     {
       "section_key": "sighash_v1",
       "section_heading": "## 12. Sighash v1 (Normative)",
-      "status": "proved_with_axiom",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_sighash_vectors_pass",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective",
@@ -303,11 +303,11 @@
         "RubinFormal.validateTxContextSighashWitness_ok_iff",
         "RubinFormal.validateTxContextSighashWitness_empty_signature_rejects",
         "RubinFormal.validateTxContextSighashWitness_invalid_base_rejects",
-        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects",
-        "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision"
+        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.Conformance.cv_sighash_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVSighashReplay.lean",
         "RubinFormal.SighashV1.buildPreimageFrameParts_injective": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.selectHashPrevouts_all_commits_all_inputs": "rubin-formal/RubinFormal/SighashV1.lean",
         "RubinFormal.SighashV1.selectHashPrevouts_anyonecanpay_commits_current_input": "rubin-formal/RubinFormal/SighashV1.lean",
@@ -327,15 +327,30 @@
         "RubinFormal.validateTxContextSighashWitness_ok_iff": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
         "RubinFormal.validateTxContextSighashWitness_empty_signature_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
         "RubinFormal.validateTxContextSighashWitness_invalid_base_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
-        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+        "RubinFormal.validateTxContextSighashWitness_disallowed_rejects": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean"
+      },
+      "notes": "Universal theorem lane: `sighash_v1_proved` keeps the structural selection/preimage-frame surface explicit, while the live TXCTX `allowed_sighash_set` gate/witness theorems register the runtime accept/reject boundary for valid, invalid-base, empty-signature, and disallowed-type paths. Separate fixture lane: CV-SIGHASH replay for the shipped digest vectors. That executable lane is complementary evidence only and does not replace the universal theorem lane. The SHA3 digest-collision ceiling is tracked separately in `sighash_v1_digest_collision_residual` rather than depressing this live selection/TXCTX row.",
+      "limitations": [
+        "The executable digestV1 replay path still covers the current fixture subset and is not a universal tx-level equivalence proof for arbitrary raw transaction pairs.",
+        "The collision-resistance ceiling for equal live `digestV1` outputs on distinct executable preimages is not claimed in this row and is tracked separately in `sighash_v1_digest_collision_residual`."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
+      "section_key": "sighash_v1_digest_collision_residual",
+      "section_heading": "## Sighash v1 Digest Collision Residual",
+      "status": "proved_with_axiom",
+      "theorems": [
+        "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision"
+      ],
+      "file": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean",
+      "theorem_files": {
         "RubinFormal.digestV1_output_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/SighashAssumptionBridge.lean"
       },
-      "notes": "Assumption-backed theorem lane: live selection theorems, the live TXCTX `allowed_sighash_set` gate/witness bridge, and an explicit reduction theorem showing that equal live `digestV1` outputs on distinct executable preimages imply a SHA3-256 collision obligation. Separate fixture lane: CV-SIGHASH replay for the shipped digest vectors. That executable lane is complementary evidence only and does not replace the assumption-backed theorem lane. This remains the honest ceiling for §12 without overclaiming arbitrary raw-tx equivalence.",
+      "notes": "Dedicated assumption-backed residual for the live `digestV1` crypto ceiling. The counted reduction theorem shows that when two live `digestV1` executions succeed with equal outputs and their executable preimages are distinct, SHA3-256 would have to collide on those distinct preimages. This row intentionally carries only that residual and does not re-count the structural selector/TXCTX gate surface already owned by the universal `sighash_v1` row.",
       "limitations": [
-        "The executable digestV1 replay path still covers the current fixture subset and is not yet a universal tx-level equivalence proof for every §12 sighash_type branch or invalid-type rejection path.",
-        "The digest theorem is a reduction theorem: when two live digestV1 executions succeed with equal outputs and their executable preimages are distinct, SHA3-256 would have to collide. The proof does not itself claim cryptographic impossibility.",
-        "No universal proof is claimed here for deriving preimage distinctness from arbitrary raw transaction pairs, DaCoreFieldsBytes variation, or every witness-carried sighash_type path.",
-        "The TXCTX allowlist bridge now covers the live `validateTxContextSighashGate` / `validateTxContextSighashWitness` surface, but broader raw-tx/hash equivalence residuals remain out of scope."
+        "This is a reduction theorem, not an axiom-free impossibility proof: ruling out equal digests on distinct executable preimages still depends on SHA3-256 collision resistance.",
+        "The row does not claim arbitrary raw-tx preimage distinctness or a universal proof for every possible witness-carried transaction variation outside the executable digest surface named in the theorem."
       ],
       "evidence_level": "machine_checked_assumption_backed"
     },
@@ -1654,9 +1669,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 30 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 31 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
       "Executable Lean↔Go/Rust bridge evidence is op-scoped and mixed: depending on the critical op, the honest ceiling recorded in rubin-formal/refinement_bridge.json is universal, assumption-backed, behavioral, or contract-level rather than one uniform Go-trace refinement claim over the full conformance set",
-      "The registry currently covers 30 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
+      "The registry currently covers 31 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
