@@ -99,8 +99,15 @@ def nativeSuiteEntryBytesV1? (entry : SuiteEntry) : Option Bytes := do
         if hsig : entry.sigBytes < 4294967296 then
           if hcost : entry.verifyCost < 4294967296 then
             if hbind : bindingBytes.size < 18446744073709551616 then
+              have _ : (UInt8.ofNat entry.suiteId).toNat = entry.suiteId := by
+                simp [UInt8.ofNat, UInt8.toNat, Fin.ofNat, Nat.mod_eq_of_lt hsid]
+              have _ : semanticBytes.size < 18446744073709551616 := hsem
+              have _ : entry.pubkeyBytes < 4294967296 := hpub
+              have _ : entry.sigBytes < 4294967296 := hsig
+              have _ : entry.verifyCost < 4294967296 := hcost
+              have _ : bindingBytes.size < 18446744073709551616 := hbind
               pure <|
-                RubinFormal.bytes #[⟨entry.suiteId, hsid⟩] ++
+                RubinFormal.bytes #[UInt8.ofNat entry.suiteId] ++
                   RubinFormal.WireEnc.compactSize semanticBytes.size ++
                   semanticBytes ++
                   RubinFormal.WireEnc.u32le entry.pubkeyBytes ++
