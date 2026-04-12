@@ -235,28 +235,45 @@
     {
       "section_key": "witness_commitment",
       "section_heading": "### 10.4.1 Witness Commitment (Coinbase Anchor)",
-      "status": "proved_with_axiom",
+      "status": "proved",
       "theorems": [
         "RubinFormal.witness_commitment_proved",
         "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot",
         "RubinFormal.WitnessCommitmentV1.checkWitnessCommitment_ok_iff",
         "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage",
-        "RubinFormal.Conformance.cv_block_basic_vectors_pass",
-        "RubinFormal.Merkle.merkle_tag_equivalence_leaf_collision_reduces_to_sha3_collision",
-        "RubinFormal.Merkle.merkle_tag_equivalence_node_collision_reduces_to_sha3_collision"
+        "RubinFormal.Conformance.cv_block_basic_vectors_pass"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.witness_commitment_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.WitnessCommitmentV1.witnessMerkleRootWtxids_rewrites_coinbase_slot": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
         "RubinFormal.WitnessCommitmentV1.checkWitnessCommitment_ok_iff": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
         "RubinFormal.WitnessCommitmentV1.validateBlockBasic_witness_stage": "rubin-formal/RubinFormal/WitnessCommitmentV1.lean",
+        "RubinFormal.Conformance.cv_block_basic_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVBlockBasicReplay.lean"
+      },
+      "notes": "Universal theorem lane: `witness_commitment_proved` lifts the section statement onto the live witness-commitment surface, combining the zeroed-coinbase-slot rewrite, the exact `checkWitnessCommitment` success criterion, and the `validateBlockBasic` reduction onto that witness stage after parse/pow/target/linkage/merkle gates pass. Separate fixture lane: CV-BLOCK-BASIC replay for the shipped witness-commitment vectors. That executable lane is complementary evidence only and does not replace the universal theorem lane. The merkle-tag anti-alias SHA3 ceiling is tracked separately in `witness_commitment_crypto_residual` rather than depressing this live commitment row.",
+      "limitations": [
+        "Executable replay remains complementary evidence for concrete fixture coverage and regression checking.",
+        "Cross-domain txid/wtxid tagged-root anti-aliasing is not claimed in this row and is tracked separately in `witness_commitment_crypto_residual`."
+      ],
+      "evidence_level": "machine_checked_universal"
+    },
+    {
+      "section_key": "witness_commitment_crypto_residual",
+      "section_heading": "## Witness Commitment Crypto Residual",
+      "status": "proved_with_axiom",
+      "theorems": [
+        "RubinFormal.Merkle.merkle_tag_equivalence_leaf_collision_reduces_to_sha3_collision",
+        "RubinFormal.Merkle.merkle_tag_equivalence_node_collision_reduces_to_sha3_collision"
+      ],
+      "file": "rubin-formal/RubinFormal/MerkleStructure.lean",
+      "theorem_files": {
         "RubinFormal.Merkle.merkle_tag_equivalence_leaf_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/MerkleStructure.lean",
         "RubinFormal.Merkle.merkle_tag_equivalence_node_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/MerkleStructure.lean"
       },
-      "notes": "Assumption-backed theorem lane: the canonical witness-commitment step over the current `BlockBasicV1` model plus the counted merkle-tag reduction theorems showing that cross-domain root equality between txid tags (0x00/0x01) and witness-merkle tags (0x02/0x03) would require a SHA3-256 collision on distinct tagged preimages. Separate fixture lane: CV-BLOCK-BASIC replay for the shipped witness-commitment vectors. That executable lane is complementary evidence only and does not replace the assumption-backed theorem surface.",
+      "notes": "Dedicated assumption-backed residual for the witness-commitment anti-alias boundary. The counted merkle-tag reduction theorems show that any cross-domain root equality between txid tags (0x00/0x01) and witness-merkle tags (0x02/0x03) would require a SHA3-256 collision on distinct tagged preimages. This row intentionally carries only that crypto ceiling and does not re-count the live witness-commitment semantics already owned by the universal `witness_commitment` row.",
       "limitations": [
-        "The semantic surface proves the canonical witness-commitment step over the current BlockBasicV1 model, but the cross-domain anti-aliasing argument is assumption-backed: ruling out txid/wtxid tagged-root aliasing relies on SHA3-256 collision resistance.",
-        "Executable replay remains complementary evidence for concrete fixture coverage and regression checking.",
+        "Ruling out txid/wtxid tagged-root aliasing remains assumption-backed: the row reduces any such equality to a SHA3-256 collision obligation on distinct tagged preimages.",
         "The merkle-tag theorems are reduction theorems (equality implies a SHA3 collision on distinct tagged preimages), not an axiom-free cryptographic impossibility proof."
       ],
       "evidence_level": "machine_checked_assumption_backed"
@@ -1637,9 +1654,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 29 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 30 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
       "Executable Lean↔Go/Rust bridge evidence is op-scoped and mixed: depending on the critical op, the honest ceiling recorded in rubin-formal/refinement_bridge.json is universal, assumption-backed, behavioral, or contract-level rather than one uniform Go-trace refinement claim over the full conformance set",
-      "The registry currently covers 29 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
+      "The registry currently covers 30 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
