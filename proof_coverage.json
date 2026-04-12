@@ -121,28 +121,46 @@
     {
       "section_key": "transaction_identifiers",
       "section_heading": "## 8. Transaction Identifiers (TXID / WTXID)",
-      "status": "proved_with_axiom",
+      "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_parse_vectors_pass",
         "RubinFormal.Conformance.cv_sig_vectors_pass",
         "RubinFormal.transaction_identifiers_proved",
         "RubinFormal.txid_wtxid_witness_empty_serialization_shape",
-        "RubinFormal.txid_wtxid_identifier_domain_contract",
-        "RubinFormal.txid_wtxid_digest_collision_reduces_to_sha3_collision"
+        "RubinFormal.txid_wtxid_identifier_domain_contract"
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.Conformance.cv_parse_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVParseReplay.lean",
+        "RubinFormal.Conformance.cv_sig_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVSigReplay.lean",
         "RubinFormal.transaction_identifiers_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.txid_wtxid_witness_empty_serialization_shape": "rubin-formal/RubinFormal/TxIdBehavioral.lean",
-        "RubinFormal.txid_wtxid_identifier_domain_contract": "rubin-formal/RubinFormal/TxIdBehavioral.lean",
+        "RubinFormal.txid_wtxid_identifier_domain_contract": "rubin-formal/RubinFormal/TxIdBehavioral.lean"
+      },
+      "evidence_level": "machine_checked_universal",
+      "limitations": [
+        "This row proves only the structural/live serializer boundary: `serializeTxCore` versus `serializeTx`, the witness-empty lane, and the tagged txid/wtxid preimage-domain separation. It does not claim that equal emitted digests are impossible; that explicit SHA3 ceiling now lives in the separate crypto residual row.",
+        "CV-PARSE and CV-SIG replay remain complementary executable evidence for the concrete emitted txid/wtxid bytes on shipped fixtures. That replay lane does not upgrade this row into a universal cross-language byte-equivalence claim outside the exercised vectors."
+      ],
+      "notes": "Universal theorem lane: `transaction_identifiers_proved` lifts the section statement onto the live canonical serializer boundary (`serializeTxCore` vs `serializeTx`), `txid_wtxid_witness_empty_serialization_shape` closes the witness-empty lane explicitly via the retained `CompactSize(0)` marker, and `txid_wtxid_identifier_domain_contract` keeps the structural and tagged-domain boundaries explicit on the canonical serializer outputs. Separate fixture lane: CV-PARSE and CV-SIG replay for the concrete emitted txid/wtxid bytes on the shipped vectors. That executable lane is complementary evidence only and does not replace the universal theorem lane. The SHA3 collision ceiling is tracked separately in `transaction_identifiers_crypto_residual` rather than depressing this structural/live row."
+    },
+    {
+      "section_key": "transaction_identifiers_crypto_residual",
+      "section_heading": "## TXID / WTXID Crypto Residual",
+      "status": "proved_with_axiom",
+      "theorems": [
+        "RubinFormal.txid_wtxid_digest_collision_reduces_to_sha3_collision"
+      ],
+      "file": "rubin-formal/RubinFormal/TxIdBehavioral.lean",
+      "theorem_files": {
         "RubinFormal.txid_wtxid_digest_collision_reduces_to_sha3_collision": "rubin-formal/RubinFormal/TxIdBehavioral.lean"
       },
       "evidence_level": "machine_checked_assumption_backed",
       "limitations": [
-        "The non-fixture theorem surface now proves the structural preimage boundary for canonical serializer outputs, including the witness-empty lane, and it makes the live txid/wtxid equality reduction to a SHA3-256 collision obligation explicit. Turning that reduction into an impossibility claim still relies on explicit SHA3-256 collision / second-preimage resistance assumptions.",
-        "CV-PARSE and CV-SIG replay remain the executable evidence that the current parser emits the pinned txid/wtxid bytes on shipped fixtures; the theorem surface does not replace fixture replay for concrete digest values."
+        "This residual row intentionally covers only the crypto ceiling left after the universal `transaction_identifiers` split. It does not re-count the structural serializer/domain distinctness already carried by the universal row.",
+        "The counted theorem is a reduction theorem: equal live canonical txid/wtxid digests imply a SHA3-256 collision on distinct executable preimages, but it does not itself prove such collisions impossible without the explicit SHA3-256 collision / second-preimage resistance assumption."
       ],
-      "notes": "Assumption-backed theorem lane: `transaction_identifiers_proved` lifts the section statement onto the live canonical serializer boundary (`serializeTxCore` vs `serializeTx`), `txid_wtxid_witness_empty_serialization_shape` closes the witness-empty lane explicitly via the retained `CompactSize(0)` marker, `txid_wtxid_identifier_domain_contract` keeps the structural and tagged-domain boundaries explicit, and `txid_wtxid_digest_collision_reduces_to_sha3_collision` packages the honest crypto ceiling as a live txid/wtxid equality reduction to a SHA3 collision obligation rather than leaving it only in prose. Separate fixture lane: CV-PARSE and CV-SIG replay for concrete emitted txid/wtxid bytes on the shipped vectors. That executable lane is complementary evidence only and does not replace the assumption-backed theorem surface."
+      "notes": "Assumption-backed residual row for the txid/wtxid crypto ceiling. `txid_wtxid_digest_collision_reduces_to_sha3_collision` packages the honest remaining boundary after the structural/live split: if the canonical live txid and wtxid digests for the same transaction are equal, SHA3-256 collides on distinct executable preimages. Keeping this theorem in its own row prevents the universal serializer/domain theorem lane from inheriting the explicit crypto assumption."
     },
     {
       "section_key": "weight_accounting",
@@ -1619,9 +1637,9 @@
   "proof_level": "refinement",
   "claims": {
     "allowed": [
-      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 28 machine-checked section entries, but this is still not a universal proof of full CANONICAL semantics",
+      "Lean executable semantics replay all conformance fixtures (CV-*.json) with byte-level input coverage; the registry now records 29 machine-checked coverage entries, but this is still not a universal proof of full CANONICAL semantics",
       "Executable Lean↔Go/Rust bridge evidence is op-scoped and mixed: depending on the critical op, the honest ceiling recorded in rubin-formal/refinement_bridge.json is universal, assumption-backed, behavioral, or contract-level rather than one uniform Go-trace refinement claim over the full conformance set",
-      "The pinned-section registry currently covers 28 section entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
+      "The registry currently covers 29 machine-checked coverage entries. Each entry carries an explicit evidence_level distinguishing universal proofs, behavioral proofs, assumption-backed proofs, and contract-level fixture coverage.",
       "formal claims are bounded by explicit forbidden claims below",
       "Bridge theorems (LIVE/BRIDGE class) prove properties of Lean transcriptions of Go/Rust functions. Lean-to-Go/Rust parity is verified by human code review, not machine-checked. The behavioral claim applies to the Lean transcription; transfer to Go/Rust binary relies on the reviewed parity."
     ],
