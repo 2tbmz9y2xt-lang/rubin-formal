@@ -264,8 +264,9 @@ theorem validateBlockBasicCheck_timestamp_stage
                   | ok u' => simp [hTs, hNonce]
 
 /-- LIVE constrained acceptance on the real block-basic timestamp path:
-    once the prefix checks and nonce replay pass, `validateBlockBasicCheck`
-    accepts iff the derived MTP and timestamp satisfy the canonical bounds. -/
+    once the prefix checks and nonce replay pass, the derived MTP/timestamp
+    satisfying the canonical bounds is sufficient for
+    `validateBlockBasicCheck` to accept. -/
 theorem validateBlockBasicCheck_timestamp_ok_constrained
     (blockBytes : Bytes)
     (expectedPrevHash expectedTarget : Option Bytes)
