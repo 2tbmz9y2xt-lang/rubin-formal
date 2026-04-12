@@ -69,7 +69,7 @@
 
 На текущем refinement-срезе registry содержит:
 
-- `26` universal entries;
+- `27` universal entries;
 - `4` assumption-backed entries;
 - `2` behavioral entries;
 - `0` contract-level entries;
