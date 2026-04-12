@@ -57,19 +57,29 @@ theorem fi_rot_03_unique_entry
   obtain ⟨entry, hentry⟩ := hreg
   exact ⟨entry, hentry, fun e2 h2 => by rw [hentry] at h2; exact (Option.some.inj h2).symm⟩
 
-/-- The looked-up entry's parameters (pubkeyBytes, sigBytes, verifyCost)
-    are uniquely determined by the suite_id and registry. -/
+/-- The looked-up entry's canonical tuple fields are uniquely determined by the
+    suite_id and registry. -/
 theorem fi_rot_03_params_unique
     (reg : SuiteRegistry) (sid : Nat) (entry : SuiteEntry)
     (hfind : registryLookup reg sid = some entry) :
     ∀ e2, registryLookup reg sid = some e2 →
+      e2.semanticId = entry.semanticId ∧
       e2.pubkeyBytes = entry.pubkeyBytes ∧
       e2.sigBytes = entry.sigBytes ∧
-      e2.verifyCost = entry.verifyCost := by
+      e2.verifyCost = entry.verifyCost ∧
+      e2.bindingProfile = entry.bindingProfile := by
   intro e2 h2
   have : e2 = entry := fi_rot_03_registry_lookup_deterministic reg sid e2 entry h2 hfind
   subst this
-  exact ⟨rfl, rfl, rfl⟩
+  constructor
+  · rfl
+  · constructor
+    · rfl
+    · constructor
+      · rfl
+      · constructor
+        · rfl
+        · rfl
 
 /-! ### Connection to active suites and descriptors -/
 

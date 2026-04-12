@@ -22,14 +22,15 @@
 
   After rotation activation, the consensus rule is:
     ∀ h, NATIVE_CREATE_SUITES(h) ⊆ NATIVE_SPEND_SUITES(h) ⊆ Registry
-  where Registry maps suite_id → (PUBKEY_BYTES, SIG_BYTES, VERIFY_COST, verifier).
+  where Registry maps suite_id →
+    (semantic_id, PUBKEY_BYTES, SIG_BYTES, VERIFY_COST, binding_profile).
 
   The single-suite era is the special case where:
-    Registry = { 0x01 ↦ (2592, 4627, 8, ml_dsa_87_verify) }
+    Registry = { 0x01 ↦ ("ml-dsa-87", 2592, 4627, 8, "native-v1-raw-digest32") }
     NATIVE_CREATE_SUITES(h) = NATIVE_SPEND_SUITES(h) = {0x01}  ∀ h
 -/
 
-import RubinFormal.Types
+import RubinFormal.OutputDescriptorV2
 
 namespace RubinFormal
 
@@ -40,9 +41,11 @@ namespace Rotation
 /-- A single entry in the native suite registry. -/
 structure SuiteEntry where
   suiteId      : Nat
+  semanticId   : String
   pubkeyBytes  : Nat
   sigBytes     : Nat
   verifyCost   : Nat
+  bindingProfile : String
   deriving Repr, DecidableEq
 
 /-- The suite registry: a list of registered native suites.
@@ -70,13 +73,36 @@ def isRegistered (reg : SuiteRegistry) (sid : Nat) : Prop :=
 
 /-- The ML-DSA-87 registry entry, used throughout the pre-rotation codebase. -/
 def ML_DSA_87_ENTRY : SuiteEntry :=
-  { suiteId := 0x01, pubkeyBytes := 2592, sigBytes := 4627, verifyCost := 8 }
+  { suiteId := 0x01
+    semanticId := "ml-dsa-87"
+    pubkeyBytes := 2592
+    sigBytes := 4627
+    verifyCost := 8
+    bindingProfile := "native-v1-raw-digest32" }
 
 /-- Pre-rotation registry: only ML-DSA-87 registered. -/
 def PRE_ROTATION_REGISTRY : SuiteRegistry := [ML_DSA_87_ENTRY]
 
 /-- Pre-rotation: NATIVE_CREATE_SUITES(h) = NATIVE_SPEND_SUITES(h) = {0x01} for all h. -/
 def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
+
+/-- Canonical byte encoding of a Section 4.1.1 native suite entry.
+    Field order matches `NativeSuiteEntryBytes_v1` exactly. -/
+def nativeSuiteEntryBytesV1 (entry : SuiteEntry) : Bytes :=
+  let semanticBytes := entry.semanticId.toUTF8
+  let bindingBytes := entry.bindingProfile.toUTF8
+  RubinFormal.bytes #[UInt8.ofNat entry.suiteId] ++
+    RubinFormal.WireEnc.compactSize semanticBytes.size ++
+    semanticBytes ++
+    RubinFormal.WireEnc.u32le entry.pubkeyBytes ++
+    RubinFormal.WireEnc.u32le entry.sigBytes ++
+    RubinFormal.WireEnc.u32le entry.verifyCost ++
+    RubinFormal.WireEnc.compactSize bindingBytes.size ++
+    bindingBytes
+
+/-- Canonical SHA3-256 hash of a Section 4.1.1 native suite entry. -/
+def nativeSuiteEntryHashV1 (entry : SuiteEntry) : Bytes :=
+  SHA3.sha3_256 (nativeSuiteEntryBytesV1 entry)
 
 /-! ### Inventory of hardcoded assumptions (from Q-FORMAL-ROTATION-00 audit)
 

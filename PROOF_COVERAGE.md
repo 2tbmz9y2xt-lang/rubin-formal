@@ -36,9 +36,9 @@
 
 ## Текущая раскладка evidence levels
 
-- `machine_checked_universal`: 27
+- `machine_checked_universal`: 28
 - `machine_checked_assumption_backed`: 4
-- `machine_checked_behavioral`: 3
+- `machine_checked_behavioral`: 2
 - `machine_checked_contract`: 0
 
 ## Lean ↔ Go/Rust bridge ceiling
