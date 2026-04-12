@@ -131,6 +131,8 @@
       ],
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
+        "RubinFormal.Conformance.cv_parse_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVParseReplay.lean",
+        "RubinFormal.Conformance.cv_sig_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVSigReplay.lean",
         "RubinFormal.transaction_identifiers_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.txid_wtxid_witness_empty_serialization_shape": "rubin-formal/RubinFormal/TxIdBehavioral.lean",
         "RubinFormal.txid_wtxid_identifier_domain_contract": "rubin-formal/RubinFormal/TxIdBehavioral.lean"
