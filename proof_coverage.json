@@ -42,7 +42,7 @@
         "RubinFormal.witness_sentinel_valid_accepts",
         "RubinFormal.witness_validation_exhaustive"
       ],
-      "file": "rubin-formal/RubinFormal/PinnedSections.lean",
+      "file": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
       "theorem_files": {
         "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
         "RubinFormal.validateWitnessItemLengths_eq_explicit": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
