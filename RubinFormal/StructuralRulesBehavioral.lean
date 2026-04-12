@@ -720,7 +720,7 @@ theorem vault_threshold_required_count_accepts_pre_rotation
     rotation registries with additional suites are not covered — that's
     Wave A4+/F scope. -/
 
-/-! ### R1-R6 Witness item lengths — registry companions -/
+/-! ### R0-R6b Witness item lengths — registry companions -/
 
 /-- **R0 registry companion:** the ML-DSA-87 iff boundary transfers to the
     authoritative pre-rotation registry-aware witness validator on
