@@ -1,5 +1,7 @@
-import RubinFormal.UtxoApplyGenesisV1
 import RubinFormal.BytesEqLemmas
+import RubinFormal.ConsensusConstantsBehavioral
+import RubinFormal.FormalGap03
+import RubinFormal.UtxoApplyGenesisV1
 
 /-!
 # Transaction Structural Rules Behavioral Proofs (§16)
@@ -720,6 +722,22 @@ theorem vault_threshold_required_count_accepts_pre_rotation
 
 /-! ### R1-R6 Witness item lengths — registry companions -/
 
+/-- **R0 registry companion:** the ML-DSA-87 iff boundary transfers to the
+    authoritative pre-rotation registry-aware witness validator on
+    `PRE_ROTATION_REGISTRY`. BRIDGE via
+    `validateWitnessItemLengths_eq_registry_pre_rotation`. -/
+theorem sem001_mldsa_bounded_lengths_registry_pre_rotation :
+    ∀ (w : WitnessItem) (blockHeight : Nat),
+      w.suiteId = UtxoApplyGenesisV1.SUITE_ID_ML_DSA_87 →
+      (UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+          Rotation.PRE_ROTATION_REGISTRY w blockHeight = .ok () ↔
+          w.pubkey.size = UtxoApplyGenesisV1.ML_DSA_87_PUBKEY_BYTES ∧
+          0 < w.signature.size ∧
+          w.signature.size ≤ UtxoApplyGenesisV1.ML_DSA_87_SIG_BYTES + 1) := by
+  intro w blockHeight hSuite
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact sem001_mldsa_bounded_lengths_proved w blockHeight hSuite
+
 /-- **R1 registry companion:** Any suite ID ∉ {SENTINEL, ML_DSA_87} is
     rejected by `validateWitnessItemLengthsRegistry PRE_ROTATION_REGISTRY`
     with TX_ERR_SIG_ALG_INVALID. BRIDGE to `unknown_suite_rejected_pre_rotation`
@@ -810,6 +828,22 @@ theorem mldsa87_valid_accepted_registry_pre_rotation
       .ok () := by
   rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
   exact mldsa87_valid_accepted_pre_rotation w h hM hPOk hSPos hSBound
+
+/-- **R6b registry companion:** exhaustive constrained outcome partition for
+    the authoritative pre-rotation registry-aware witness validator.
+    BRIDGE via `validateWitnessItemLengths_eq_registry_pre_rotation`. -/
+theorem witness_validation_exhaustive_registry_pre_rotation
+    (w : WitnessItem) (h : Nat) :
+    UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h = .error "TX_ERR_PARSE" ∨
+      UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h = .error "TX_ERR_SIG_NONCANONICAL" ∨
+      UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h = .error "TX_ERR_SIG_ALG_INVALID" ∨
+      UtxoApplyGenesisV1.validateWitnessItemLengthsRegistry
+        Rotation.PRE_ROTATION_REGISTRY w h = .ok () := by
+  rw [← UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation]
+  exact witness_validation_exhaustive w h
 
 /-! ### R7-R11 Threshold sig spend — registry companions -/
 
