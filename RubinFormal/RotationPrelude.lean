@@ -87,22 +87,29 @@ def PRE_ROTATION_REGISTRY : SuiteRegistry := [ML_DSA_87_ENTRY]
 def preRotationActiveSuites (_h : Nat) : List Nat := [0x01]
 
 /-- Canonical byte encoding of a Section 4.1.1 native suite entry.
-    Field order matches `NativeSuiteEntryBytes_v1` exactly. -/
-def nativeSuiteEntryBytesV1 (entry : SuiteEntry) : Bytes :=
+    Field order matches `NativeSuiteEntryBytes_v1` exactly.
+    Fails closed when `suiteId` is outside the one-byte canonical domain. -/
+def nativeSuiteEntryBytesV1? (entry : SuiteEntry) : Option Bytes := do
   let semanticBytes := entry.semanticId.toUTF8
   let bindingBytes := entry.bindingProfile.toUTF8
-  RubinFormal.bytes #[UInt8.ofNat entry.suiteId] ++
-    RubinFormal.WireEnc.compactSize semanticBytes.size ++
-    semanticBytes ++
-    RubinFormal.WireEnc.u32le entry.pubkeyBytes ++
-    RubinFormal.WireEnc.u32le entry.sigBytes ++
-    RubinFormal.WireEnc.u32le entry.verifyCost ++
-    RubinFormal.WireEnc.compactSize bindingBytes.size ++
-    bindingBytes
+  if hsid : entry.suiteId < 256 then
+    pure <|
+      RubinFormal.bytes #[⟨entry.suiteId, hsid⟩] ++
+        RubinFormal.WireEnc.compactSize semanticBytes.size ++
+        semanticBytes ++
+        RubinFormal.WireEnc.u32le entry.pubkeyBytes ++
+        RubinFormal.WireEnc.u32le entry.sigBytes ++
+        RubinFormal.WireEnc.u32le entry.verifyCost ++
+        RubinFormal.WireEnc.compactSize bindingBytes.size ++
+        bindingBytes
+  else
+    none
 
-/-- Canonical SHA3-256 hash of a Section 4.1.1 native suite entry. -/
-def nativeSuiteEntryHashV1 (entry : SuiteEntry) : Bytes :=
-  SHA3.sha3_256 (nativeSuiteEntryBytesV1 entry)
+/-- Canonical SHA3-256 hash of a Section 4.1.1 native suite entry.
+    Fails closed when the byte encoding is undefined. -/
+def nativeSuiteEntryHashV1? (entry : SuiteEntry) : Option Bytes := do
+  let payload <- nativeSuiteEntryBytesV1? entry
+  pure (SHA3.sha3_256 payload)
 
 /-! ### Inventory of hardcoded assumptions (from Q-FORMAL-ROTATION-00 audit)
 
