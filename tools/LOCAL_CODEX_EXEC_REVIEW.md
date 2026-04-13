@@ -1,76 +1,29 @@
-# Local Codex Exec Pre-Push Review for `rubin-formal`
+# Legacy Manual Codex Review Notes for `rubin-formal`
 
-The sanctioned local push path for `rubin-formal` on this machine is:
+This file is intentionally **not** the sanctioned default local push contract
+anymore.
 
-1. run the usual formal validation you owe for the change (`lake build`, replay checks, metadata updates)
-2. call `cl push ...`
-3. let `$(git rev-parse --git-path hooks-disabled/pre-push)` build the hostile
-   formal review bundle
-4. let that hook run isolated local `codex exec` in read-only mode with repository access
-5. allow the real network push only if there are no blocking findings
+Current sanctioned reviewer-first path on this machine:
 
-## Runtime contract
+1. run the formal validation you owe for the change (`lake build`, replay
+   checks, metadata updates)
+2. run the local Claude reviewer skill/runtime `rubin-claude-review-prepush`
+   via `$HOME/bin/claude-review`
+3. call `cl push ...`
+4. use Codex only if an explicit controller or user instruction asks for an
+   extra passive/manual second opinion
 
-- Entry command: `cl push ...`
-- Hook: `$(git rev-parse --git-path hooks-disabled/pre-push)`
-- Public repo contract stops at this README.
-- The actual machine-local runtime assets live in the private orchestration
-  repository under `inbox/operational/local_push_gate/formal/`.
-- That private path owns the review contract JSON, prompt builder, profile
-  planner, and summary validator.
-- `rubin-formal` keeps only this README as the public repo-facing pointer for
-  this local push contract; unrelated repository tooling remains outside this
-  contract boundary.
-- A clone without the private orchestration layer is intentionally unsupported
-  for the sanctioned local push path and must fail closed before any network
-  push.
+## Boundary
 
-## Model/profile
+- Do **not** treat this file as the source of truth for reviewer selection.
+- Do **not** treat `codex exec` as a required pre-push step.
+- Do **not** use manual Codex review as a bypass for blocking Claude findings
+  or deterministic formal gates.
 
-- Default profile: `formal_repo_review`
-- Model: `gpt-5.4-mini`
-- Reasoning: `xhigh`
-- Sandbox: read-only
-- Repo access: enabled via `codex exec -C <repo-root>`
-- Human-readable local profile mirror: local Codex profile `formal-review`
-- Fast mode: smaller frontier model route, still fail-closed and repo-aware
+## Canonical sources
 
-If the local reviewer hits a `no-json stall`, the sanctioned runtime may retry
-the same shard with lower reasoning (`xhigh -> high -> medium`) before giving
-up. That retry path is still the same sanctioned `cl push` -> `pre-push` ->
-`codex exec` flow.
+- the local orchestration policy `rubin-orchestration-private/inbox/operational/LOCAL_PUSH_GATE_CONTRACT.md`
+- the local Claude review skill at `$HOME/.agents/skills/rubin-claude-review-prepush/SKILL.md`
 
-This path is intentionally repo-aware. The reviewer may inspect the repository
-for coupled context, but findings must stay grounded in the changed claim
-surface and point to exact file+line locations.
-
-## Hostile review themes
-
-- vacuous or too-weak theorem statements
-- LIVE vs BRIDGE vs MODEL vs WRAPPER misclassification
-- parser/live disconnect
-- `proof_coverage.json` / `refinement_bridge.json` / docs ahead of proof reality
-- replay/trace assumptions that are no longer justified
-- theorem names/comments that claim more than the proof establishes
-
-## Blocking policy
-
-- Blocking severities: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `PERF`
-- Advisory only: `INFO`, `STYLE`
-
-## Evidence files
-
-The worktree-local artifacts live under the current git-dir:
-
-- `local-security-review/last-run-id`
-- `local-security-review/last-run-status`
-- `local-security-review/last-run-meta.txt`
-- `local-security-review/last-review-bundle.txt`
-- `local-security-review/last-prompt.txt`
-- `local-security-review/last-codex.log`
-- `local-security-review/last-result-raw.json`
-- `local-security-review/last-result.json`
-
-The review still runs as part of the hook itself. The difference is location:
-the runtime helpers now live in private orchestration state instead of this
-public repository.
+This file survives only as a legacy/manual Codex pointer so old repo links do
+not imply that Codex is still the sanctioned default.
