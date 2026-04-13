@@ -21,7 +21,7 @@
         "RubinFormal.subsidy_u128_safety_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.htlc_timelock_proved": "rubin-formal/RubinFormal/PinnedSections.lean"
       },
-      "notes": "Universal finite-constant lane for the dedicated Section 4 constant theorems. `subsidy_u128_safety_proved` closes the §19.1 subsidy arithmetic safety ceiling, and `htlc_timelock_proved` closes the strict refund-before-expiry timelock semantics. This split intentionally stops short of the live witness-length validator surface and the Section 4 native binding-manifest fragment. Those two surfaces now live in dedicated behavioral residual rows rather than depressing the dedicated constant lane.",
+      "notes": "Universal finite-constant lane for the dedicated Section 4 constant theorems. `subsidy_u128_safety_proved` closes the §19.1 subsidy arithmetic safety ceiling, and `htlc_timelock_proved` closes the strict refund-before-expiry timelock semantics. This split intentionally stops short of the live witness-length validator surface and the Section 4 native binding-manifest fragment. Those two surfaces now live in dedicated scoped rows rather than depressing the dedicated constant lane.",
       "limitations": [
         "This row does not claim the legacy/pre-rotation `validateWitnessItemLengths` branch surface. That live witness-length subset is tracked separately in `consensus_constants_witness_lengths_pre_rotation`.",
         "Other Section 4 literals that already belong to dedicated rows such as weight accounting or DA integrity remain outside this finite-constant lane and are not re-counted here.",
@@ -31,35 +31,40 @@
     },
     {
       "section_key": "consensus_constants_witness_lengths_pre_rotation",
-      "section_heading": "## 4. Consensus Constants (Witness-Length Pre-Rotation Residual)",
+      "section_heading": "## 4. Consensus Constants (Witness-Length Pre-Rotation Registry Fragment)",
       "status": "proved",
       "theorems": [
-        "RubinFormal.sem001_mldsa_bounded_lengths_proved",
-        "RubinFormal.validateWitnessItemLengths_eq_explicit",
-        "RubinFormal.witness_mldsa_bounds_violated_rejects",
-        "RubinFormal.witness_mldsa_bounds_satisfied_accepts",
-        "RubinFormal.witness_unknown_suite_rejects",
-        "RubinFormal.witness_sentinel_nonempty_rejects",
-        "RubinFormal.witness_sentinel_valid_accepts",
-        "RubinFormal.witness_validation_exhaustive"
+        "RubinFormal.UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation",
+        "RubinFormal.sem001_mldsa_bounded_lengths_registry_pre_rotation",
+        "RubinFormal.unknown_suite_rejected_registry_pre_rotation",
+        "RubinFormal.sentinel_nonempty_rejected_registry_pre_rotation",
+        "RubinFormal.sentinel_empty_accepted_registry_pre_rotation",
+        "RubinFormal.mldsa87_wrong_pubkey_rejected_registry_pre_rotation",
+        "RubinFormal.mldsa87_empty_sig_rejected_registry_pre_rotation",
+        "RubinFormal.mldsa87_sig_too_large_rejected_registry_pre_rotation",
+        "RubinFormal.mldsa87_valid_accepted_registry_pre_rotation",
+        "RubinFormal.witness_validation_exhaustive_registry_pre_rotation"
       ],
-      "file": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
+      "file": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
       "theorem_files": {
-        "RubinFormal.sem001_mldsa_bounded_lengths_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
-        "RubinFormal.validateWitnessItemLengths_eq_explicit": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
-        "RubinFormal.witness_mldsa_bounds_violated_rejects": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
-        "RubinFormal.witness_mldsa_bounds_satisfied_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
-        "RubinFormal.witness_unknown_suite_rejects": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
-        "RubinFormal.witness_sentinel_nonempty_rejects": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
-        "RubinFormal.witness_sentinel_valid_accepts": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean",
-        "RubinFormal.witness_validation_exhaustive": "rubin-formal/RubinFormal/ConsensusConstantsBehavioral.lean"
+        "RubinFormal.UtxoApplyGenesisV1.validateWitnessItemLengths_eq_registry_pre_rotation": "rubin-formal/RubinFormal/UtxoApplyGenesisV1.lean",
+        "RubinFormal.sem001_mldsa_bounded_lengths_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.unknown_suite_rejected_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.sentinel_nonempty_rejected_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.sentinel_empty_accepted_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_wrong_pubkey_rejected_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_empty_sig_rejected_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_sig_too_large_rejected_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.mldsa87_valid_accepted_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
+        "RubinFormal.witness_validation_exhaustive_registry_pre_rotation": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean"
       },
-      "notes": "Behavioral residual row for the Section 4 witness-length subset. `sem001_mldsa_bounded_lengths_proved` packages the ML-DSA-87 iff boundary under its explicit suite hypothesis, while the counted LIVE theorems in ConsensusConstantsBehavioral still close only the default pre-rotation `validateWitnessItemLengths` branch surface: ML-DSA-87 bound rejection/acceptance, unknown-suite rejection, sentinel rejection/acceptance, and the constrained outcome partition for that live validator. This row does not uplift the newer registry-aware parser model in `TxParseV2.parseWitnessItemWithRegistry` and does not claim post-rotation registered-suite witness canonicalization parity.",
+      "notes": "Universal row for the authoritative pre-rotation witness-length fragment. `validateWitnessItemLengths_eq_registry_pre_rotation` closes the full bridge from the legacy hardcoded validator to `validateWitnessItemLengthsRegistry PRE_ROTATION_REGISTRY`; `sem001_mldsa_bounded_lengths_registry_pre_rotation` lifts the ML-DSA-87 iff boundary onto that authoritative registry-aware live path; the counted registry companion theorems close unknown-suite rejection, sentinel rejection/acceptance, the three ML-DSA-87 rejection paths, valid acceptance, and the constrained outcome partition on the same live validator. This upgrades the Section 4 witness-length subset from the legacy helper-bound surface to the authoritative pre-rotation registry-aware witness validator without claiming arbitrary post-rotation registry semantics or parse-stage canonicalization.",
       "limitations": [
-        "This residual row intentionally covers only the legacy/pre-rotation `validateWitnessItemLengths` subset plus the explicit ML-DSA-87 iff theorem. It does not re-count the dedicated finite constants now carried by the universal `consensus_constants` row.",
-        "Registry-aware parse-stage witness classification and registered-suite canonicalization are intentionally not counted by this row and are not yet claimed here as covered by the Section 4 witness-length subset."
+        "Scope is `validateWitnessItemLengthsRegistry Rotation.PRE_ROTATION_REGISTRY` only. This row does not claim arbitrary post-rotation registries, additional native suites, or release-time registry drift handling beyond the singleton pre-rotation registry.",
+        "Registry-aware parse-stage witness classification and registered-suite canonicalization in `TxParseV2.parseWitnessItemWithRegistry` are still intentionally out of scope for this Section 4 witness-length fragment.",
+        "This row does not re-count the dedicated finite constants carried by `consensus_constants` or the Section 4 native binding-manifest fragment carried by `consensus_constants_native_binding_manifest_pre_rotation`."
       ],
-      "evidence_level": "machine_checked_behavioral"
+      "evidence_level": "machine_checked_universal"
     },
     {
       "section_key": "consensus_constants_native_binding_manifest_pre_rotation",
