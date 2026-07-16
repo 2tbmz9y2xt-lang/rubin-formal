@@ -1,36 +1,24 @@
-## Summary
+<!-- Generated projection of rubin-control-plane-private/config/pr-body-profiles.json. -->
+## Issue
+- Linear: {{ISSUE}}
+- GitHub Issue mirror (non-authoritative): {{GITHUB_ISSUE}}
 
-<!-- What does this PR do? Which issue does it close? -->
+Refs: {{Q_TOKEN}}
 
-Closes #
+## Invariant
+{{INVARIANT}}
 
-## Formal Verification Checklist
+## Scope
+- Changed files: {{CHANGED_FILES}}
+- Surfaces: {{SURFACES}}
+- Non-scope: {{NON_SCOPE}}
+- Formal claim boundary: {{FORMAL_CLAIM_SCOPE}}
 
-> **Mandatory for any PR touching `.lean` files. Do not skip.**
+## Validation
+- `ci`: {{VERDICT}} for HEAD {{HEAD}}
+- Lean/build evidence: {{FORMAL_EVIDENCE}}
+- Focused checks: {{FOCUSED_CHECKS}}
+- Not run / skipped: {{SKIPPED}}
 
-### Invariant completeness
-
-- [ ] For every `def ... : Prop` — all constraints from the canonical spec are included (list spec section)
-- [ ] For every `≠` / `∉` / bound in a theorem hypothesis — verified that it **cannot** be derived from existing invariants. If it can → strengthen the invariant, don't add a separate hypothesis
-- [ ] If a theorem requires `h : X ≠ Y` but X comes from a structure that should guarantee this — the structure's well-formedness predicate is incomplete. **Fix the predicate first.**
-
-### Soundness
-
-- [ ] 0 `sorry` / `admit` in all changed files
-- [ ] 0 new `axiom` (or justified in PR description why axiom is necessary)
-- [ ] All theorem statements match canonical spec semantics (cite spec section)
-- [ ] `lake env lean` PASS on every changed `.lean` file
-
-### Proof quality
-
-- [ ] No `native_decide` on universally quantified theorems (use structural proofs)
-- [ ] `native_decide` only for concrete/finite checks (specific values, pre-rotation constants)
-- [ ] Private helpers that encode security invariants are public (accessible to downstream proofs)
-
-## Spec references
-
-<!-- List which sections of RUBIN_L1_CANONICAL.md this PR covers -->
-
-## Test evidence
-
-<!-- lake build output, CI link, etc. -->
+## Follow-ups / Waivers
+- {{FOLLOW_UPS}}
