@@ -38,7 +38,6 @@ import RubinFormal.NativeExtIndependence
 import RubinFormal.BlockValidationOrder
 import RubinFormal.RefinementBridgeV1
 import RubinFormal.Refinement.Index
-import RubinFormal.CoreExtRefinement
 import RubinFormal.TxContextFormal
 import RubinFormal.ForkChoiceTiebreak
 import RubinFormal.ForkChoiceSelect

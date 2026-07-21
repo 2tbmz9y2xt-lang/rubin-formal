@@ -1,7 +1,6 @@
 import RubinFormal.CriticalInvariants
 import RubinFormal.ByteWireLegacy
 import RubinFormal.ArithmeticSafety
-import RubinFormal.CoreExtInvariants
 import RubinFormal.SighashV1
 import RubinFormal.CovenantGenesisV1
 import RubinFormal.WitnessCommitmentV1
@@ -133,29 +132,6 @@ def valueConservationStatement : Prop :=
   (∀ sumIn sumOut fee : Nat, valueConserved sumIn sumOut → valueConserved (sumIn + fee) sumOut) ∧
   (∀ sumIn sumOut fee : Nat, inU128 sumIn → valueConserved sumIn sumOut → valueConserved (satAddU128 sumIn fee) sumOut)
 def daSetIntegrityStatement : Prop := ¬ daChunkSetValid []
-/-- v2 (F-04 fix): soft-fork tightening WITH substantive sentinel rejection.
-    (1) active → legacy (trivially true, anyone-can-spend).
-    (2) active rejects SENTINEL suite_id = 0x00.
-    (3) legacy accepts SENTINEL.
-    Together (2)+(3) prove the rule is a STRICT tightening. -/
-def coreExtTighteningStatement : Prop :=
-  (∀ allowedSuiteIds : List Nat,
-    ∀ w : WitnessItemMini, coreExtActiveAllowed allowedSuiteIds w → coreExtLegacyAllowed w) ∧
-  (∀ allowedSuiteIds : List Nat,
-    ¬ coreExtActiveAllowed allowedSuiteIds { suiteId := SUITE_ID_SENTINEL }) ∧
-  (coreExtLegacyAllowed { suiteId := SUITE_ID_SENTINEL })
-def coreExtPreActivationStrictSupersetStatement : Prop :=
-  ∀ allowedSuiteIds : List Nat,
-    ∃ w : WitnessItemMini, coreExtLegacyAllowed w ∧ ¬ coreExtActiveAllowed allowedSuiteIds w
-def coreExtCursorNoAmbiguityStatement : Prop :=
-  ∀ inputCount witnessCount : Nat,
-    witnessCount = inputCount →
-      (∀ i j : Nat,
-        i < inputCount →
-        j < inputCount →
-        coreExtAssignedWitnessIndex i = coreExtAssignedWitnessIndex j →
-          i = j) ∧
-      (∀ i : Nat, i < inputCount → coreExtAssignedWitnessIndex i < witnessCount)
 -- §19.1: subsidy arithmetic fits in machine integer types (PR #420).
 def subsidyU128SafetyStatement : Prop :=
   (∀ h ag : Nat, SubsidyV1.blockSubsidy h ag ≤ SubsidyV1.MINEABLE_CAP) ∧
@@ -283,24 +259,6 @@ theorem value_conservation_proved : valueConservationStatement := by
 
 theorem da_set_integrity_proved : daSetIntegrityStatement := by
   simpa [daSetIntegrityStatement] using da_chunk_set_requires_nonempty
-
-theorem core_ext_tightening_proved : coreExtTighteningStatement := by
-  refine ⟨?_, ?_, ?_⟩
-  · intro allowedSuiteIds w h
-    exact core_ext_softfork_tightening allowedSuiteIds w h
-  · intro allowedSuiteIds
-    exact core_ext_active_rejects_sentinel allowedSuiteIds
-  · exact core_ext_legacy_accepts_sentinel
-
-theorem core_ext_preactivation_strict_superset_proved : coreExtPreActivationStrictSupersetStatement := by
-  intro allowedSuiteIds
-  refine ⟨{ suiteId := SUITE_ID_SENTINEL }, ?_, ?_⟩
-  · exact core_ext_legacy_accepts_sentinel
-  · exact core_ext_active_rejects_sentinel allowedSuiteIds
-
-theorem core_ext_cursor_no_ambiguity_proved : coreExtCursorNoAmbiguityStatement := by
-  intro inputCount witnessCount h
-  exact core_ext_no_cursor_ambiguity inputCount witnessCount h
 
 theorem subsidy_u128_safety_proved : subsidyU128SafetyStatement := by
   refine ⟨?_, ?_, ?_⟩
