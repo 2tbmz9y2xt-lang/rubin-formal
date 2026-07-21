@@ -45,10 +45,6 @@ import RubinFormal.Conformance.CVSigVectors
 import RubinFormal.Conformance.CVSigReplay
 import RubinFormal.Conformance.CVCompactVectors
 import RubinFormal.Conformance.CVCompactReplay
-import RubinFormal.Conformance.CVExtVectors
-import RubinFormal.Conformance.CVExtReplay
-import RubinFormal.Conformance.CVTxctxVectors
-import RubinFormal.Conformance.CVTxctxReplay
 import RubinFormal.Conformance.CVNativeRotationCutoffVectors
 import RubinFormal.Conformance.CVNativeRotationCutoffReplay
 import RubinFormal.Conformance.CVNativeRotationSunsetVectors

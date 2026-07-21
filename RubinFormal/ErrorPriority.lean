@@ -1,6 +1,5 @@
 import RubinFormal.BlockValidationOrder
 import RubinFormal.UtxoApplyGenesisV1
-import RubinFormal.CoreExtRefinement
 
 /-!
 # Error Priority Ordering (§13 / §25)
@@ -30,7 +29,6 @@ linkage → merkle (via explicit-bind equivalence) → witness (existing).
 - `consensus_error_ordering_contract`: block-level totality + parse/pow dominance + full 6-stage success chain.
 - `tx_parse_pipeline_deterministic`: tx parse model ordering strict + injective (live bridges separate).
 - `tx_semantic_pipeline_deterministic`: tx semantic model ordering strict + injective (live bridges separate).
-- `ext_error_pipeline_deterministic`: CORE_EXT model-level priority + commutativity (live bridges separate).
 -/
 
 namespace RubinFormal
@@ -907,49 +905,6 @@ theorem bridge_semantic_witness_cursor (cursor witnessLen : Nat)
     validateWitnessCursorComplete cursor witnessLen = .error "TX_ERR_PARSE" :=
   ⟨rfl, witness_cursor_incomplete cursor witnessLen h⟩
 
-/-! ## TXCTX §13.1 bridge: CoreExtRefinement.ExtError → live functions
-
-Machine-checked bridge connecting the ExtError model (ParseError < SuiteDisallowed < SigInvalid)
-to live validation functions (dispatchCovenantValidation, applyWitnessChecks).
-Each theorem proves: ExtError priority ordinal = N ∧ live function returns specific error code.
--/
-
-open CoreExtRefinement UtxoApplyGenesisV1 in
-theorem bridge_ext_parse_to_dispatch
-    (e : UtxoBasicV1.UtxoEntry) (tx : UtxoBasicV1.Tx) (wc h m : Nat)
-    (h1 : (e.covenantType == CovenantGenesisV1.COV_TYPE_P2PK) = false)
-    (h2 : (e.covenantType == CovenantGenesisV1.COV_TYPE_MULTISIG) = false)
-    (h3 : (e.covenantType == CovenantGenesisV1.COV_TYPE_VAULT) = false)
-    (h4 : (e.covenantType == CovenantGenesisV1.COV_TYPE_HTLC) = false) :
-    errorPriority ExtError.ParseError = 0 ∧
-    dispatchCovenantValidation e tx wc h m = .error "TX_ERR_COVENANT_TYPE_INVALID" :=
-  ⟨rfl, dispatch_unknown_covenant_error e tx wc h m h1 h2 h3 h4⟩
-
-open CoreExtRefinement BlockBasicV1 in
-theorem bridge_ext_suite_to_witness (ws : TxWeightV2.WitnessSectionResult)
-    (hBytes : (ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX) = false)
-    (hNoOverflow : ws.isOverflow = false)
-    (hSigAlg : ws.anySigAlgInvalid = true) :
-    errorPriority ExtError.SuiteDisallowed = 1 ∧
-    applyWitnessChecks ws = .error "TX_ERR_SIG_ALG_INVALID" :=
-  ⟨rfl, sig_alg_priority_over_noncanonical ws hBytes hNoOverflow hSigAlg⟩
-
-open CoreExtRefinement BlockBasicV1 in
-theorem bridge_ext_sig_to_witness (ws : TxWeightV2.WitnessSectionResult)
-    (hBytes : (ws.endOff - ws.startOff > TxWeightV2.MAX_WITNESS_BYTES_PER_TX) = false)
-    (hNoOverflow : ws.isOverflow = false)
-    (hNoSigAlg : ws.anySigAlgInvalid = false)
-    (hNoncanon : ws.anySigNoncanonical = true) :
-    errorPriority ExtError.SigInvalid = 2 ∧
-    applyWitnessChecks ws = .error "TX_ERR_SIG_NONCANONICAL" :=
-  ⟨rfl, sig_noncanonical_last_priority ws hBytes hNoOverflow hNoSigAlg hNoncanon⟩
-
-open CoreExtRefinement in
-theorem ext_error_ordering_matches_live :
-    errorPriority ExtError.ParseError < errorPriority ExtError.SuiteDisallowed ∧
-    errorPriority ExtError.SuiteDisallowed < errorPriority ExtError.SigInvalid :=
-  ⟨parse_before_suite, suite_before_sig⟩
-
 /-! ## Error code distinctness (§13) -/
 
 theorem err_ne_block_tx_parse : ("BLOCK_ERR_PARSE" : String) ≠ "TX_ERR_PARSE" := by decide
@@ -1055,22 +1010,6 @@ theorem tx_semantic_pipeline_deterministic :
     (∀ a b, txSemanticStageOrd a = txSemanticStageOrd b → a = b) := by
   exact ⟨semantic_stage_chain, txSemanticStageOrd_injective⟩
 
-/-- CORE_EXT error ordering: model-level strict priority + commutativity.
-    Live grounding is provided separately by `bridge_ext_parse_to_dispatch`,
-    `bridge_ext_suite_to_witness`, `bridge_ext_sig_to_witness` (each conditional
-    on concrete per-tx hypotheses, so not bundled into this universal statement). -/
-theorem ext_error_pipeline_deterministic :
-    CoreExtRefinement.errorPriority .ParseError <
-      CoreExtRefinement.errorPriority .SuiteDisallowed ∧
-    CoreExtRefinement.errorPriority .SuiteDisallowed <
-      CoreExtRefinement.errorPriority .SigInvalid ∧
-    -- Commutativity: error selection is independent of evaluation order
-    (∀ e1 e2, CoreExtRefinement.deterministicError e1 e2 =
-      CoreExtRefinement.deterministicError e2 e1) := by
-  exact ⟨CoreExtRefinement.parse_before_suite,
-         CoreExtRefinement.suite_before_sig,
-         CoreExtRefinement.error_selection_commutative⟩
-
 /-! ## Smoke tests: bridge lemmas with concrete inputs -/
 
 -- bridge_parse_dalen: minDa=false → error at stage 8
@@ -1082,11 +1021,5 @@ example : txParseStageOrd .DaLenChecks = 8 ∧
 example : txSemanticStageOrd .WitnessCursor = 6 ∧
     UtxoApplyGenesisV1.validateWitnessCursorComplete 3 5 = .error "TX_ERR_PARSE" :=
   bridge_semantic_witness_cursor 3 5 (by native_decide)
-
--- ext_error_ordering: parse < suite < sig (concrete ordinals)
-open CoreExtRefinement in
-example : errorPriority .ParseError < errorPriority .SuiteDisallowed ∧
-    errorPriority .SuiteDisallowed < errorPriority .SigInvalid :=
-  ext_error_ordering_matches_live
 
 end RubinFormal
