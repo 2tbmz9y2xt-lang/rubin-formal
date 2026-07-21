@@ -498,10 +498,6 @@
         "RubinFormal.err_ne_tx_value_parse",
         "RubinFormal.err_ne_tx_value_missing",
         "RubinFormal.err_ne_tx_value_covenant",
-        "RubinFormal.CoreExtRefinement.parse_before_suite",
-        "RubinFormal.CoreExtRefinement.suite_before_sig",
-        "RubinFormal.CoreExtRefinement.error_selection_commutative",
-        "RubinFormal.CoreExtRefinement.parse_always_wins",
         "RubinFormal.parse_stage_txkind_live",
         "RubinFormal.parse_stage_inputmin_live",
         "RubinFormal.parse_stage_outputmin_live",
@@ -526,10 +522,6 @@
         "RubinFormal.bridge_semantic_unknown_covenant",
         "RubinFormal.bridge_semantic_value",
         "RubinFormal.semantic_stage_chain",
-        "RubinFormal.bridge_ext_parse_to_dispatch",
-        "RubinFormal.bridge_ext_suite_to_witness",
-        "RubinFormal.bridge_ext_sig_to_witness",
-        "RubinFormal.ext_error_ordering_matches_live",
         "RubinFormal.bridge_parse_dalen",
         "RubinFormal.bridge_semantic_output_covenant",
         "RubinFormal.bridge_semantic_scriptsig",
@@ -537,7 +529,6 @@
         "RubinFormal.consensus_error_ordering_contract",
         "RubinFormal.tx_parse_pipeline_deterministic",
         "RubinFormal.tx_semantic_pipeline_deterministic",
-        "RubinFormal.ext_error_pipeline_deterministic",
         "RubinFormal.ptfc_header_version_fail",
         "RubinFormal.ptfc_header_txkind_fail",
         "RubinFormal.ptfc_nonce_fail",
@@ -632,10 +623,6 @@
         "RubinFormal.err_ne_tx_value_parse": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_value_missing": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.err_ne_tx_value_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.CoreExtRefinement.parse_before_suite": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.suite_before_sig": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.error_selection_commutative": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.parse_always_wins": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
         "RubinFormal.parse_stage_txkind_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.parse_stage_inputmin_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.parse_stage_outputmin_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
@@ -660,17 +647,12 @@
         "RubinFormal.bridge_semantic_unknown_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_value": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.semantic_stage_chain": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_ext_parse_to_dispatch": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_ext_suite_to_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.bridge_ext_sig_to_witness": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.ext_error_ordering_matches_live": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_parse_dalen": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_output_covenant": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_scriptsig": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.bridge_semantic_witness_cursor": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.tx_parse_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.tx_semantic_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
-        "RubinFormal.ext_error_pipeline_deterministic": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.consensus_error_ordering_contract": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.ptfc_header_version_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.ptfc_header_txkind_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
@@ -680,7 +662,7 @@
         "RubinFormal.ptpi_outputs_fail": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.ptpi_locktime_fail": "rubin-formal/RubinFormal/ErrorPriority.lean"
       },
-      "notes": "Universal theorem lane: block-level 6-stage live error propagation on `validateBlockBasic`, the direct live tx-parse and tx-semantic stage bridges, and the strict ordering/injectivity contracts (`consensus_error_ordering_contract`, `tx_parse_pipeline_deterministic`, `tx_semantic_pipeline_deterministic`, `ext_error_pipeline_deterministic`). TARGET ambiguity is formally resolved via `target_error_disambiguated`, and `dispatchCovenantValidation` is claimed on the direct live per-input path rather than through a parallel-model helper caveat. Separate fixture lane: CV-VALIDATION-ORDER replay on pinned ordering vectors. That executable lane is complementary regression evidence only and does not replace the live stage-order theorem surface.",
+      "notes": "Universal theorem lane: block-level 6-stage live error propagation on `validateBlockBasic`, the direct live tx-parse and tx-semantic stage bridges, and the strict ordering/injectivity contracts (`consensus_error_ordering_contract`, `tx_parse_pipeline_deterministic`, `tx_semantic_pipeline_deterministic`). TARGET ambiguity is formally resolved via `target_error_disambiguated`, and `dispatchCovenantValidation` is claimed on the direct live per-input path rather than through a parallel-model helper caveat. Separate fixture lane: CV-VALIDATION-ORDER replay on pinned ordering vectors. That executable lane is complementary regression evidence only and does not replace the live stage-order theorem surface.",
       "limitations": [],
       "evidence_level": "machine_checked_universal"
     },
@@ -829,7 +811,6 @@
       "status": "proved",
       "theorems": [
         "RubinFormal.Conformance.cv_validation_order_vectors_pass",
-        "RubinFormal.core_ext_cursor_no_ambiguity_proved",
         "RubinFormal.sem002_mldsa_binding_proved",
         "RubinFormal.unknown_suite_0x05_rejected",
         "RubinFormal.sentinel_nonempty_pubkey_rejected",
@@ -855,7 +836,6 @@
       "file": "rubin-formal/RubinFormal/PinnedSections.lean",
       "theorem_files": {
         "RubinFormal.sem002_mldsa_binding_proved": "rubin-formal/RubinFormal/FormalGap03.lean",
-        "RubinFormal.core_ext_cursor_no_ambiguity_proved": "rubin-formal/RubinFormal/PinnedSections.lean",
         "RubinFormal.unknown_suite_0x05_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.sentinel_nonempty_pubkey_rejected": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
         "RubinFormal.sentinel_empty_accepted": "rubin-formal/RubinFormal/StructuralRulesBehavioral.lean",
@@ -1381,70 +1361,6 @@
         "Auxiliary tagged-result lowest-index theorems remain in ParallelEquivalence.lean for helper reasoning only; they are not counted here because the live queue may early-abort and surface a deterministic submission-order error instead of the absolute lowest failing index."
       ],
       "evidence_level": "machine_checked_universal"
-    },
-    {
-      "section_key": "txctx_coreext_route_lane",
-      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Route + Bridge Lane",
-      "status": "proved",
-      "theorems": [
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_suite_gate_rejects_before_path",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_spend_set_without_registry_rejects",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_noncanonical_rejects_before_verify",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_registered_canonical_reaches_native_verify",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_missing_bundle_rejects",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_ready_reaches_verify",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_callback_error_maps_alg_invalid",
-        "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_verify_route",
-        "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_continuing_reject_route",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_binding_ready_reaches_verify",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid"
-      ],
-      "file": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-      "theorem_files": {
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_suite_gate_rejects_before_path": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_spend_set_without_registry_rejects": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_noncanonical_rejects_before_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_native_registered_canonical_reaches_native_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_missing_bundle_rejects": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_ready_reaches_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_txcontext_callback_error_maps_alg_invalid": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_verify_route": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.connectBlockFullComputed_ok_bridges_txcontext_continuing_reject_route": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_binding_ready_reaches_verify": "rubin-formal/RubinFormal/CoreExtRefinement.lean",
-        "RubinFormal.CoreExtRefinement.verify_sig_ext_ext_callback_false_maps_sig_invalid": "rubin-formal/RubinFormal/CoreExtRefinement.lean"
-      },
-      "notes": "Universal route/bridge lane for the currently counted §14 CORE_EXT theorem surface. These theorems do not claim full live `verify_sig_ext` correctness; they close the route-selection boundary that the current formal model actually proves: suite gate rejects before any native/ext path, native spend-set and canonicality routing, txcontext bundle gating, ext-binding routing, callback error-code split, and the computed-TxContext bridge from successful `connectBlockFullComputed` runs into the txcontext verify versus continuing-reject branches.",
-      "limitations": [
-        "This universal row is route-scoped only. It does not claim ext_id/profile selection correctness for an arbitrary live CORE_EXT profile or full callback semantics beyond the counted route/error-code theorems.",
-        "Fixture replay for the shipped CV-EXT / CV-TXCTX bundles remains complementary evidence and is tracked separately in `txctx_coreext_fixture_replay`."
-      ],
-      "evidence_level": "machine_checked_universal"
-    },
-    {
-      "section_key": "txctx_coreext_fixture_replay",
-      "section_heading": "## SPEC-TXCTX-01 §14 / CORE_EXT Replay Residual",
-      "status": "proved",
-      "theorems": [
-        "RubinFormal.Conformance.cv_ext_vectors_pass",
-        "RubinFormal.Conformance.cv_ext_parsing_surface_proved",
-        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved",
-        "RubinFormal.Conformance.cv_txctx_vectors_pass"
-      ],
-      "file": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
-      "theorem_files": {
-        "RubinFormal.Conformance.cv_ext_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
-        "RubinFormal.Conformance.cv_ext_parsing_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
-        "RubinFormal.Conformance.cv_ext_dispatch_surface_proved": "rubin-formal/RubinFormal/Conformance/CVExtReplay.lean",
-        "RubinFormal.Conformance.cv_txctx_vectors_pass": "rubin-formal/RubinFormal/Conformance/CVTxctxReplay.lean"
-      },
-      "notes": "Behavioral replay residual for the current CV-EXT and CV-TXCTX bundles. This row preserves the pinned-bundle contract checks (vector counts, distinct IDs, reject vectors carry expect_err, family tags match the pinned CV-EXT ids, op tags stay within the pinned replay vocabulary, and TXCTX governance-scope markers stay explicit) and the finite fixture-anchored CORE_EXT parse/dispatch replay surface over the shipped vectors. The separate route/bridge theorem lane now lives in `txctx_coreext_route_lane`; this residual row stays anchored to replay evidence and does not reopen or replace the substantive live §14 theorem closure in `txcontext_formal`.",
-      "limitations": [
-        "This residual row is intentionally replay-scoped. It does not claim full live `verify_sig_ext` correctness or full txcontext-enabled replay equivalence beyond the shipped fixture bundles.",
-        "Governance-scope vectors are tracked as explicit scope markers only; they are not claimed here as consensus-level acceptance/rejection proofs.",
-        "Where the current shipped CV-EXT vectors encode fixture-lane behavior that diverges from the separate live spend-side theorem surface (including active sentinel-admitted cases), this row stays anchored to the shipped fixture lane and must not be read as a live sentinel/binding theorem.",
-        "The live §14 theorem closure recorded in `txcontext_formal` and the route-scoped bridge theorems recorded in `txctx_coreext_route_lane` remain the substantive theorem surfaces; this residual row is complementary replay evidence only."
-      ],
-      "evidence_level": "machine_checked_behavioral"
     },
     {
       "section_key": "txcontext_formal",

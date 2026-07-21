@@ -16,8 +16,6 @@ theorems in `PinnedSections.lean` that reference real code:
   invariants over real `SighashV1.u64le`/`u32le` (proved directly in PinnedSections).
 - F-03: `coinbaseWitnessCommitmentSeed = 0` (rfl tautology) → replaced by
   `coinbase_value_bounded` referencing real `SubsidyV1.validateCoinbaseValueBound`.
-- F-04: `coreExtLegacyAllowed = True` (vacuous) → replaced by substantive
-  sentinel-rejection + explicit legacy semantics in `CoreExtInvariants.lean`.
 -/
 
 -- ═══════════════════════════════════════════════════════════════════
