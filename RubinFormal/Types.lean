@@ -39,4 +39,33 @@ instance : Inhabited Bytes where
 def SUITE_ID_SENTINEL : Nat := 0x00
 def SUITE_ID_ML_DSA_87 : Nat := 0x01
 
+/-- Named Section 14 covenant kinds. These are static registry names, not
+    output-validation or deployment behavior. -/
+inductive CovenantKind where
+  | coreP2PK
+  | coreAnchor
+  | coreHTLC
+  | coreVault
+  | coreDACommit
+  | coreMultisig
+  | coreStealth
+  | coreSimplicity
+deriving Repr, DecidableEq
+
+/-- Exact static disposition of a Section 14 covenant tag. -/
+inductive CovenantDisposition where
+  | accepted (kind : CovenantKind)
+  | reserved
+  | deploymentGated (kind : CovenantKind)
+  | invalidCovenantType
+deriving Repr, DecidableEq
+
+/-- The registry marker associated only with an invalid covenant-type disposition. -/
+def invalidCovenantTypeError : String := "TX_ERR_COVENANT_TYPE_INVALID"
+
+/-- Static registry error marker. This does not characterize output-validation behavior. -/
+def CovenantDisposition.errorCode? : CovenantDisposition → Option String
+  | .invalidCovenantType => some invalidCovenantTypeError
+  | _ => none
+
 end RubinFormal

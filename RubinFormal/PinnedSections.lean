@@ -3,6 +3,7 @@ import RubinFormal.ByteWireLegacy
 import RubinFormal.ArithmeticSafety
 import RubinFormal.SighashV1
 import RubinFormal.CovenantGenesisV1
+import RubinFormal.CovenantRegistryExhaustive
 import RubinFormal.WitnessCommitmentV1
 import RubinFormal.TxIdBehavioral
 
@@ -112,7 +113,11 @@ def sighashV1Statement : Prop :=
     a.outputContextView ≠ b.outputContextView →
     SighashV1.buildPreimageFrameParts a ≠ SighashV1.buildPreimageFrameParts b)
 def consensusErrorCodesStatement : Prop := ErrorCode.TxErrParse ≠ ErrorCode.TxErrSigInvalid
-def covenantRegistryStatement : Prop := CovenantType.P2PK ≠ CovenantType.HTLC
+/-- Bounded Section 14 static tag-disposition surface. It does not assert output
+    acceptance, activation/deployment behavior, descriptor semantics, spend rules,
+    cryptography, or client equivalence. -/
+def covenantRegistryStatement : Prop :=
+  ∀ tag : Nat, tag < 0x10000 → section14DispositionCase tag (covenantDisposition tag)
 def difficultyUpdateStatement : Prop :=
   (∀ prevTs newTs maxStep : Nat, clampTimestampStep prevTs newTs maxStep ≤ prevTs + maxStep) ∧
   (∀ a b : Nat, 0 < b → floorDiv a b * b ≤ a)
@@ -225,7 +230,8 @@ theorem consensus_error_codes_proved : consensusErrorCodesStatement := by
   simpa [consensusErrorCodesStatement] using error_codes_distinct
 
 theorem covenant_registry_proved : covenantRegistryStatement := by
-  simpa [covenantRegistryStatement] using covenant_types_distinct
+  intro tag hU16
+  exact covenantDispositionComplete tag hU16
 
 theorem difficulty_update_proved : difficultyUpdateStatement := by
   refine ⟨?_, ?_⟩

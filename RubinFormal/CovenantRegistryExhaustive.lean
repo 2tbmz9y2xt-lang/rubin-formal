@@ -2,21 +2,91 @@ import RubinFormal.CovenantGenesisV1
 import RubinFormal.CovenantParserGaps
 
 /-!
-# Covenant Registry Exhaustive + Universal Proofs (§14)
+# Covenant Registry Exhaustive + Bounded Proofs (§14)
 
-Evidence level: machine_checked_universal for §14 validateOutGenesis /
-covenant registry genesis surface.
-`validateOutGenesis_ok_constrained` decomposes `.ok` into at least one of
-6 per-type disjuncts (P2PK/ANCHOR/VAULT/MULTISIG/HTLC/DA_COMMIT) with
-value, payload, and parser-success constraints. Sub-parsers
-(vault/multisig/htlc) are existentially witness-bound.
-No claim about HTLC spend-side preimage / crypto semantics.
-Also proves pairwise tag distinctness and canonical accept samples.
+`covenantDispositionComplete` classifies every u16 tag by its static
+Section 14 disposition. It does not define output acceptance, deployment or
+activation behavior, descriptors, spend rules, cryptography, or client parity.
+
+`validateOutGenesis_ok_constrained` remains a six-accept legacy genesis-model
+theorem for P2PK/ANCHOR/VAULT/MULTISIG/HTLC/DA_COMMIT. Its constrained output
+surface does not cover CORE_STEALTH or CORE_SIMPLICITY.
 -/
 
 namespace RubinFormal
 
 open CovenantGenesisV1
+
+/-- Static Section 14 tag disposition. The total function is intentionally
+    separate from the legacy six-branch genesis model. -/
+def covenantDisposition (tag : Nat) : CovenantDisposition :=
+  if tag = 0x0000 then CovenantDisposition.accepted CovenantKind.coreP2PK
+  else if tag = 0x0001 then CovenantDisposition.invalidCovenantType
+  else if tag = 0x0002 then CovenantDisposition.accepted CovenantKind.coreAnchor
+  else if tag = 0x00FF then CovenantDisposition.reserved
+  else if tag = 0x0100 then CovenantDisposition.accepted CovenantKind.coreHTLC
+  else if tag = 0x0101 then CovenantDisposition.accepted CovenantKind.coreVault
+  else if tag = 0x0102 then CovenantDisposition.invalidCovenantType
+  else if tag = 0x0103 then CovenantDisposition.accepted CovenantKind.coreDACommit
+  else if tag = 0x0104 then CovenantDisposition.accepted CovenantKind.coreMultisig
+  else if tag = 0x0105 then CovenantDisposition.accepted CovenantKind.coreStealth
+  else if tag = 0x0106 then CovenantDisposition.deploymentGated CovenantKind.coreSimplicity
+  else CovenantDisposition.invalidCovenantType
+
+/-- Exact bounded Section 14 classification for one tag and one disposition. -/
+def section14DispositionCase (tag : Nat) (disposition : CovenantDisposition) : Prop :=
+  tag < 0x10000 ∧
+    ((tag = 0x0000 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreP2PK) ∨
+    (tag = 0x0001 ∧ disposition = CovenantDisposition.invalidCovenantType) ∨
+    (tag = 0x0002 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreAnchor) ∨
+    (tag = 0x00FF ∧ disposition = CovenantDisposition.reserved) ∨
+    (tag = 0x0100 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreHTLC) ∨
+    (tag = 0x0101 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreVault) ∨
+    (tag = 0x0102 ∧ disposition = CovenantDisposition.invalidCovenantType) ∨
+    (tag = 0x0103 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreDACommit) ∨
+    (tag = 0x0104 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreMultisig) ∨
+    (tag = 0x0105 ∧ disposition = CovenantDisposition.accepted CovenantKind.coreStealth) ∨
+    (tag = 0x0106 ∧ disposition = CovenantDisposition.deploymentGated CovenantKind.coreSimplicity) ∨
+    (tag ≠ 0x0000 ∧ tag ≠ 0x0001 ∧ tag ≠ 0x0002 ∧ tag ≠ 0x00FF ∧
+      tag ≠ 0x0100 ∧ tag ≠ 0x0101 ∧ tag ≠ 0x0102 ∧ tag ≠ 0x0103 ∧
+      tag ≠ 0x0104 ∧ tag ≠ 0x0105 ∧ tag ≠ 0x0106 ∧
+      disposition = CovenantDisposition.invalidCovenantType))
+
+/-- Every u16 tag has exactly the static Section 14 disposition in the matrix.
+    This theorem makes no activation, descriptor, spend, cryptographic, or client claim. -/
+theorem covenantDispositionComplete (tag : Nat) (hU16 : tag < 0x10000) :
+    section14DispositionCase tag (covenantDisposition tag) := by
+  unfold section14DispositionCase
+  refine ⟨hU16, ?_⟩
+  by_cases hP2PK : tag = 0x0000
+  · simp [covenantDisposition, hP2PK]
+  by_cases hInvalidOne : tag = 0x0001
+  · simp [covenantDisposition, hP2PK, hInvalidOne]
+  by_cases hAnchor : tag = 0x0002
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor]
+  by_cases hReserved : tag = 0x00FF
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved]
+  by_cases hHtlc : tag = 0x0100
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc]
+  by_cases hVault : tag = 0x0101
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault]
+  by_cases hInvalidTwo : tag = 0x0102
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault,
+      hInvalidTwo]
+  by_cases hDaCommit : tag = 0x0103
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault,
+      hInvalidTwo, hDaCommit]
+  by_cases hMultisig : tag = 0x0104
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault,
+      hInvalidTwo, hDaCommit, hMultisig]
+  by_cases hStealth : tag = 0x0105
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault,
+      hInvalidTwo, hDaCommit, hMultisig, hStealth]
+  by_cases hSimplicity : tag = 0x0106
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault,
+      hInvalidTwo, hDaCommit, hMultisig, hStealth, hSimplicity]
+  · simp [covenantDisposition, hP2PK, hInvalidOne, hAnchor, hReserved, hHtlc, hVault,
+      hInvalidTwo, hDaCommit, hMultisig, hStealth, hSimplicity]
 
 private def repeatByte (b : UInt8) (n : Nat) : Bytes :=
   Id.run <| do
@@ -97,7 +167,7 @@ private def sampleDaCommitOut : TxOut :=
     covenantData := byte32 0x80
   }
 
-/-- All canonical covenant type tags are pairwise distinct. -/
+/-- The explicitly enumerated P2PK/ANCHOR/HTLC/DA_COMMIT tag pairs are distinct. -/
 theorem covenant_types_pairwise_distinct :
     COV_TYPE_P2PK ≠ COV_TYPE_ANCHOR ∧
     COV_TYPE_P2PK ≠ COV_TYPE_HTLC ∧
@@ -118,49 +188,49 @@ theorem cov_type_htlc_value : COV_TYPE_HTLC = 0x0100 := rfl
 /-- DA_COMMIT tag is 0x0103. -/
 theorem cov_type_da_commit_value : COV_TYPE_DA_COMMIT = 0x0103 := rfl
 
-/-- Canonical P2PK outputs are accepted by the live genesis registry. -/
+/-- Canonical P2PK outputs are accepted by the legacy genesis model. -/
 theorem validate_out_genesis_p2pk_canonical_ok :
     (match validateOutGenesis sampleP2PKOut 0 0 with
       | .ok () => true
       | _ => false) = true := by
   native_decide
 
-/-- Canonical anchor outputs are accepted by the live genesis registry. -/
+/-- Canonical anchor outputs are accepted by the legacy genesis model. -/
 theorem validate_out_genesis_anchor_canonical_ok :
     (match validateOutGenesis sampleAnchorOut 0 0 with
       | .ok () => true
       | _ => false) = true := by
   native_decide
 
-/-- Canonical vault outputs are accepted by the live genesis registry. -/
+/-- Canonical vault outputs are accepted by the legacy genesis model. -/
 theorem validate_out_genesis_vault_canonical_ok :
     (match validateOutGenesis sampleVaultOut 0 0 with
       | .ok () => true
       | _ => false) = true := by
   native_decide
 
-/-- Canonical multisig outputs are accepted by the live genesis registry. -/
+/-- Canonical multisig outputs are accepted by the legacy genesis model. -/
 theorem validate_out_genesis_multisig_canonical_ok :
     (match validateOutGenesis sampleMultisigOut 0 0 with
       | .ok () => true
       | _ => false) = true := by
   native_decide
 
-/-- Canonical HTLC outputs are accepted by the live genesis registry. -/
+/-- Canonical HTLC outputs are accepted by the legacy genesis model. -/
 theorem validate_out_genesis_htlc_canonical_ok :
     (match validateOutGenesis sampleHtlcOut 0 0 with
       | .ok () => true
       | _ => false) = true := by
   native_decide
 
-/-- Canonical DA_COMMIT outputs are accepted on transaction kind `0x01`. -/
+/-- Canonical DA_COMMIT outputs are accepted by the legacy genesis model on transaction kind `0x01`. -/
 theorem validate_out_genesis_da_commit_canonical_ok :
     (match validateOutGenesis sampleDaCommitOut 0x01 0 with
       | .ok () => true
       | _ => false) = true := by
   native_decide
 
-/-- Reserved-future tag stays outside the live canonical registry. -/
+/-- The legacy genesis model rejects the reserved-future tag. -/
 theorem validate_out_genesis_reserved_future_rejects
     (value txKind blockHeight : Nat) (covData : Bytes) :
     validateOutGenesis { value := value, covenantType := COV_TYPE_RESERVED_FUTURE, covenantData := covData } txKind blockHeight =
@@ -224,13 +294,11 @@ private theorem validateOutGenesis_eq_explicit (out : TxOut) (txKind bh : Nat) :
 
 -- 8M heartbeats needed: 6 by_cases + nested split at h per branch
 set_option maxHeartbeats 8000000 in
-/-- **validateOutGenesis constrained universal** (§14 genesis surface):
-    when the live covenant genesis registry accepts an output, at least one
-    of six disjuncts holds — each constraining covenantType, value, and
-    payload conditions. This is NOT a tautology: each disjunct binds
-    concrete guards (value ≠ 0, size = 33, suiteId = ML_DSA_87, parser
-    succeeds, etc.) that the implementation actually checks.
-    No claim about HTLC spend-side preimage / crypto semantics. -/
+/-- **Legacy `validateOutGenesis` constrained theorem**: when the six-accept
+    genesis model accepts an output, at least one of six disjuncts holds —
+    each constraining covenantType, value, and payload conditions. This is
+    not a theorem for CORE_STEALTH or CORE_SIMPLICITY, and makes no claim about
+    activation, deployment, descriptors, HTLC spend-side preimages, or crypto semantics. -/
 theorem validateOutGenesis_ok_constrained (out : TxOut) (txKind bh : Nat)
     (h : validateOutGenesis out txKind bh = .ok ()) :
     (out.covenantType = COV_TYPE_P2PK ∧ out.value ≠ 0 ∧
