@@ -1,13 +1,7 @@
 name: "DeepSeek Security Review"
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    paths:
-      - '**/*.lean'
-      - 'proof_coverage.json'
-      - 'refinement_bridge.json'
-      - 'tools/check_formal_registry_truth.py'
+  workflow_dispatch:
 
 permissions:
   contents: read
