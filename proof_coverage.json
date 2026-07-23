@@ -4,7 +4,7 @@
   "claim_level": "refined",
   "spec_source_file": "spec/RUBIN_L1_CANONICAL.md",
   "spec_section_hashes_file": "spec/SECTION_HASHES.json",
-  "spec_section_hashes_sha3_256": "77c09dcb9be58cfef93927ac87b84fbca82823db41fd30533da1701fa400c8c9",
+  "spec_section_hashes_sha3_256": "2e814a82299c57b55cf39e512d2ba6d7582bad78883768d28262a48b457e20a2",
   "lean_toolchain_file": "rubin-formal/lean-toolchain",
   "refinement_bridge_file": "rubin-formal/refinement_bridge.json",
   "coverage": [
@@ -713,7 +713,7 @@
         "Scope: static Lean model/helper for bounded u16 tag disposition only; no live implementation bridge is claimed. This row does not claim output acceptance, activation or deployment behavior, descriptor semantics, spend rules, cryptographic semantics, or client equivalence.",
         "The retained validateOutGenesis evidence is a six-accept legacy genesis-model companion for P2PK, ANCHOR, VAULT, MULTISIG, HTLC, and DA_COMMIT. It does not cover CORE_STEALTH or CORE_SIMPLICITY."
       ],
-      "notes": "Primary §14 static Lean-model/helper lane: `covenantDispositionComplete` machine-checks the exact static disposition for every u16 tag: the named accepted tags, reserved 0x00FF, deployment-gated CORE_SIMPLICITY at 0x0106, explicit invalid 0x0001 and 0x0102, and every other u16 tag invalid with TX_ERR_COVENANT_TYPE_INVALID as the registry error marker. This is tag disposition only and not a live implementation bridge. The retained `validateOutGenesis_ok_constrained` theorem and CV-COVENANT-GENESIS replay are separate six-accept legacy genesis-model evidence; they neither define activation or descriptor behavior nor cover CORE_STEALTH or CORE_SIMPLICITY."
+      "notes": "Primary §14 static Lean-model/helper lane: `covenantDispositionComplete` machine-checks the exact static disposition for every u16 tag: the named accepted tags, reserved 0x00FF, deployment-gated CORE_SIMPLICITY at 0x0106, explicit invalid 0x0001 and 0x0102, and every other u16 tag invalid with TX_ERR_COVENANT_TYPE_INVALID as the registry error marker. The 0x0102 entry is reserved only as a non-executable registry annotation, remains invalid and unassigned, and has no activation, support, or executable semantics. This is tag disposition only and not a live implementation bridge. The retained `validateOutGenesis_ok_constrained` theorem and CV-COVENANT-GENESIS replay are separate six-accept legacy genesis-model evidence; they neither define activation or descriptor behavior nor cover CORE_STEALTH or CORE_SIMPLICITY."
     },
     {
       "section_key": "difficulty_update",
