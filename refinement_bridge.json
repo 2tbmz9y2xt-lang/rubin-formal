@@ -329,27 +329,6 @@
       ]
     },
     {
-      "op": "covenant_registry",
-      "gate": "CV-COVENANT-GENESIS",
-      "model_theorem": "RubinFormal.validateOutGenesis_ok_constrained",
-      "lean_file": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
-      "theorem_file": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean",
-      "evidence_level": "machine_checked_universal",
-      "spec_section": "§14",
-      "go_function": "validateOutGenesis",
-      "contract_scope": "Universal for §14 validateOutGenesis / covenant registry genesis surface. Constrained theorem decomposes .ok into at least one of 6 per-type disjuncts with value/payload/parser witnesses.",
-      "notes": "Universal for the live genesis covenant registry surface. validateOutGenesis_ok_constrained proves that acceptance implies at least one of 6 type-specific guard conjunct sets. Sub-parser delegation (vault/multisig/htlc) is existentially witness-bound. No claim about HTLC spend-side preimage / crypto semantics.",
-      "limitations": [
-        "Scope: validateOutGenesis genesis surface only. HTLC spend-side preimage verification and cryptographic signature semantics are not claimed here."
-      ],
-      "supporting_theorems": [
-        "RubinFormal.validateOutGenesis_ok_constrained",
-        "RubinFormal.validate_out_genesis_rejects_unknown",
-        "RubinFormal.covenant_types_pairwise_distinct",
-        "RubinFormal.dispatch_unknown_covenant_error"
-      ]
-    },
-    {
       "op": "spend_gate_bridge",
       "gate": "descriptor-aware P2PK spend gate",
       "model_theorem": "RubinFormal.SpendGateLiveBridge.validateP2PKSpendPreSig_ok_constrained",

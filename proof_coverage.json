@@ -708,12 +708,12 @@
         "RubinFormal.dispatch_unknown_covenant_error": "rubin-formal/RubinFormal/ErrorPriority.lean",
         "RubinFormal.validateOutGenesis_ok_constrained": "rubin-formal/RubinFormal/CovenantRegistryExhaustive.lean"
       },
-      "evidence_level": "machine_checked_universal",
+      "evidence_level": "machine_checked_model",
       "limitations": [
-        "Scope: bounded u16 tag disposition only. This row does not claim output acceptance, activation or deployment behavior, descriptor semantics, spend rules, cryptographic semantics, or client equivalence.",
+        "Scope: static Lean model/helper for bounded u16 tag disposition only; no live implementation bridge is claimed. This row does not claim output acceptance, activation or deployment behavior, descriptor semantics, spend rules, cryptographic semantics, or client equivalence.",
         "The retained validateOutGenesis evidence is a six-accept legacy genesis-model companion for P2PK, ANCHOR, VAULT, MULTISIG, HTLC, and DA_COMMIT. It does not cover CORE_STEALTH or CORE_SIMPLICITY."
       ],
-      "notes": "Primary §14 theorem lane: `covenantDispositionComplete` machine-checks the exact static disposition for every u16 tag: the named accepted tags, reserved 0x00FF, deployment-gated CORE_SIMPLICITY at 0x0106, explicit invalid 0x0001 and 0x0102, and every other u16 tag invalid with TX_ERR_COVENANT_TYPE_INVALID as the registry error marker. This is tag disposition only. The retained `validateOutGenesis_ok_constrained` theorem and CV-COVENANT-GENESIS replay are separate six-accept legacy genesis-model evidence; they neither define activation or descriptor behavior nor cover CORE_STEALTH or CORE_SIMPLICITY."
+      "notes": "Primary §14 static Lean-model/helper lane: `covenantDispositionComplete` machine-checks the exact static disposition for every u16 tag: the named accepted tags, reserved 0x00FF, deployment-gated CORE_SIMPLICITY at 0x0106, explicit invalid 0x0001 and 0x0102, and every other u16 tag invalid with TX_ERR_COVENANT_TYPE_INVALID as the registry error marker. This is tag disposition only and not a live implementation bridge. The retained `validateOutGenesis_ok_constrained` theorem and CV-COVENANT-GENESIS replay are separate six-accept legacy genesis-model evidence; they neither define activation or descriptor behavior nor cover CORE_STEALTH or CORE_SIMPLICITY."
     },
     {
       "section_key": "difficulty_update",
